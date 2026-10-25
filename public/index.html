@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survival GO - Multiplayer Edition</title>
+    <title>Survival GO - v0.6.0 Atombiztos Edition (Modular)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -15,10 +15,16 @@
     <style>
         body { margin: 0; padding: 0; background: #111; color: #eee; font-family: monospace; }
         #map { height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 1; }
-        .hud-panel { z-index: 1000; background: rgba(17, 24, 39, 0.94); backdrop-filter: blur(8px); }
-        .modal { z-index: 2000; background: rgba(0, 0, 0, 0.9); }
-        .leaflet-bottom { bottom: 80px !important; }
+        .hud-panel { z-index: 1000; background: rgba(17, 24, 39, 0.92); backdrop-filter: blur(6px); }
+        .modal { z-index: 2000; background: rgba(0, 0, 0, 0.88); }
+        .leaflet-bottom { bottom: 60px !important; }
         #toast-notification { transition: opacity 0.3s ease-in-out; z-index: 9999; }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .combat-pulse { animation: pulse-red 1.5s infinite; }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -26,8 +32,8 @@
     <!-- BEJELENTKEZÉS / REGISZTRÁCIÓ MODAL -->
     <div id="login-modal" class="fixed inset-0 modal flex items-center justify-center p-4 z-[9999]">
         <div class="bg-gray-900 border border-amber-500/50 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center">
-            <h2 class="text-lg font-bold text-amber-400 mb-1">☢️ Survival GO Multiplayer</h2>
-            <p class="text-xs text-gray-400 mb-4">Add meg a túlélő adatait a belépéshez vagy regisztrációhoz:</p>
+            <h2 class="text-lg font-bold text-amber-400 mb-1">☢️ Survival GO v0.6.0</h2>
+            <p class="text-xs text-gray-400 mb-4">Add meg a túlélő adatait a valós világ alapú zónához:</p>
             
             <div id="avatar-container" class="flex justify-center gap-3 mb-4">
                 <div class="avatar-option cursor-pointer text-2xl p-2 bg-gray-800 border-2 border-amber-500 rounded-xl hover:bg-gray-700 transition-all" data-avatar="🥷" onclick="selectAvatar('🥷')">🥷</div>
@@ -36,8 +42,8 @@
                 <div class="avatar-option cursor-pointer text-2xl p-2 bg-gray-800 border-2 border-transparent rounded-xl hover:bg-gray-700 transition-all" data-avatar="💀" onclick="selectAvatar('💀')">💀</div>
             </div>
 
-            <input type="text" id="username-input" placeholder="Túlélő Neve" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-amber-500 text-center font-bold">
-            <input type="password" id="password-input" placeholder="Jelszó" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-amber-500 text-center font-bold">
+            <input type="text" id="username-input" placeholder="Túlélő Neve (pl. Stalker_Jani)" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-amber-500 text-center font-bold">
+            <input type="password" id="password-input" placeholder="Jelszó / PIN kód" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-amber-500 text-center font-bold">
             
             <div class="flex gap-2">
                 <button id="btn-register" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-amber-300 font-bold py-2.5 rounded-xl text-xs transition-all border border-gray-600">Regisztráció</button>
@@ -46,380 +52,223 @@
         </div>
     </div>
 
+    <!-- BEÁLLÍTÁSOK / MENÜ MODAL -->
+    <div id="settings-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
+        <div class="bg-gray-900 border border-gray-700 w-full max-w-sm rounded-2xl p-5 flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-base font-bold text-amber-400">⚙️ Játék Menü & Adatok</h2>
+                <button id="btn-close-settings" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            <p class="text-[11px] text-gray-400 mb-4">A játék automatikusan ment a MongoDB szerverre. Itt felsőbb szintű adatkezelést végezhetsz:</p>
+            
+            <div class="space-y-2.5">
+                <button onclick="exportSaveData()" class="w-full bg-blue-900/60 hover:bg-blue-800 border border-blue-600 py-2.5 rounded-xl text-xs font-bold text-blue-200 flex items-center justify-center gap-2">
+                    💾 Mentés Exportálása Fájlba
+                </button>
+                <label class="w-full bg-emerald-900/60 hover:bg-emerald-800 border border-emerald-600 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 cursor-pointer">
+                    📁 Mentés Importálása Fájlból 
+                    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importSaveData(event)">
+                </label>
+            </div>
+        </div>
+    </div>
+  
+    <!-- GAME OVER MODAL -->
+    <div id="gameover-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[9999]">
+        <div class="bg-gray-900 border border-red-500/80 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center">
+            <h2 class="text-xl font-bold text-red-500 mb-2">💀 MEGHALTÁL A ZÓNÁBAN!</h2>
+            <p class="text-xs text-gray-300 mb-6">A túlélés ezúttal nem sikerült. A karaktered és a mentéseid megsemmisültek a sugárzásban.</p>
+            <button id="btn-gameover-reset" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg">Új Túlélő Indítása</button>
+        </div>
+    </div>
+
+    <!-- HARC (COMBAT) MODAL -->
+    <div id="combat-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[2500]">
+        <div id="combat-box" class="bg-gray-900 border-2 border-red-500/80 w-full max-w-lg rounded-2xl p-5 shadow-2xl flex flex-col combat-pulse">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                    <span id="enemy-avatar" class="text-3xl">🧟</span>
+                    <div>
+                        <h2 id="enemy-name" class="text-sm font-bold text-red-400">Mutáns Ellenfél</h2>
+                        <div class="text-[10px] text-gray-400">Veszélyességi szint: <span id="enemy-level" class="text-amber-400">1</span></div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] text-gray-400">Ellenfél HP</div>
+                    <div id="enemy-hp-text" class="text-xs font-bold text-red-500">100 / 100</div>
+                </div>
+            </div>
+
+            <div class="w-full bg-gray-800 h-2.5 rounded-full overflow-hidden mb-4">
+                <div id="enemy-bar-hp" class="bg-red-600 h-full w-full transition-all duration-300"></div>
+            </div>
+
+            <div id="combat-log" class="bg-black/60 border border-gray-800 rounded-xl p-3 h-32 overflow-y-auto text-xs text-gray-300 mb-4 space-y-1">
+                <div class="text-amber-400">[Harc] Ellenséges kontakt! Készülj a harcra vagy menekülj!</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 bg-gray-800/80 p-3 rounded-xl border border-gray-700 mb-4 text-xs">
+                <div>
+                    <div class="flex justify-between mb-1"><span>❤️ Te Életed</span><span id="combat-player-hp">100%</span></div>
+                    <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden"><div id="combat-bar-hp" class="bg-green-500 h-full w-full transition-all"></div></div>
+                </div>
+                <div>
+                    <div class="text-gray-400">Kezben tartott fegyver:</div>
+                    <div id="combat-weapon-name" class="font-bold text-amber-400 truncate">Nincs fegyver</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button id="btn-combat-attack" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">⚔️ Támadás</button>
+                <button id="btn-combat-dodge" class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">🛡️ Kitérés</button>
+                <button id="btn-combat-heal-open" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">💊 Gyógyul</button>
+                <button id="btn-combat-run" class="bg-amber-700 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">🏃 Menekülés</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HARC KÖZBENI GYÓGYULÁS MODAL -->
+    <div id="combat-heal-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
+        <div class="bg-gray-900 border border-emerald-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl flex flex-col max-h-[70vh]">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-emerald-400">💊 Válassz orvosi eszközt</h3>
+                <button id="btn-combat-heal-close" class="text-gray-400 hover:text-white font-bold text-base">✕</button>
+            </div>
+            <p class="text-[10px] text-gray-400 mb-3">Kattints arra a szerre, amit fel akarsz használni a harc hevületében:</p>
+            <div id="combat-heal-list" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
+
+    <!-- MŰHELY INTERAKCIÓS MODAL -->
+    <div id="workshop-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[2800]">
+        <div class="bg-gray-900 border-2 border-amber-500 w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                    <span id="workshop-icon" class="text-2xl">🔥</span>
+                    <h3 id="workshop-title" class="text-sm font-bold text-amber-400">Műhely</h3>
+                </div>
+                <button onclick="closeWorkshopModal()" class="text-gray-400 hover:text-white font-bold text-base">✕</button>
+            </div>
+            <p id="workshop-desc" class="text-xs text-gray-300 mb-4">Itt feldolgozhatod az alapanyagokat vagy megjavíthatod a felszerelésedet.</p>
+            <div id="workshop-actions" class="space-y-2"></div>
+        </div>
+    </div>
+
     <!-- TÉRKÉP KONTÉNER -->
     <div id="map"></div>
 
-    <!-- ÉRTESÍTŐ TOAST -->
     <div id="toast-notification" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-900/95 border border-amber-500/80 text-amber-300 px-4 py-2 rounded-xl text-xs font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 text-center max-w-sm">
         Üzenet helye
     </div>
 
-    <!-- TELJES RÉSZLETES HUD (FELSŐ SÁV) -->
-    <div class="absolute top-4 left-4 right-4 flex flex-col md:flex-row justify-between items-center hud-panel p-3 rounded-2xl border border-gray-700 shadow-2xl gap-3">
-        <div class="flex items-center gap-3">
-            <div id="hud-avatar" class="text-3xl bg-gray-800 p-2 rounded-xl border border-gray-600 shadow-inner">🥷</div>
+    <!-- FELSŐ HUD -->
+    <div class="absolute top-4 left-4 right-4 flex flex-col md:flex-row justify-between items-center gap-3 hud-panel p-3 rounded-xl border border-gray-700 shadow-2xl">
+        <div class="flex items-center gap-3 w-full md:w-auto border-b md:border-b-0 md:border-r border-gray-700 pb-2 md:pb-0 md:pr-3">
+            <div id="hud-avatar" class="text-2xl bg-gray-800 p-1.5 rounded-xl border border-gray-600">🥷</div>
             <div>
-                <div id="hud-name" class="text-xs font-bold text-amber-400">Stalker</div>
-                <div class="text-[10px] text-gray-400">Szint: <span id="hud-level" class="text-white font-bold">1</span> (XP: <span id="hud-xp">0</span>) | 🛡️ Védelem: <span id="hud-def" class="text-cyan-400 font-bold">0</span> | ⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0.0 / 30 kg</span></div>
+                <div id="hud-name" class="text-xs font-bold text-amber-400">Név</div>
+                <div class="text-[10px] text-gray-400">Szint: <span id="hud-level" class="text-white font-bold">1</span> (XP: <span id="hud-xp">0</span>) | 🛡️ Védelem: <span id="hud-defense" class="text-blue-400 font-bold">0</span> | ⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0/30 kg</span></div>
             </div>
         </div>
-
-        <div class="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-            <div class="flex flex-col min-w-[90px]">
-                <div class="flex justify-between text-[10px] mb-0.5 text-gray-300 font-bold">
-                    <span>❤️ Élet</span>
-                    <span id="hud-hp-text">100/100</span>
-                </div>
-                <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700">
-                    <div id="hud-hp-bar" class="bg-red-600 h-full transition-all duration-300" style="width: 100%"></div>
-                </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+            <div>
+                <div class="flex justify-between text-xs mb-1"><span>❤️ Élet</span><span id="stat-hp">100%</span></div>
+                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-hp" class="bg-red-500 h-full w-full transition-all"></div></div>
             </div>
-            <div class="flex flex-col min-w-[80px]">
-                <div class="flex justify-between text-[10px] mb-0.5 text-gray-300 font-bold">
-                    <span>🍖 Éhség</span>
-                    <span id="hud-hunger-text">100%</span>
-                </div>
-                <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700">
-                    <div id="hud-hunger-bar" class="bg-amber-500 h-full transition-all duration-300" style="width: 100%"></div>
-                </div>
+            <div>
+                <div class="flex justify-between text-xs mb-1"><span>🍗 Éhség</span><span id="stat-hunger">100%</span></div>
+                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-hunger" class="bg-amber-500 h-full w-full transition-all"></div></div>
             </div>
-            <div class="flex flex-col min-w-[80px]">
-                <div class="flex justify-between text-[10px] mb-0.5 text-gray-300 font-bold">
-                    <span>💧 Szomjúság</span>
-                    <span id="hud-thirst-text">100%</span>
-                </div>
-                <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700">
-                    <div id="hud-thirst-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 100%"></div>
-                </div>
+            <div>
+                <div class="flex justify-between text-xs mb-1"><span>💧 Szomjúság</span><span id="stat-thirst">100%</span></div>
+                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-thirst" class="bg-blue-500 h-full w-full transition-all"></div></div>
             </div>
-            <div class="flex flex-col min-w-[80px]">
-                <div class="flex justify-between text-[10px] mb-0.5 text-gray-300 font-bold">
-                    <span>⚡ Fáradtság</span>
-                    <span id="hud-fatigue-text">0%</span>
-                </div>
-                <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700">
-                    <div id="hud-fatigue-bar" class="bg-yellow-500 h-full transition-all duration-300" style="width: 0%"></div>
-                </div>
+            <div>
+                <div class="flex justify-between text-xs mb-1"><span>⚡ Fáradtság</span><span id="stat-fatigue">0%</span></div>
+                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-fatigue" class="bg-purple-500 h-full w-0 transition-all"></div></div>
             </div>
         </div>
     </div>
 
-    <!-- ALSÓ VEZÉRLŐSÁV -->
-    <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center hud-panel px-4 py-3 rounded-2xl border border-gray-700 shadow-2xl">
-        <div class="text-xs text-gray-400">Online Túlélők: <span id="online-count" class="text-emerald-400 font-bold">1</span></div>
-        <div class="flex gap-2">
-            <button onclick="openInventoryModal()" class="bg-gray-800 hover:bg-gray-700 text-amber-300 border border-amber-500/50 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow">🎒 Inventory</button>
-        </div>
+    <!-- ALSÓ MENÜSOR -->
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-wrap justify-center gap-2 hud-panel px-4 py-2 rounded-2xl border border-gray-700 shadow-2xl">
+        <button id="btn-open-inventory" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🎒 Hátizsák</button>
+        <button id="btn-open-equipment" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🛡️ Felszerelés</button>
+        <button id="btn-open-crafting" class="bg-amber-700 hover:bg-amber-600 border border-amber-500 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🛠️ Barkács</button>
+        <button id="btn-open-settings" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">⚙️ Menü</button>
     </div>
 
-    <!-- INVENTORY MODAL -->
+    <!-- JÁTÉK NAPLÓ -->
+    <div id="game-log" class="absolute bottom-20 left-4 w-80 hud-panel p-3 rounded-xl border border-gray-700 text-xs text-gray-300 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
+        <div>[Rendszer] Üdv a Valós Zónában (Modular Version)!</div>
+    </div>
+
+    <!-- HÁTIZSÁK ABLAK -->
     <div id="inventory-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-amber-500/50 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+        <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh]">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-sm font-bold text-amber-400">🎒 Túlélő Felszerelése és Táska</h3>
-                <button onclick="closeInventoryModal()" class="text-gray-400 hover:text-white font-bold text-sm">✕</button>
+                <h2 class="text-base font-bold text-amber-400">🎒 Hátizsák (<span id="inv-count">0</span> / <span id="inv-max">10</span>)</h2>
+                <button id="btn-close-inventory" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
             </div>
-            <div id="inventory-grid" class="grid grid-cols-4 gap-2 text-xs">
-                <!-- Dinamikus tartalom -->
+            <div id="inventory-grid" class="grid grid-cols-1 gap-2 overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
+
+    <!-- FELSZERELÉS ABLAK -->
+    <div id="equipment-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-base font-bold text-amber-400">🛡️ Karakter Felszerelés</h2>
+                <button id="btn-close-equipment" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            <div class="space-y-2.5 overflow-y-auto pr-1 flex-1">
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">🪖 Sisak / Maszk</div><div id="eq-helmet" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
+                    <button onclick="unequip('helmet')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">👕 Felső</div><div id="eq-torso" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
+                    <button onclick="unequip('torso')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">🦺 Mellény / Páncél</div><div id="eq-armor" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
+                    <button onclick="unequip('armor')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">👖 Nadrág</div><div id="eq-legs" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
+                    <button onclick="unequip('legs')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">👞 Cipő / Lábbeli</div><div id="eq-shoes" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
+                    <button onclick="unequip('shoes')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">🎒 Hátizsák</div><div id="eq-backpack" class="text-xs font-bold text-white">Alap (10 hely)</div></div>
+                    <button onclick="unequip('backpack')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
+                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <div><div class="text-[10px] text-gray-400">⚔️ Kézben tartott tárgy / Fegyver</div><div id="eq-weapon" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
+                    <button onclick="unequip('weapon')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPT IMPORT ÉS FŐ LOGIKA -->
-    <script src="/js/config.js"></script>
-    <script>
-        const socket = io();
-        let currentUsername = "";
-        let player = {
-            username: "Stalker",
-            avatar: "🥷",
-            hp: 100,
-            maxHp: 100,
-            hunger: 100,
-            thirst: 100,
-            fatigue: 0,
-            level: 1,
-            xp: 0,
-            inventory: [],
-            equipment: { helmet: null, torso: null, armor: null, legs: null, shoes: null, backpack: null, weapon: null },
-            lat: 47.4979,
-            lng: 19.0402
-        };
+    <!-- BÁRKÁCSOLÁS ABLAK -->
+    <div id="crafting-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-base font-bold text-amber-400">🛠️ Barkácsolási Receptek</h2>
+                <button id="btn-close-crafting" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            <div id="crafting-list" class="space-y-3 overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
 
-        let map = null;
-        let playerMarker = null;
-        let otherPlayerMarkers = {};
-        let buildingMarkers = {};
-
-        function logMessage(text) {
-            const toast = document.getElementById('toast-notification');
-            if(toast) {
-                toast.textContent = text;
-                toast.classList.remove('opacity-0');
-                if (window.toastTimeout) clearTimeout(window.toastTimeout);
-                window.toastTimeout = setTimeout(() => { toast.classList.add('opacity-0'); }, 3500);
-            }
-        }
-
-        let selectedAvatar = '🥷';
-        function selectAvatar(avatar) {
-            selectedAvatar = avatar;
-            document.querySelectorAll('.avatar-option').forEach(el => {
-                el.classList.remove('border-amber-500');
-                el.classList.add('border-transparent');
-                if(el.getAttribute('data-avatar') === avatar) {
-                    el.classList.remove('border-transparent');
-                    el.classList.add('border-amber-500');
-                }
-            });
-        }
-
-        // --- AUTH API ---
-        document.getElementById('btn-register').addEventListener('click', async () => {
-            const username = document.getElementById('username-input').value.trim();
-            const password = document.getElementById('password-input').value.trim();
-            if (!username || !password) { alert('Add meg a nevet és jelszót!'); return; }
-
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, avatar: selectedAvatar })
-            });
-            const data = await res.json();
-            alert(data.message);
-            if (data.success) { loginUserQuick(username, password); }
-        });
-
-        document.getElementById('btn-login').addEventListener('click', async () => {
-            const username = document.getElementById('username-input').value.trim();
-            const password = document.getElementById('password-input').value.trim();
-            if (!username || !password) { alert('Add meg a nevet és jelszót!'); return; }
-
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            if (data.success) {
-                player = data.player;
-                currentUsername = username;
-                document.getElementById('login-modal').classList.add('hidden');
-                initGameSession();
-            } else {
-                alert(data.message);
-            }
-        });
-
-        async function loginUserQuick(username, password) {
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            if (data.success) {
-                player = data.player;
-                currentUsername = username;
-                document.getElementById('login-modal').classList.add('hidden');
-                initGameSession();
-            }
-        }
-
-        function initGameSession() {
-            updateHUD();
-            socket.emit('player_join', { username: player.username, avatar: player.avatar, lat: player.lat || 47.4979, lng: player.lng || 19.0402 });
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    initMap(pos.coords.latitude, pos.coords.longitude);
-                }, () => { initMap(player.lat || 47.4979, player.lng || 19.0402); }, { enableHighAccuracy: true });
-            } else {
-                initMap(player.lat || 47.4979, player.lng || 19.0402);
-            }
-        }
-
-        function updateHUD() {
-            document.getElementById('hud-name').textContent = player.username;
-            document.getElementById('hud-avatar').textContent = player.avatar;
-            document.getElementById('hud-level').textContent = player.level;
-            document.getElementById('hud-xp').textContent = player.xp || 0;
-            document.getElementById('hud-hp-text').textContent = `${player.hp}/${player.maxHp}`;
-            document.getElementById('hud-hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
-            document.getElementById('hud-hunger-text').textContent = `${player.hunger}%`;
-            document.getElementById('hud-hunger-bar').style.width = `${player.hunger}%`;
-            document.getElementById('hud-thirst-text').textContent = `${player.thirst}%`;
-            document.getElementById('hud-thirst-bar').style.width = `${player.thirst}%`;
-            document.getElementById('hud-fatigue-text').textContent = `${player.fatigue}%`;
-            document.getElementById('hud-fatigue-bar').style.width = `${player.fatigue}%`;
-
-            let totalWeight = 0;
-            let totalDef = 0;
-            if (player.equipment) {
-                for (let slot in player.equipment) {
-                    const itemKey = player.equipment[slot];
-                    if (itemKey && itemDatabase[itemKey]) {
-                        totalWeight += itemDatabase[itemKey].weight || 0;
-                        totalDef += itemDatabase[itemKey].def || 0;
-                    }
-                }
-            }
-            if (player.inventory) {
-                player.inventory.forEach(i => {
-                    if (itemDatabase[i.key]) {
-                        totalWeight += (itemDatabase[i.key].weight || 0) * (i.count || 1);
-                    }
-                });
-            }
-            document.getElementById('hud-def').textContent = totalDef;
-            document.getElementById('hud-weight').textContent = `${totalWeight.toFixed(1)} / 30 kg`;
-        }
-
-        function initMap(lat, lng) {
-            if (map) return;
-            map = L.map('map').setView([lat, lng], 17);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            const icon = L.divIcon({
-                className: 'custom-player-icon',
-                html: `<div style="font-size: 26px; text-align: center;">${player.avatar}</div>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
-            playerMarker = L.marker([lat, lng], {icon: icon}).addTo(map);
-
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(position => {
-                    const nLat = position.coords.latitude;
-                    const nLng = position.coords.longitude;
-                    playerMarker.setLatLng([nLat, nLng]);
-                    socket.emit('player_move', { lat: nLat, lng: nLng });
-                }, null, { enableHighAccuracy: true });
-            }
-            logMessage('Üdv a Zónában, túlélő!');
-        }
-
-        function openInventoryModal() {
-            const grid = document.getElementById('inventory-grid');
-            grid.innerHTML = '';
-            if (player.inventory && player.inventory.length > 0) {
-                player.inventory.forEach((item) => {
-                    const itemDef = itemDatabase[item.key] || { name: item.key, icon: '📦' };
-                    grid.innerHTML += `
-                        <div class="bg-gray-800 p-2 rounded-xl border border-gray-700 flex flex-col items-center text-center">
-                            <span class="text-xl">${itemDef.icon}</span>
-                            <span class="text-[10px] text-gray-300 font-bold truncate w-full">${itemDef.name}</span>
-                            <span class="text-[9px] text-amber-400">Db: ${item.count || 1}</span>
-                        </div>
-                    `;
-                });
-            } else {
-                grid.innerHTML = `<div class="col-span-4 text-center text-gray-500 py-4 text-xs">Az inventory üres.</div>`;
-            }
-            document.getElementById('inventory-modal').classList.remove('hidden');
-        }
-
-        function closeInventoryModal() {
-            document.getElementById('inventory-modal').classList.add('hidden');
-        }
-
-        // --- POI / ÉPÜLETEK SZINKRONIZÁLÁSA ÉS LOOTOLÁSA ---
-        socket.on('sync_world', (buildings) => {
-            for (let id in buildingMarkers) {
-                map.removeLayer(buildingMarkers[id]);
-            }
-            buildingMarkers = {};
-
-            buildings.forEach(b => {
-                let iconHtml = '🏠';
-                let colorClass = 'bg-gray-700';
-                
-                if (b.type === 'military' || b.type === 'bunker') {
-                    iconHtml = '🛡️';
-                    colorClass = 'bg-red-800';
-                } else if (b.type === 'hospital') {
-                    iconHtml = '🏥';
-                    colorClass = 'bg-blue-800';
-                } else if (b.type === 'store' || b.type === 'gas_station') {
-                    iconHtml = '🛒';
-                    colorClass = 'bg-amber-700';
-                }
-
-                if (b.isLooted) {
-                    iconHtml = '📭';
-                    colorClass = 'bg-gray-900 opacity-50';
-                }
-
-                const icon = L.divIcon({
-                    className: 'poi-icon',
-                    html: `<div class="${colorClass} p-1 rounded-xl text-center border border-amber-500/50 shadow-lg" style="font-size: 18px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" title="${b.name} (${b.type})">${iconHtml}</div>`,
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
-                });
-
-                const marker = L.marker([b.lat, b.lng], { icon: icon }).addTo(map);
-
-                marker.on('click', () => {
-                    const playerLatLng = playerMarker.getLatLng();
-                    const distance = playerLatLng.distanceTo([b.lat, b.lng]);
-
-                    // Teszteléshez most megemeltük a távolságot 500 méterre, hogy könnyen elérhesd a térképen
-                    if (distance > 500) {
-                        logMessage('⚠️ Túl messze vagy az épülettől!');
-                        return;
-                    }
-
-                    if (b.isLooted) {
-                        logMessage('⚠️ Ezt az épületet már kirámolták.');
-                        return;
-                    }
-
-                    socket.emit('request_loot', { username: player.username, buildingId: b._id });
-                });
-
-                buildingMarkers[b._id] = marker;
-            });
-        });
-
-        socket.on('loot_result', (res) => {
-            logMessage(res.message);
-            if (res.success && res.player) {
-                player.level = res.player.level;
-                player.xp = res.player.xp;
-                player.inventory = res.player.inventory;
-                updateHUD();
-            }
-        });
-
-        socket.on('update_players', (players) => {
-            let count = 0;
-            for (let id in players) {
-                const p = players[id];
-                if (p.username === player.username) continue;
-                count++;
-
-                if (!otherPlayerMarkers[id]) {
-                    const icon = L.divIcon({
-                        className: 'other-player',
-                        html: `<div style="font-size: 20px; text-align: center;" title="${p.username}">${p.avatar}</div>`,
-                        iconSize: [25, 25]
-                    });
-                    otherPlayerMarkers[id] = L.marker([p.lat, p.lng], {icon: icon}).addTo(map);
-                } else {
-                    otherPlayerMarkers[id].setLatLng([p.lat, p.lng]);
-                }
-            }
-            for (let id in otherPlayerMarkers) {
-                if (!players[id]) {
-                    map.removeLayer(otherPlayerMarkers[id]);
-                    delete otherPlayerMarkers[id];
-                }
-            }
-            document.getElementById('online-count').textContent = count + 1;
-        });
-    </script>
+    <!-- Modulok betöltési sorrendje -->
+    <script src="player.js"></script>
+    <script src="combat.js"></script>
+    <script src="map.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
