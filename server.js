@@ -17,8 +17,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // MongoDB Kapcsolat & Séma
 mongoose.connect(config.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
 }).then(() => {
     console.log("🔥 MongoDB sikeresen csatlakoztatva!");
 }).catch(err => {
