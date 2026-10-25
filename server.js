@@ -161,26 +161,32 @@ function addExperienceAndCheckLevelUp(player, xpAmount) {
 }
 
 // --- DINAMIKUS OPENSTREETMAP POI LEKÉRDEZŐ (OVERPASS API) ---
+// --- TELJES KÖRŰ ÉPÜLET ÉS POI KATEGORIZÁLÁS ---
 async function fetchAndSaveRealWorldPOIs(lat, lng) {
     try {
         const radius = 2000; // 2 km-es körzet
         const overpassQuery = `
             [out:json][timeout:25];
             (
-              node["shop"](around:${radius},${lat},${lng});
-              way["shop"](around:${radius},${lat},${lng});
-              node["amenity"="hospital"](around:${radius},${lat},${lng});
-              way["amenity"="hospital"](around:${radius},${lat},${lng});
-              node["military"](around:${radius},${lat},${lng});
+              node(around:${radius},${lat},${lng})["shop"];
+              way(around:${radius},${lat},${lng})["shop"];
+              node(around:${radius},${lat},${lng})["amenity"];
+              way(around:${radius},${lat},${lng})["amenity"];
+              node(around:${radius},${lat},${lng})["building"];
+              way(around:${radius},${lat},${lng})["building"];
+              node(around:${radius},${lat},${lng})["industrial"];
+              way(around:${radius},${lat},${lng})["industrial"];
+              node(around:${radius},${lat},${lng})["military"];
+              way(around:${radius},${lat},${lng})["military"];
             );
             out body;
             >;
             out skel qt;
         `;
 
-        const response = await axios.post('https://overpass-api.de/api/interpreter', overpassQuery, {
+        const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(overpassQuery);
+        const response = await axios.get(url, {
             headers: { 
-                'Content-Type': 'text/plain',
                 'User-Agent': 'SurvivalGOServer/1.0 (Contact: admin@survivalgo.local)'
             }
         });
@@ -188,41 +194,114 @@ async function fetchAndSaveRealWorldPOIs(lat, lng) {
         const elements = response.data.elements;
         if (!elements) return;
 
-        for (const el of elements) {
-            let elLat = el.lat;
-            let elLng = el.lon;
+        for (const element of elements) {
+            const elLat = element.lat || (element.center ? element.center.lat : null);
+            const elLon = element.lon || (element.center ? element.center.lon : null);
+            if (!elLat || !elLon) continue;
 
-            if (!elLat && el.center) {
-                elLat = el.center.lat;
-                elLng = el.center.lon;
+            const uniqueId = 'osm_' + element.id;
+            const exists = await WorldBuilding.findOne({ id: uniqueId });
+            if (exists) continue;
+
+            let buildingName = 'Romos ház';
+            let tags = element.tags || {};
+            let isPotentialWorkshop = false;
+            let buildingType = 'store'; // Alapértelmezett típus
+
+            // Pontos OSM tagek leképezése
+            if (tags.shop === 'supermarket' || tags.shop === 'grocery') {
+                buildingName = 'Élelmiszerbolt';
+                buildingType = 'store';
+            } else if (tags.shop === 'convenience' || tags.shop === 'kiosk' || tags.shop === 'tobacco') {
+                buildingName = 'Kisbolt / Trafik';
+                buildingType = 'store';
+            } else if (tags.shop === 'hardware' || tags.shop === 'doityourself' || tags.shop === 'builder') {
+                buildingName = 'Barkácsáruház';
+                buildingType = 'workshop';
+                isPotentialWorkshop = true;
+            } else if (tags.amenity === 'fuel') {
+                buildingName = 'Benzinkút / Kút';
+                buildingType = 'store';
+            } else if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'fast_food' || tags.amenity === 'ice_cream' || tags.shop === 'ice_cream') {
+                buildingName = 'Étterem / Kávézó / Fagyizó / Csárda';
+                buildingType = 'store';
+            } else if (tags.amenity === 'pub' || tags.amenity === 'bar') {
+                buildingName = 'Kocsma / Pub / Söröző';
+                buildingType = 'store';
+            } else if (tags.amenity === 'pharmacy') {
+                buildingName = 'Gyógyszertár';
+                buildingType = 'hospital';
+            } else if (tags.amenity === 'hospital' || tags.amenity === 'doctors') {
+                buildingName = 'Kórház';
+                buildingType = 'hospital';
+            } else if (tags.amenity === 'police') {
+                buildingName = 'Rendőrség';
+                buildingType = 'military';
+            } else if (tags.amenity === 'fire_station') {
+                buildingName = 'Tűzoltóság';
+                buildingType = 'military';
+            } else if (tags.building === 'military' || tags.military) {
+                buildingName = 'Katonai bázis';
+                buildingType = 'military';
+            } else if (tags.bunker || tags.building === 'bunker') {
+                buildingName = 'Kormányzati Bunker / Óvóhely';
+                buildingType = 'military';
+            } else if (tags.amenity === 'school' || tags.amenity === 'university' || tags.amenity === 'college' || tags.amenity === 'kindergarten') {
+                buildingName = 'Iskola / Óvoda';
+                buildingType = 'store';
+            } else if (tags.amenity === 'library') {
+                buildingName = 'Könyvtár';
+                buildingType = 'store';
+            } else if (tags.amenity === 'place_of_worship') {
+                buildingName = 'Templom / Kápolna';
+                buildingType = 'store';
+            } else if (tags.amenity === 'townhall' || tags.office === 'government') {
+                buildingName = 'Városháza / Polgármesteri Hivatal';
+                buildingType = 'store';
+            } else if (tags.tourism === 'museum' || tags.historic) {
+                buildingName = 'Múzeum / Kiállítóterem';
+                buildingType = 'store';
+            } else if (tags.building === 'warehouse') {
+                buildingName = 'Elhagyatott raktár';
+                buildingType = 'workshop';
+                isPotentialWorkshop = true;
+            } else if (tags.industrial || tags.landuse === 'industrial' || tags.man_made === 'works' || tags.building === 'industrial' || tags.building === 'factory') {
+                buildingName = 'Ipari létesítmény / Gyár';
+                buildingType = 'workshop';
+                isPotentialWorkshop = true;
+            } else if (tags.shop === 'car_repair' || tags.amenity === 'car_repair' || tags.craft === 'mechanic') {
+                buildingName = 'Autószerviz / Gumis';
+                buildingType = 'workshop';
+                isPotentialWorkshop = true;
+            } else {
+                buildingName = 'Romos ház';
+                buildingType = 'store';
             }
 
-            if (elLat && elLng) {
-                const exists = await WorldBuilding.findOne({ lat: elLat, lng: elLng });
-                if (!exists) {
-                    let type = 'store';
-                    let name = el.tags?.name || 'Helyi Bolt';
+            let workshopType = null;
+            const lowerName = buildingName.toLowerCase();
+            const isBlacklisted = lowerName.includes('étterem') || lowerName.includes('kávézó') || lowerName.includes('iskola') || lowerName.includes('bolt') || lowerName.includes('templom') || lowerName.includes('gyógyszertár') || lowerName.includes('benzinkút');
 
-                    if (el.tags?.amenity === 'hospital') {
-                        type = 'hospital';
-                        name = el.tags?.name || 'Helyi Kórház';
-                    } else if (el.tags?.military) {
-                        type = 'military';
-                        name = el.tags?.name || 'Katonai Létesítmény';
-                    }
-
-                    await WorldBuilding.create({
-                        name: name,
-                        type: type,
-                        lat: elLat,
-                        lng: elLng,
-                        isLooted: false
-                    });
-                }
+            if (isPotentialWorkshop && !isBlacklisted) {
+                let hash = Math.abs(Number(element.id)) % 8;
+                if (hash === 0) workshopType = 'smelter';
+                else if (hash === 1) workshopType = 'repair';
             }
+
+            await WorldBuilding.create({
+                id: uniqueId,
+                name: tags.name ? `${buildingName} (${tags.name})` : buildingName,
+                type: buildingType,
+                lat: elLat,
+                lng: elLon,
+                isLooted: false,
+                lootedTime: null,
+                lockedUntil: null,
+                workshop: workshopType
+            });
         }
     } catch (err) {
-        console.error('Overpass API hiba:', err.message);
+        console.error('Hiba az Overpass API lekérdezésénél:', err.message);
     }
 }
 
