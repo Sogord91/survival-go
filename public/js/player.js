@@ -174,8 +174,8 @@ const craftingRecipes = [
 ];
 
 let player = {
-    username:
-    avatar:
+    username: 'Stalker',
+    avatar: 'avatar1.png',
     hp: 100,
     maxHp: 100,
     hunger: 100,
