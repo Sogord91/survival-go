@@ -131,8 +131,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// --- VALÓS IDEJŰ MULTIPLAYER & MENTÉS SOCKET.IO-VAL ---
-const activePlayers = {};
 
 // --- VALÓS IDEJŰ MULTIPLAYER & MENTÉS SOCKET.IO-VAL ---
 const activePlayers = {};
