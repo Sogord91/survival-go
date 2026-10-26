@@ -343,18 +343,7 @@ socket.on('player_loaded', (data) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btn-register').addEventListener('click', () => {
-        const username = document.getElementById('username-input').value.trim();
-        loginUser(username);
-    });
-    document.getElementById('btn-login').addEventListener('click', () => {
-        const username = document.getElementById('username-input').value.trim();
-        loginUser(username);
-    });
-    document.getElementById('btn-gameover-reset').addEventListener('click', () => {
-        localStorage.removeItem('zona_current_user');
-        location.reload();
-    });
+    
     document.getElementById('btn-open-inventory').addEventListener('click', () => { document.getElementById('inventory-modal').classList.remove('hidden'); updateUI(); });
     document.getElementById('btn-close-inventory').addEventListener('click', () => { document.getElementById('inventory-modal').classList.add('hidden'); });
     document.getElementById('btn-open-equipment').addEventListener('click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
@@ -362,7 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-open-crafting').addEventListener('click', () => { document.getElementById('crafting-modal').classList.remove('hidden'); updateUI(); });
     document.getElementById('btn-close-crafting').addEventListener('click', () => { document.getElementById('crafting-modal').classList.add('hidden'); });
     document.getElementById('btn-combat-attack').addEventListener('click', combatAttack);
-    document.getElementById('btn-combat-dodge').addEventListener('click', combatDodge);
     document.getElementById('btn-combat-run').addEventListener('click', combatRun);
     document.getElementById('btn-combat-heal-open').addEventListener('click', () => { updateUI(); document.getElementById('combat-heal-modal').classList.remove('hidden'); });
     document.getElementById('btn-combat-heal-close').addEventListener('click', () => { document.getElementById('combat-heal-modal').classList.add('hidden'); });
