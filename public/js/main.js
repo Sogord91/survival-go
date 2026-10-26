@@ -178,8 +178,9 @@ function updateHUD() {
     calculateStats();
     let currentWeight = calculateInventoryWeight();
 
+    const avatarFile = player.avatar || 'avatar1.png';
+    document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`;
     document.getElementById('hud-name').textContent = player.name || "Stalker";
-    document.getElementById('hud-avatar').textContent = player.avatar || "🥷";
     document.getElementById('hud-level').textContent = player.level || 1;
     document.getElementById('hud-xp').textContent = player.xp || 0;
     document.getElementById('hud-defense').textContent = player.defense || 0;
