@@ -571,11 +571,12 @@ function initOtherPlayersListener() {
 
             if (distance <= 300) { // Ha 300 méteren belül van
                 if (!otherPlayerMarkers[id]) {
+                    const avatarFile = pData.avatar || 'avatar1.png';
                     const otherIcon = L.divIcon({
                         className: 'other-player-icon',
                         html: `
                             <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
-                                <span style="font-size: 18px;">🪖</span>
+                                <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
                             </div>
                         `,
                         iconSize: [36, 36],
