@@ -508,6 +508,9 @@ function completeLooting(b) {
         addXp(15);
     }
     saveGame();
+
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('building_looted', { id: b.id });
 }
 
     // A többi játékos markereinek tárolása
@@ -587,6 +590,18 @@ function initOtherPlayersListener() {
                     delete otherPlayerMarkers[id];
                 }
             }
+        }
+    });
+}
+
+function initBuildingSyncListener() {
+    if (typeof socket === 'undefined' || !socket) return;
+
+    socket.on('building_looted_update', (data) => {
+        const targetSaved = savedBuildings.find(sb => sb.id === data.id);
+        if (targetSaved) {
+            targetSaved.looted = true;
+            refreshMapMarkers(); // Újrarajzolja a térképet, így a másikon is lakat/szürke ikon lesz
         }
     });
 }

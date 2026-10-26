@@ -152,6 +152,13 @@ io.on('connection', (socket) => {
         }
     });
 
+// Épület kirablásának szinkronizálása a többiekkel
+    socket.on('building_looted', (data) => {
+        if (data && data.id) {
+            socket.broadcast.emit('building_looted_update', { id: data.id });
+        }
+    });
+
     // Játékállás (leltár, HP, pénz, épületek állapota) mentése adatbázisba
     socket.on('save_player', async (data) => {
         try {
