@@ -357,8 +357,5 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-open-settings').addEventListener('click', () => { document.getElementById('settings-modal').classList.remove('hidden'); });
     document.getElementById('btn-close-settings').addEventListener('click', () => { document.getElementById('settings-modal').classList.add('hidden'); });
 
-    if (currentUsername) {
-        document.getElementById('username-input').value = currentUsername;
-        loginUser(currentUsername);
-    }
+    
 });
