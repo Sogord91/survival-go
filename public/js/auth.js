@@ -76,6 +76,16 @@ async function handleAuthSubmit() {
             msg.className = 'mb-4 text-sm text-center text-emerald-400';
             msg.textContent = 'Sikeres belépés! Játék betöltése...';
 
+
+            if (typeof socket !== 'undefined' && socket && data.player && data.player._id) {
+                socket.emit('authenticate', { userId: data.player._id });
+            }
+
+            const topHud = document.getElementById('top-hud'); // vagy a te konténered id-je
+            if (topHud) {
+                topHud.classList.remove('hud-hidden');
+            }
+            
             // KÖZVETLENÜL FRISSÍTJÜK A MEGLÉVŐ PLAYER OBJEKTUMOT A HELHELYETT, HOGY ÚJAT HOZNÁNK LÉTRE:
             if (typeof player !== 'undefined') {
                 Object.assign(player, data.player);
@@ -110,7 +120,7 @@ async function handleAuthSubmit() {
                     refreshMapMarkers();
                 }
             }
-            
+
             // Eltüntetjük a modális ablakot
             setTimeout(() => {
                 document.getElementById('auth-modal').classList.add('hidden');
