@@ -78,8 +78,8 @@ async function handleAuthSubmit() {
 
             // Betöltjük a játékos adatait a globális 'player' változóba
             window.player = data.player || {};
-            window.player.username = data.username || data.player.username; // Itt kapja meg a nevet!
-            window.player.avatar = data.avatar || data.player.avatar; // Itt kapja meg az avatárt!
+            window.player.username = data.username; // Itt kapja meg a valós adatbázisbeli nevet!
+            window.player.avatar = data.avatar;
             
             // Frissítjük a nevet a HUD-ban a valós regisztrációs névre!
             const hudName = document.getElementById('hud-name');
