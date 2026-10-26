@@ -22,15 +22,35 @@ const buildingTypesConfig = {
     'Tűzoltóság': { icon: '🚒', color: '#f97316' },
     'Katonai bázis': { icon: '⭐', color: '#b91c1c' },
     'Kormányzati Bunker / Óvóhely': { icon: '☢️', color: '#7f1d1d' },
+    'Elhagyatott Katonai Ellenőrzőpont / Blokád': { icon: '🚧', color: '#b45309' },
+    'Katasztrófavédelmi / Vegyvédelmi Központ': { icon: '☣️', color: '#047857' },
     'Iskola / Óvoda': { icon: '🏫', color: '#0ea5e9' },
     'Könyvtár': { icon: '📚', color: '#8b5cf6' },
     'Templom / Kápolna': { icon: '⛪', color: '#eab308' },
+    'Kolostor / Apátság': { icon: '⛪', color: '#ca8a04' },
     'Városháza / Polgármesteri Hivatal': { icon: '🏛️', color: '#6366f1' },
     'Múzeum / Kiállítóterem': { icon: '🏛️', color: '#a855f7' },
+    'Bíróság / Ügyvédi Iroda': { icon: '⚖️', color: '#4f46e5' },
+    'Mozi / Színház / Művelődési Ház': { icon: '🎭', color: '#db2777' },
     'Elhagyatott raktár': { icon: '🏭', color: '#f59e0b' },
     'Ipari létesítmény / Gyár': { icon: '⚙️', color: '#7c2d12' },
     'Autószerviz / Gumis': { icon: '🔧', color: '#b45309' },
-    'Romos ház': { icon: '🏠', color: '#6b7280' }
+    'Autóbontó / Roncstelep': { icon: '🚗', color: '#78716c' },
+    'Garázs': { icon: '🚗', color: '#78716c' },
+    'Vasútállomás / Rendezőpályaudvar': { icon: '🚂', color: '#374151' },
+    'Posta / Csomagátvevő pont': { icon: '📦', color: '#d97706' },
+    'Mezőgazdasági Géptelep / Téesz': { icon: '🚜', color: '#65a30d' },
+    'Malom / Gabonasiló': { icon: '🌾', color: '#ca8a04' },
+    'Állatfarm / Lovarda': { icon: '🐎', color: '#854d0e' },
+    'Víztorony / Vízmű': { icon: '💧', color: '#0284c7' },
+    'Elektromos Alállomás / Trafóház': { icon: '⚡', color: '#eab308' },
+    'Romos ház': { icon: '🏠', color: '#6b7280' },
+    'Szálloda / Hotel / Panzió': { icon: '🏨', color: '#9333ea' },
+    'Motel / Kamionos pihenő': { icon: '🏨', color: '#793e75' },
+    'Sportcsarnok / Edzőterem': { icon: '🏋️', color: '#2563eb' },
+    'Stadion / Futballpálya': { icon: '⚽', color: '#16a34a' },
+    'Strand / Uszoda': { icon: '🏊', color: '#06b6d4' },
+    'Temető': { icon: '⚰️', color: '#3f3f46' }
 };
 
 function initMap(lat, lng) {
@@ -526,9 +546,13 @@ function initOtherPlayersListener() {
                 if (!otherPlayerMarkers[id]) {
                     const otherIcon = L.divIcon({
                         className: 'other-player-icon',
-                        html: `<div style="background:#3b82f6;color:white;padding:2px 6px;border-radius:10px;font-size:11px;text-align:center;border:1px solid #fff;box-shadow:0 0 5px rgba(0,0,0,0.5);">👤 ${pData.username} (${Math.round(distance)}m)</div>`,
-                        iconSize: [80, 25],
-                        iconAnchor: [40, 12]
+                        html: `
+                            <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
+                                <span style="font-size: 18px;">🪖</span>
+                            </div>
+                        `,
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
                     });
                     otherPlayerMarkers[id] = L.marker([pData.lat, pData.lng], { icon: otherIcon }).addTo(map);
                 } else {

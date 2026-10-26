@@ -100,19 +100,6 @@ function combatAttack() {
     enemyTurn();
 }
 
-function combatDodge() {
-    if (!currentCombat.active) return;
-    if (Math.random() < 0.70) {
-        combatLogAppend(`Sikeres kitérés!`, 'text-emerald-400');
-    } else {
-        let mitigation = 1 - Math.min(0.75, (player.defense || 0) * 0.015);
-        let enemyDmg = Math.max(3, Math.round(currentCombat.enemyDmg * mitigation));
-        player.hp = Math.max(0, (player.hp || 100) - enemyDmg);
-        combatLogAppend(`Kaptál ${enemyDmg} sebzést.`, 'text-red-400');
-    }
-    checkPlayerHpInCombat();
-    updateCombatUI();
-}
 
 function combatRun() {
     if (!currentCombat.active) return;

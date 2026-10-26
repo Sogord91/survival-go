@@ -29,28 +29,51 @@
 </head>
 <body class="overflow-hidden">
 
-    <!-- BEJELENTKEZÉS / REGISZTRÁCIÓ MODAL -->
-    <div id="login-modal" class="fixed inset-0 modal flex items-center justify-center p-4 z-[9999]">
-        <div class="bg-gray-900 border border-amber-500/50 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center">
-            <h2 class="text-lg font-bold text-amber-400 mb-1">☢️ Survival GO v0.6.0</h2>
-            <p class="text-xs text-gray-400 mb-4">Add meg a túlélő adatait a valós világ alapú zónához:</p>
-            
-            <div id="avatar-container" class="flex justify-center gap-3 mb-4">
-                <div class="avatar-option cursor-pointer text-2xl p-2 bg-gray-800 border-2 border-amber-500 rounded-xl hover:bg-gray-700 transition-all" data-avatar="🥷" onclick="selectAvatar('🥷')">🥷</div>
-                <div class="avatar-option cursor-pointer text-2xl p-2 bg-gray-800 border-2 border-transparent rounded-xl hover:bg-gray-700 transition-all" data-avatar="🪖" onclick="selectAvatar('🪖')">🪖</div>
-                <div class="avatar-option cursor-pointer text-2xl p-2 bg-gray-800 border-2 border-transparent rounded-xl hover:bg-gray-700 transition-all" data-avatar="🦺" onclick="selectAvatar('🦺')">🦺</div>
-                <div class="avatar-option cursor-pointer text-2xl p-2 bg-gray-800 border-2 border-transparent rounded-xl hover:bg-gray-700 transition-all" data-avatar="💀" onclick="selectAvatar('💀')">💀</div>
+    <!-- BEJELENTKEZÉSI / REGISZTRÁCIÓS MODÁL -->
+<div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+    <div class="bg-slate-900 border border-slate-700 p-6 rounded-xl max-w-md w-full text-white shadow-2xl">
+        <h2 id="auth-title" class="text-2xl font-bold mb-4 text-center text-amber-400">Túlélő Bejelentkezés</h2>
+
+        <!-- Hiba vagy siker üzenetek jelzése -->
+        <div id="auth-message" class="mb-4 text-sm text-center text-red-400"></div>
+
+        <!-- Bejelentkezési / Regisztrációs Űrlap -->
+        <div id="auth-form" class="space-y-4">
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">Felhasználónév</label>
+                <input type="text" id="auth-username" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500" placeholder="pl. Stalker99">
             </div>
 
-            <input type="text" id="username-input" placeholder="Túlélő Neve (pl. Stalker_Jani)" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-amber-500 text-center font-bold">
-            <input type="password" id="password-input" placeholder="Jelszó / PIN kód" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-amber-500 text-center font-bold">
+            <!-- E-mail (csak regisztrációnál látszik majd vagy mindig) -->
+            <div id="email-group" class="hidden">
+                <label class="block text-sm text-slate-400 mb-1">E-mail cím</label>
+                <input type="email" id="auth-email" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500" placeholder="tulelo@zone.hu">
+            </div>
+
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">Jelszó</label>
+                <input type="password" id="auth-password" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500" placeholder="••••••••">
+            </div>
+
+            <!-- Avatar választó (csak regisztrációnál) -->
+            <div id="avatar-group" class="hidden">
+                <label class="block text-sm text-slate-400 mb-2">Válassz avatárt:</label>
+                <div class="flex justify-center gap-3">
+                    <img src="/images/avatars/avatar1.png" width="48" height="48" class="avatar-option rounded-full border-2 border-transparent cursor-pointer hover:border-amber-400 transition" onclick="selectAvatar('avatar1.png', this)" data-avatar="avatar1.png">
+                    <img src="/images/avatars/avatar2.png" width="48" height="48" class="avatar-option rounded-full border-2 border-transparent cursor-pointer hover:border-amber-400 transition" onclick="selectAvatar('avatar2.png', this)" data-avatar="avatar2.png">
+                    <img src="/images/avatars/avatar3.png" width="48" height="48" class="avatar-option rounded-full border-2 border-transparent cursor-pointer hover:border-amber-400 transition" onclick="selectAvatar('avatar3.png', this)" data-avatar="avatar3.png">
+                </div>
+            </div>
+
+            <!-- Gombok -->
+            <button id="auth-submit-btn" onclick="handleAuthSubmit()" class="w-full bg-amber-600 hover:bg-amber-500 font-bold py-2 rounded transition text-slate-950">Belépés</button>
             
-            <div class="flex gap-2">
-                <button id="btn-register" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-amber-300 font-bold py-2.5 rounded-xl text-xs transition-all border border-gray-600">Regisztráció</button>
-                <button id="btn-login" class="w-1/2 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg">Bejelentkezés</button>
+            <div class="text-center mt-3">
+                <button id="auth-switch-btn" onclick="toggleAuthMode()" class="text-xs text-slate-400 hover:text-amber-400 underline">Még nincs fiókod? Regisztráció</button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- BEÁLLÍTÁSOK / MENÜ MODAL -->
     <div id="settings-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
@@ -194,7 +217,7 @@
     <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-wrap justify-center gap-2 hud-panel px-4 py-2 rounded-2xl border border-gray-700 shadow-2xl">
         <button id="btn-open-inventory" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🎒 Hátizsák</button>
         <button id="btn-open-equipment" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🛡️ Felszerelés</button>
-        <button id="btn-open-crafting" class="bg-amber-700 hover:bg-amber-600 border border-amber-500 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🛠️ Barkács</button>
+        <button id="btn-open-crafting" class="bg-amber-700 hover:bg-amber-600 border border-amber-500 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">🛠️ Craft</button>
         <button id="btn-open-settings" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">⚙️ Menü</button>
     </div>
 
@@ -270,5 +293,6 @@
     <script src="js/combat.js"></script>
     <script src="js/map.js"></script>
     <script src="js/main.js"></script>
+    <script src="/js/auth.js"></script>
 </body>
 </html>
