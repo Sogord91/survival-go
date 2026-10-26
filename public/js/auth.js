@@ -76,18 +76,24 @@ async function handleAuthSubmit() {
             msg.className = 'mb-4 text-sm text-center text-emerald-400';
             msg.textContent = 'Sikeres belépés! Játék betöltése...';
 
-            // Betöltjük a játékos adatait a globális 'player' változóba
-            window.player = data.player || {};
-            window.player.username = data.username; // Itt kapja meg a valós adatbázisbeli nevet!
-            window.player.avatar = data.avatar;
+            // KÖZVETLENÜL FRISSÍTJÜK A MEGLÉVŐ PLAYER OBJEKTUMOT A HELHELYETT, HOGY ÚJAT HOZNÁNK LÉTRE:
+            if (typeof player !== 'undefined') {
+                Object.assign(player, data.player);
+                player.username = data.username;
+                player.avatar = data.avatar;
+            } else {
+                window.player = data.player;
+                window.player.username = data.username;
+                window.player.avatar = data.avatar;
+            }
             
             // Frissítjük a nevet a HUD-ban a valós regisztrációs névre!
             const hudName = document.getElementById('hud-name');
             if (hudName) {
-                hudName.textContent = window.player.username;
+                hudName.textContent = data.username;
             }
 
-            // ---> ITT FRISSÍTJÜK A HUD-OT ÉS A TÖBBI UI ELEMET IS! <---
+            // Frissítjük a HUD-ot és a többi UI elemet is
             if (typeof updateUI === 'function') {
                 updateUI();
             }
