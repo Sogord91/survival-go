@@ -77,14 +77,14 @@ async function handleAuthSubmit() {
             msg.textContent = 'Sikeres belépés! Játék betöltése...';
 
             // Betöltjük a játékos adatait a globális 'player' változóba
-            window.player = data.player;
-            window.player.username = data.username;
-            window.player.avatar = data.avatar;
+            window.player = data.player || {};
+            window.player.username = data.username || data.player.username; // Itt kapja meg a nevet!
+            window.player.avatar = data.avatar || data.player.avatar; // Itt kapja meg az avatárt!
             
             // Frissítjük a nevet a HUD-ban a valós regisztrációs névre!
             const hudName = document.getElementById('hud-name');
             if (hudName) {
-                hudName.textContent = data.username || data.player.username;
+                hudName.textContent = window.player.username;
             }
 
             // ---> ITT FRISSÍTJÜK A HUD-OT ÉS A TÖBBI UI ELEMET IS! <---

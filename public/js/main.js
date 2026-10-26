@@ -169,7 +169,7 @@ function updateHUD() {
 
     const avatarFile = player.avatar;
     document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`;
-    document.getElementById('hud-name').textContent = player.username;
+document.getElementById('hud-name').textContent = player.username || player.name || "Túlélő";
     document.getElementById('hud-level').textContent = player.level || 1;
     document.getElementById('hud-xp').textContent = player.xp || 0;
     document.getElementById('hud-defense').textContent = player.defense || 0;
@@ -296,8 +296,10 @@ function triggerGameOver() {
 socket.on('player_loaded', (data) => {
     if (data.player) {
         player = Object.assign({}, player, data.player);
+        if (data.username) player.username = data.username; // Biztosítjuk, hogy a név átjöjjön
         savedBuildings = data.buildings || [];
     } else {
+        player.username = currentUsername;
         player.name = currentUsername;
         player.avatar = selectedAvatar;
         player.hp = 100;
