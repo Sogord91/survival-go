@@ -62,9 +62,10 @@ function initMap(lat, lng) {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
+    const avatarFile = player.avatar || 'avatar1.png';
     const icon = L.divIcon({
         className: 'custom-player-icon',
-        html: `<div style="font-size: 24px; text-align: center;">${player.avatar || '🥷'}</div>`,
+        html: `<div style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; border: 2px solid #036103;"><img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;"></div>`,
         iconSize: [30, 30],
         iconAnchor: [15, 15]
     });
@@ -573,7 +574,7 @@ function initOtherPlayersListener() {
                     const otherIcon = L.divIcon({
                         className: 'other-player-icon',
                         html: `
-                            <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
+                            <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #940e0e; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
                                 <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
                             </div>
                         `,
