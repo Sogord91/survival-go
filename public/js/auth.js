@@ -1,5 +1,5 @@
 let isRegisterMode = false;
-let currentSelectedAvatar = 'avatar1.png'; // Alapértelmezett
+let selectedAvatar = 'avatar1.png'; // Alapértelmezett
 
 function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;
