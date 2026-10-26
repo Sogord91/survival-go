@@ -165,6 +165,10 @@ function startSurvivalTick() {
 
 function updateHUD() {
     calculateStats();
+    // Példa az updateHUD / updateUI függvény elejére:
+    if (!document.getElementById('top-hud') || document.getElementById('game-hud-container').classList.contains('hud-hidden')) {
+    return; // Kilép, ha még rejtve van a HUD
+    }
     let currentWeight = calculateInventoryWeight();
 
     const avatarFile = player.avatar;
