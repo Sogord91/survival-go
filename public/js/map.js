@@ -81,6 +81,7 @@ function initMap(lat, lng) {
     startTracking();
 
     initOtherPlayersListener();
+    initBuildingSyncListener();
 }
 
 function startTracking() {
