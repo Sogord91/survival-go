@@ -8,6 +8,7 @@ let lastFetchLat = null;
 let lastFetchLng = null;
 let savedBuildings = [];
 let buildings = [];
+let otherPlayerMarkers = {};
 
 const buildingTypesConfig = {
     'Élelmiszerbolt': { icon: '🛒', color: '#10b981' },
@@ -494,8 +495,6 @@ function completeLooting(b) {
 
     refreshMapMarkers();
 
-}
-
     const foundItems = rollLoot(b.name);
     if (foundItems.length === 0) {
         logMessage(`${b.name}: Üres volt.`);
@@ -513,10 +512,9 @@ function completeLooting(b) {
 
     if (typeof socket !== 'undefined' && socket) {
         socket.emit('building_looted', { id: b.id });
+    }
 }
 
-    // A többi játékos markereinek tárolása
-let otherPlayerMarkers = {};
 
 // Saját pozíció küldése a szervernek
 function sendMyPosition(lat, lng) {
