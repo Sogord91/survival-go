@@ -488,6 +488,7 @@ function completeLooting(b) {
         addXp(15);
     }
     saveGame();
+}
 
     // A többi játékos markereinek tárolása
 let otherPlayerMarkers = {};
