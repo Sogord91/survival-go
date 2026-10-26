@@ -87,6 +87,11 @@ async function handleAuthSubmit() {
                 hudName.textContent = data.username || data.player.username;
             }
 
+            // ---> ITT FRISSÍTJÜK A HUD-OT ÉS A TÖBBI UI ELEMET IS! <---
+            if (typeof updateUI === 'function') {
+                updateUI();
+            }
+
             // Ha vannak mentett épületek, átadjuk a map.js-nek
             if (data.buildings && typeof savedBuildings !== 'undefined') {
                 savedBuildings = data.buildings;

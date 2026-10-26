@@ -65,9 +65,13 @@ function initMap(lat, lng) {
     const avatarFile = player.avatar || 'avatar1.png';
     const icon = L.divIcon({
         className: 'custom-player-icon',
-        html: `<div style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; border: 2px solid #036103;"><img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;"></div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
+        html: `
+            <div style="width: 36px; height: 36px; background: #1e293b; border: 3px solid #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(16,185,129,0.7); overflow: hidden;">
+                <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
+            </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
     });
     playerMarker = L.marker([lat, lng], {icon: icon}).addTo(map);
 
