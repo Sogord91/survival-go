@@ -126,7 +126,7 @@ function startTracking() {
 }
 
 function fetchRealPOIs(lat, lng) {
-    const radius = 600;
+    const radius = 400;
     const query = `
         [out:json];
         (

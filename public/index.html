@@ -184,34 +184,39 @@
         Üzenet helye
     </div>
 
-    <!-- FELSŐ HUD -->
-    <div class="absolute top-4 left-4 right-4 flex flex-col md:flex-row justify-between items-center gap-3 hud-panel p-3 rounded-xl border border-gray-700 shadow-2xl">
-        <div class="flex items-center gap-3 w-full md:w-auto border-b md:border-b-0 md:border-r border-gray-700 pb-2 md:pb-0 md:pr-3">
-          <div id="hud-avatar" class="w-10 h-10 bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center justify-center"></div>
-            <div>
-                <div id="hud-name" class="text-xs font-bold text-amber-400">Név</div>
-                <div class="text-[10px] text-gray-400">Szint: <span id="hud-level" class="text-white font-bold">1</span> (XP: <span id="hud-xp">0</span>) | 🛡️ Védelem: <span id="hud-defense" class="text-blue-400 font-bold">0</span> | ⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0/30 kg</span></div>
-            </div>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span>❤️ Élet</span><span id="stat-hp">100%</span></div>
-                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-hp" class="bg-red-500 h-full w-full transition-all"></div></div>
-            </div>
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span>🍗 Éhség</span><span id="stat-hunger">100%</span></div>
-                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-hunger" class="bg-amber-500 h-full w-full transition-all"></div></div>
-            </div>
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span>💧 Szomjúság</span><span id="stat-thirst">100%</span></div>
-                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-thirst" class="bg-blue-500 h-full w-full transition-all"></div></div>
-            </div>
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span>⚡ Fáradtság</span><span id="stat-fatigue">0%</span></div>
-                <div class="w-full bg-gray-700 h-2.5 rounded-full overflow-hidden"><div id="bar-fatigue" class="bg-purple-500 h-full w-0 transition-all"></div></div>
-            </div>
+    <!-- FELSŐ HUD (Alapból rejtett a bejelentkezés miatt) -->
+<div id="top-hud" class="absolute top-4 left-4 right-4 flex flex-col md:flex-row justify-between items-center gap-3 hud-panel p-3 rounded-xl border border-slate-700 shadow-2xl hud-hidden">
+    
+    <!-- Játékos infó (Név, Szint, XP, Védelem, Súly) -->
+    <div class="flex items-center gap-3 w-full md:w-auto border-b md:border-b-0 md:border-r border-slate-700 pb-2 md:pb-0 md:pr-3">
+        <div id="hud-avatar" class="w-10 h-10 bg-slate-800 rounded-xl border border-slate-600 overflow-hidden flex items-center justify-center"></div>
+        <div>
+            <div id="hud-name" class="text-xs font-bold text-amber-400">Név</div>
+            <div class="text-[10px] text-slate-400">Szint: <span id="hud-level" class="text-white font-bold">1</span> (XP: <span id="hud-xp">0</span>) | 🛡️ Védelem: <span id="hud-defense" class="text-blue-400 font-bold">0</span> | ⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0/30 kg</span></div>
         </div>
     </div>
+
+    <!-- Státusz csíkok (Élet, Éhség, Szomjúság, Fáradtság) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+        <div>
+            <div class="flex justify-between text-xs mb-1 text-slate-300"><span>❤️ Élet</span><span id="stat-hp">100%</span></div>
+            <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700"><div id="bar-hp" class="bg-red-600 h-full w-full transition-all"></div></div>
+        </div>
+        <div>
+            <div class="flex justify-between text-xs mb-1 text-slate-300"><span>🍗 Éhség</span><span id="stat-hunger">100%</span></div>
+            <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700"><div id="bar-hunger" class="bg-amber-500 h-full w-full transition-all"></div></div>
+        </div>
+        <div>
+            <div class="flex justify-between text-xs mb-1 text-slate-300"><span>💧 Szomjúság</span><span id="stat-thirst">100%</span></div>
+            <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700"><div id="bar-thirst" class="bg-blue-500 h-full w-full transition-all"></div></div>
+        </div>
+        <div>
+            <div class="flex justify-between text-xs mb-1 text-slate-300"><span>⚡ Fáradtság</span><span id="stat-fatigue">0%</span></div>
+            <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700"><div id="bar-fatigue" class="bg-purple-500 h-full w-0 transition-all"></div></div>
+        </div>
+    </div>
+
+</div>
 
     <!-- ALSÓ MENÜSOR -->
     <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-wrap justify-center gap-2 hud-panel px-4 py-2 rounded-2xl border border-gray-700 shadow-2xl">
@@ -223,7 +228,7 @@
 
     <!-- JÁTÉK NAPLÓ -->
     <div id="game-log" class="absolute bottom-20 left-4 w-80 hud-panel p-3 rounded-xl border border-gray-700 text-xs text-gray-300 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
-        <div>[Rendszer] Üdv a Valós Zónában (Modular Version)!</div>
+        <div>[Rendszer] Üdv a Zónában! </div>
     </div>
 
     <!-- HÁTIZSÁK ABLAK -->
