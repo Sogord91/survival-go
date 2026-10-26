@@ -141,39 +141,52 @@ function fetchRealPOIs(lat, lng) {
         out center;
     `;
 
-    const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+    // Itt vannak a tárcsifüleink (tartalék szerverek sorban)
+    const overpassUrls = [
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.openstreetmap.fr/api/interpreter',
+        'https://overpass-api.de/api/interpreter'
+    ];
+ 
+    // Rekurzív vagy ciklikus próbálkozó függvény a szerverekre
+    let tryFetchUrl = (index) => {
+        if (index >= overpassUrls.length) {
+            console.warn("Az összes Overpass szerver hibát jelzett vagy elérhetetlen.");
+            return;
+        }
 
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP hiba! Státusz: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(text => {
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.warn("Az Overpass API jelenleg túlterhelt, próbálkodd később újra.");
-                return;
-            }
+        const url = overpassUrls[index] + '?data=' + encodeURIComponent(query);
 
-            if (!data.elements) return;
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP hiba! Státusz: ${response.status}`);
+                return response.text();
+            })
+            .then(text => {
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    // Ha nem JSON jött vissza, próbáljuk a következőt
+                    tryFetchUrl(index + 1);
+                    return;
+                }
 
-            let newFound = false;
-            data.elements.forEach((element) => {
-                const elLat = element.lat || (element.center ? element.center.lat : null);
-                const elLon = element.lon || (element.center ? element.center.lon : null);
-                if (!elLat || !elLon) return;
+                if (!data.elements) return;
 
-                const uniqueId = 'osm_' + element.id;
-                const exists = savedBuildings.some(sb => sb.id === uniqueId);
-                if (exists) return;
+                let newFound = false;
+                data.elements.forEach((element) => {
+                    const elLat = element.lat || (element.center ? element.center.lat : null);
+                    const elLon = element.lon || (element.center ? element.center.lon : null);
+                    if (!elLat || !elLon) return;
 
-                let tags = element.tags || {};
-                let buildingName = 'Romos ház';
-                let isPotentialWorkshop = false;
+                    const uniqueId = 'osm_' + element.id;
+                    const exists = savedBuildings.some(sb => sb.id === uniqueId);
+                    if (exists) return;
+
+                    let tags = element.tags || {};
+                    let buildingName = 'Romos ház';
+                    let isPotentialWorkshop = false;
 
                 if (tags.shop === 'supermarket' || tags.shop === 'grocery') {
                     buildingName = 'Élelmiszerbolt';
