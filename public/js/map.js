@@ -522,6 +522,7 @@ function sendMyPosition(lat, lng) {
     if (typeof socket !== 'undefined' && socket) {
         socket.emit('update_position', {
             username: player.username || 'Túlélő',
+            avatar: player.avatar || 'avatar1.png',
             lat: lat,
             lng: lng
         });
