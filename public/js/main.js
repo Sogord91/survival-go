@@ -1,7 +1,6 @@
 // main.js
 const socket = io();
 let currentUsername = localStorage.getItem('zona_current_user') || "";
-let selectedAvatar = '🥷';
 let survivalInterval = null;
 let audioCtx = null;
 
