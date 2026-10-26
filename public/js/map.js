@@ -524,6 +524,28 @@ function sendMyPosition(lat, lng) {
     }
 }
 
+// GPS alapú térkép és játék inicializálás a bejelentkezés után
+function initMapAndGame() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(position => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Térkép indítása a valós GPS pozícióval
+            initMap(lat, lng);
+            logMessage(`[GPS] Pozíció rögzítve: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }, error => {
+            console.warn("GPS hiba, alapértelmezett koordináta használata.");
+            // Ha letiltod a GPS-t, fallbackként betölti Budapestet
+            initMap(47.4979, 19.0402);
+            logMessage("[GPS] Nem sikerült lekérni a helyzetet, alapértelmezett zóna betöltve.");
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    } else {
+        console.warn("A böngésző nem támogatja a geolokációt.");
+        initMap(47.4979, 19.0402);
+    }
+}
+
 // Hallgatjuk a többi játékos pozícióját a szerverről
 function initOtherPlayersListener() {
     if (typeof socket === 'undefined' || !socket) return;
