@@ -81,9 +81,10 @@ async function handleAuthSubmit() {
                 socket.emit('authenticate', { userId: data.player._id });
             }
 
-            const topHud = document.getElementById('top-hud'); // vagy a te konténered id-je
-            if (topHud) {
-                topHud.classList.remove('hud-hidden');
+            // FELOLDJUK A TELJES JÁTÉK HUD KONTÉNER REJTÉSÉT:
+            const hudContainer = document.getElementById('game-hud-container');
+            if (hudContainer) {
+                hudContainer.classList.remove('hud-hidden');
             }
             
             // KÖZVETLENÜL FRISSÍTJÜK A MEGLÉVŐ PLAYER OBJEKTUMOT A HELHELYETT, HOGY ÚJAT HOZNÁNK LÉTRE:
