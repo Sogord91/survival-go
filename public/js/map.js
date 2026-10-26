@@ -128,8 +128,9 @@ function fetchRealPOIs(lat, lng) {
                 const exists = savedBuildings.some(sb => sb.id === uniqueId);
                 if (exists) return;
 
+                let tags = element.tags || {};
                 let buildingName = 'Romos ház';
-let isPotentialWorkshop = false;
+                let isPotentialWorkshop = false;
 
 // Kereskedelmi és bolt kategóriák
 if (tags.shop === 'supermarket' || tags.shop === 'grocery') {

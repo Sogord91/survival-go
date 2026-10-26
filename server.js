@@ -51,9 +51,9 @@ io.on('connection', (socket) => {
     socket.on('save_player', async (data) => {
         try {
             await PlayerModel.findOneAndUpdate(
-                { username: data.username },
-                { playerData: data.player, buildings: data.buildings },
-                { upsert: true, new: true }
+                 { username: data.username },
+                 { playerData: data.player, buildings: data.buildings },
+                 { upsert: true, returnDocument: 'after' }
             );
             socket.emit('save_success');
         } catch (e) {
