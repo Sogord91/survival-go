@@ -494,6 +494,8 @@ function completeLooting(b) {
 
     refreshMapMarkers();
 
+}
+
     const foundItems = rollLoot(b.name);
     if (foundItems.length === 0) {
         logMessage(`${b.name}: Üres volt.`);
