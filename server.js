@@ -134,17 +134,21 @@ app.post('/api/login', async (req, res) => {
 // --- VALÓS IDEJŰ MULTIPLAYER & MENTÉS SOCKET.IO-VAL ---
 const activePlayers = {};
 
+// --- VALÓS IDEJŰ MULTIPLAYER & MENTÉS SOCKET.IO-VAL ---
+const activePlayers = {};
+
 io.on('connection', (socket) => {
     console.log(`🔌 Új kliens csatlakozott: ${socket.id}`);
 
-    // Pozíció és avatár frissítés a többieknek
+    // Pozíció és avatár frissítés a többieknek (felhasználónév alapján kulcsolva, hogy ne legyenek szellem-duplikációk)
     socket.on('update_position', (data) => {
         if (data && data.username && data.lat && data.lng) {
-            activePlayers[socket.id] = {
+            activePlayers[data.username] = {
+                socketId: socket.id,
                 username: data.username,
                 lat: data.lat,
                 lng: data.lng,
-                avatar: data.avatar || 'avatar1.png' // Küldi a saját képét is
+                avatar: data.avatar || 'avatar1.png'
             };
             socket.broadcast.emit('players_update', activePlayers);
         }
@@ -170,7 +174,13 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`🔌 Kliens levált: ${socket.id}`);
-        delete activePlayers[socket.id];
+        // Töröljük a kilépett sockethez tartozó játékost a nevek alapján
+        for (let username in activePlayers) {
+            if (activePlayers[username].socketId === socket.id) {
+                delete activePlayers[username];
+                break;
+            }
+        }
         io.emit('players_update', activePlayers);
     });
 });
