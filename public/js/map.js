@@ -145,9 +145,9 @@ function fetchRealPOIs(lat, lng) {
     const overpassUrls = [
         'https://overpass.kumi.systems/api/interpreter',
         'https://overpass.openstreetmap.fr/api/interpreter',
-        'https://overpass-api.de/api/interpreter'
+        'https://overpass-api.de/api/interpreter' // Hátul végvárként a hivatalos
     ];
- 
+
     // Rekurzív vagy ciklikus próbálkozó függvény a szerverekre
     let tryFetchUrl = (index) => {
         if (index >= overpassUrls.length) {
@@ -305,8 +305,15 @@ function fetchRealPOIs(lat, lng) {
                 logMessage("[Zóna] Térkép sikeresen feltöltve a környék épületeivel!");
             }
         })
-        .catch(error => { console.error("Hiba OSM lekérdezéskor:", error); });
-    }
+        .catch(error => {
+            console.warn(`Szerver hiba a(z) ${index}. címnél, próbáljuk a következőt...`, error);
+            tryFetchUrl(index + 1); // Ez léptet át a következő szerverre, ha hiba történik!
+        });
+    };
+
+    // Itt indul el az első szerver hívása
+    tryFetchUrl(0);
+}
 
 function refreshMapMarkers() {
     if (!map) return;
