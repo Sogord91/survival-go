@@ -114,8 +114,21 @@ function fetchRealPOIs(lat, lng) {
     const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
 
     fetch(url)
-        .then(response => response.json())
-        .then(data => {
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP hiba! Státusz: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(text => {
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.warn("Az Overpass API jelenleg túlterhelt, próbálkodd később újra.");
+                return;
+            }
+
             if (!data.elements) return;
 
             let newFound = false;
@@ -132,109 +145,93 @@ function fetchRealPOIs(lat, lng) {
                 let buildingName = 'Romos ház';
                 let isPotentialWorkshop = false;
 
-// Kereskedelmi és bolt kategóriák
-if (tags.shop === 'supermarket' || tags.shop === 'grocery') {
-    buildingName = 'Élelmiszerbolt';
-} else if (tags.shop === 'convenience' || tags.shop === 'kiosk' || tags.shop === 'general') {
-    buildingName = 'Kisbolt / Trafik';
-} else if (tags.shop === 'hardware' || tags.shop === 'doityourself' || tags.shop === 'houseware') {
-    buildingName = 'Barkácsáruház';
-    isPotentialWorkshop = true;
-} else if (tags.shop === 'car_repair' || tags.shop === 'tyres' || tags.shop === 'car_parts') {
-    buildingName = 'Autószerviz / Gumis';
-    isPotentialWorkshop = true;
-} else if (tags.shop === 'agrarian' || tags.shop === 'farm') {
-    buildingName = 'Mezőgazdasági Géptelep / Téesz';
-} else if (tags.shop === 'post' || tags.amenity === 'post_office') {
-    buildingName = 'Posta / Csomagátvevő pont';
-}
-
-// Vendéglátás és szórakozás
-else if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'ice_cream' || tags.amenity === 'fast_food') {
-    buildingName = 'Étterem / Kávézó / Fagyizó / Csárda';
-} else if (tags.amenity === 'pub' || tags.amenity === 'bar' || tags.amenity === 'nightclub') {
-    buildingName = 'Kocsma / Pub / Söröző';
-} else if (tags.amenity === 'cinema' || tags.amenity === 'theatre' || tags.amenity === 'arts_centre' || tags.amenity === 'community_centre') {
-    buildingName = 'Mozi / Színház / Művelődési Ház';
-}
-
-// Egészségügy és biztonság
-else if (tags.amenity === 'pharmacy') {
-    buildingName = 'Gyógyszertár';
-} else if (tags.amenity === 'hospital' || tags.amenity === 'clinic') {
-    buildingName = 'Kórház';
-} else if (tags.amenity === 'police') {
-    buildingName = 'Rendőrség';
-} else if (tags.amenity === 'fire_station') {
-    buildingName = 'Tűzoltóság';
-} else if (tags.military === 'bunker' || tags.bunker === 'yes') {
-    buildingName = 'Kormányzati Bunker / Óvóhely';
-} else if (tags.military === 'checkpoint' || tags.barrier === 'blockade') {
-    buildingName = 'Elhagyatott Katonai Ellenőrzőpont / Blokád';
-} else if (tags.military === 'danger_area' || tags.amenity === 'cbrn') {
-    buildingName = 'Katasztrófavédelmi / Vegyvédelmi Központ';
-} else if (tags.military) {
-    buildingName = 'Katonai bázis';
-}
-
-// Intézmények, oktatás, vallás, közigazgatás
-else if (tags.amenity === 'school' || tags.amenity === 'kindergarten' || tags.amenity === 'university' || tags.amenity === 'college') {
-    buildingName = 'Iskola / Óvoda';
-} else if (tags.amenity === 'library') {
-    buildingName = 'Könyvtár';
-} else if (tags.amenity === 'place_of_worship') {
-    if (tags.religion === 'christian' && (tags.building === 'monastery' || tags.building === ' abbey')) {
-        buildingName = 'Kolostor / Apátság';
-    } else {
-        buildingName = 'Templom / Kápolna';
-    }
-} else if (tags.amenity === 'townhall' || tags.amenity === 'public_building') {
-    buildingName = 'Városháza / Polgármesteri Hivatal';
-} else if (tags.tourism === 'museum' || tags.amenity === 'arts_centre') {
-    buildingName = 'Múzeum / Kiállítóterem';
-} else if (tags.amenity === 'court') {
-    buildingName = 'Bíróság / Ügyvédi Iroda';
-}
-
-// Ipari, logisztikai, infrastruktúra
-else if (tags.building === 'warehouse' || tags.building === 'industrial') {
-    buildingName = 'Elhagyatott raktár';
-    isPotentialWorkshop = true;
-} else if (tags.industrial || tags.building === 'factory') {
-    buildingName = 'Ipari létesítmény / Gyár';
-    isPotentialWorkshop = true;
-} else if (tags.amenity === 'fuel') {
-    buildingName = 'Benzinkút / Kút';
-} else if (tags.building === 'garages' || tags.amenity === 'parking') {
-    buildingName = 'Garázs';
-} else if (tags.landuse === 'garages') {
-    buildingName = 'Autóbontó / Roncstelep';
-} else if (tags.railway === 'station' || tags.building === 'train_station') {
-    buildingName = 'Vasútállomás / Rendezőpályaudvar';
-} else if (tags.man_made === 'water_tower' || tags.utility === 'water') {
-    buildingName = 'Víztorony / Vízmű';
-} else if (tags.power === 'substation' || tags.building === 'transformer_tower') {
-    buildingName = 'Elektromos Alállomás / Trafóház';
-} else if (tags.building === 'windmill' || tags.man_made === 'windmill' || tags.building === 'silo') {
-    buildingName = 'Malom / Gabonasiló';
-}
-
-// Szállás, sport, pihenés
-else if (tags.tourism === 'hotel' || tags.tourism === 'hostel' || tags.tourism === 'guest_house') {
-    buildingName = 'Szálloda / Hotel / Panzió';
-} else if (tags.tourism === 'motel') {
-    buildingName = 'Motel / Kamionos pihenő';
-} else if (tags.leisure === 'sports_centre' || tags.amenity === 'gym') {
-    buildingName = 'Sportcsarnok / Edzőterem';
-} else if (tags.leisure === 'stadium' || tags.pitch) {
-    buildingName = 'Stadion / Futballpálya';
-} else if (tags.leisure === 'water_park' || tags.amenity === 'swimming_pool') {
-    buildingName = 'Strand / Uszoda';
-} else if (tags.amenity === 'grave_yard' || tags.landuse === 'cemetery') {
-    buildingName = 'Temető';
-} else if (tags.landuse === 'farm' || tags.amenity === 'animal_shelter') {
-    buildingName = 'Állatfarm / Lovarda';
-}
+                if (tags.shop === 'supermarket' || tags.shop === 'grocery') {
+                    buildingName = 'Élelmiszerbolt';
+                } else if (tags.shop === 'convenience' || tags.shop === 'kiosk' || tags.shop === 'general') {
+                    buildingName = 'Kisbolt / Trafik';
+                } else if (tags.shop === 'hardware' || tags.shop === 'doityourself' || tags.shop === 'houseware') {
+                    buildingName = 'Barkácsáruház';
+                    isPotentialWorkshop = true;
+                } else if (tags.shop === 'car_repair' || tags.shop === 'tyres' || tags.shop === 'car_parts') {
+                    buildingName = 'Autószerviz / Gumis';
+                    isPotentialWorkshop = true;
+                } else if (tags.shop === 'agrarian' || tags.shop === 'farm') {
+                    buildingName = 'Mezőgazdasági Géptelep / Téesz';
+                } else if (tags.shop === 'post' || tags.amenity === 'post_office') {
+                    buildingName = 'Posta / Csomagátvevő pont';
+                } else if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'ice_cream' || tags.amenity === 'fast_food') {
+                    buildingName = 'Étterem / Kávézó / Fagyizó / Csárda';
+                } else if (tags.amenity === 'pub' || tags.amenity === 'bar' || tags.amenity === 'nightclub') {
+                    buildingName = 'Kocsma / Pub / Söröző';
+                } else if (tags.amenity === 'cinema' || tags.amenity === 'theatre' || tags.amenity === 'arts_centre' || tags.amenity === 'community_centre') {
+                    buildingName = 'Mozi / Színház / Művelődési Ház';
+                } else if (tags.amenity === 'pharmacy') {
+                    buildingName = 'Gyógyszertár';
+                } else if (tags.amenity === 'hospital' || tags.amenity === 'clinic') {
+                    buildingName = 'Kórház';
+                } else if (tags.amenity === 'police') {
+                    buildingName = 'Rendőrség';
+                } else if (tags.amenity === 'fire_station') {
+                    buildingName = 'Tűzoltóság';
+                } else if (tags.military === 'bunker' || tags.bunker === 'yes') {
+                    buildingName = 'Kormányzati Bunker / Óvóhely';
+                } else if (tags.military === 'checkpoint' || tags.barrier === 'blockade') {
+                    buildingName = 'Elhagyatott Katonai Ellenőrzőpont / Blokád';
+                } else if (tags.military === 'danger_area' || tags.amenity === 'cbrn') {
+                    buildingName = 'Katasztrófavédelmi / Vegyvédelmi Központ';
+                } else if (tags.military) {
+                    buildingName = 'Katonai bázis';
+                } else if (tags.amenity === 'school' || tags.amenity === 'kindergarten' || tags.amenity === 'university' || tags.amenity === 'college') {
+                    buildingName = 'Iskola / Óvoda';
+                } else if (tags.amenity === 'library') {
+                    buildingName = 'Könyvtár';
+                } else if (tags.amenity === 'place_of_worship') {
+                    if (tags.religion === 'christian' && (tags.building === 'monastery' || tags.building === ' abbey')) {
+                        buildingName = 'Kolostor / Apátság';
+                    } else {
+                        buildingName = 'Templom / Kápolna';
+                    }
+                } else if (tags.amenity === 'townhall' || tags.amenity === 'public_building') {
+                    buildingName = 'Városháza / Polgármesteri Hivatal';
+                } else if (tags.tourism === 'museum' || tags.amenity === 'arts_centre') {
+                    buildingName = 'Múzeum / Kiállítóterem';
+                } else if (tags.amenity === 'court') {
+                    buildingName = 'Bíróság / Ügyvédi Iroda';
+                } else if (tags.building === 'warehouse' || tags.building === 'industrial') {
+                    buildingName = 'Elhagyatott raktár';
+                    isPotentialWorkshop = true;
+                } else if (tags.industrial || tags.building === 'factory') {
+                    buildingName = 'Ipari létesítmény / Gyár';
+                    isPotentialWorkshop = true;
+                } else if (tags.amenity === 'fuel') {
+                    buildingName = 'Benzinkút / Kút';
+                } else if (tags.building === 'garages' || tags.amenity === 'parking') {
+                    buildingName = 'Garázs';
+                } else if (tags.landuse === 'garages') {
+                    buildingName = 'Autóbontó / Roncstelep';
+                } else if (tags.railway === 'station' || tags.building === 'train_station') {
+                    buildingName = 'Vasútállomás / Rendezőpályaudvar';
+                } else if (tags.man_made === 'water_tower' || tags.utility === 'water') {
+                    buildingName = 'Víztorony / Vízmű';
+                } else if (tags.power === 'substation' || tags.building === 'transformer_tower') {
+                    buildingName = 'Elektromos Alállomás / Trafóház';
+                } else if (tags.building === 'windmill' || tags.man_made === 'windmill' || tags.building === 'silo') {
+                    buildingName = 'Malom / Gabonasiló';
+                } else if (tags.tourism === 'hotel' || tags.tourism === 'hostel' || tags.tourism === 'guest_house') {
+                    buildingName = 'Szálloda / Hotel / Panzió';
+                } else if (tags.tourism === 'motel') {
+                    buildingName = 'Motel / Kamionos pihenő';
+                } else if (tags.leisure === 'sports_centre' || tags.amenity === 'gym') {
+                    buildingName = 'Sportcsarnok / Edzőterem';
+                } else if (tags.leisure === 'stadium' || tags.pitch) {
+                    buildingName = 'Stadion / Futballpálya';
+                } else if (tags.leisure === 'water_park' || tags.amenity === 'swimming_pool') {
+                    buildingName = 'Strand / Uszoda';
+                } else if (tags.amenity === 'grave_yard' || tags.landuse === 'cemetery') {
+                    buildingName = 'Temető';
+                } else if (tags.landuse === 'farm' || tags.amenity === 'animal_shelter') {
+                    buildingName = 'Állatfarm / Lovarda';
+                }
 
                 let workshopType = null;
                 const lowerName = buildingName.toLowerCase();
@@ -266,7 +263,7 @@ else if (tags.tourism === 'hotel' || tags.tourism === 'hostel' || tags.tourism =
             }
         })
         .catch(error => { console.error("Hiba OSM lekérdezéskor:", error); });
-}
+    }
 
 function refreshMapMarkers() {
     if (!map) return;
