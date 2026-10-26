@@ -60,17 +60,6 @@ function playSound(type) {
     } catch(e) { console.error('Audio error:', e); }
 }
 
-function selectAvatar(avatar) {
-    selectedAvatar = avatar;
-    document.querySelectorAll('.avatar-option').forEach(el => {
-        el.classList.remove('border-amber-500');
-        el.classList.add('border-transparent');
-        if(el.getAttribute('data-avatar') === avatar) {
-            el.classList.remove('border-transparent');
-            el.classList.add('border-amber-500');
-        }
-    });
-}
 
 function logMessage(text) {
     const logBox = document.getElementById('game-log');
@@ -145,7 +134,7 @@ function importSaveData(event) {
             savedBuildings = imported.buildings || [];
             localStorage.setItem('zona_current_user', currentUsername);
             saveGame();
-            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('auth-modal').classList.add('hidden');
             updateUI();
             if (map) refreshMapMarkers();
             else initMap(47.4979, 19.0402);
@@ -180,7 +169,7 @@ function updateHUD() {
 
     const avatarFile = player.avatar || 'avatar1.png';
     document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`;
-    document.getElementById('hud-name').textContent = player.name || "Stalker";
+    document.getElementById('hud-name').textContent = player.username || "Stalker1";
     document.getElementById('hud-level').textContent = player.level || 1;
     document.getElementById('hud-xp').textContent = player.xp || 0;
     document.getElementById('hud-defense').textContent = player.defense || 0;
@@ -304,16 +293,6 @@ function triggerGameOver() {
     playSound('lose');
 }
 
-function loginUser(username) {
-    if (!username) {
-        alert('Add meg a túlélő nevét!');
-        return;
-    }
-    currentUsername = username;
-    localStorage.setItem('zona_current_user', username);
-    socket.emit('load_player', username);
-}
-
 socket.on('player_loaded', (data) => {
     if (data.player) {
         player = Object.assign({}, player, data.player);
@@ -329,7 +308,7 @@ socket.on('player_loaded', (data) => {
         savedBuildings = [];
     }
 
-    document.getElementById('login-modal').classList.add('hidden');
+    document.getElementById('auth-modal').classList.add('hidden');
     updateUI();
     startSurvivalTick();
 
