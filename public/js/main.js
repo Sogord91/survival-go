@@ -168,8 +168,8 @@ function updateHUD() {
     let currentWeight = calculateInventoryWeight();
 
     const avatarFile = player.avatar;
-    document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`;
-document.getElementById('hud-name').textContent = player.username || player.name || "Túlélő";
+    document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; border-radius: 12px; object-fit: cover;">`;
+    document.getElementById('hud-name').textContent = player.username || player.name || "Túlélő";
     document.getElementById('hud-level').textContent = player.level || 1;
     document.getElementById('hud-xp').textContent = player.xp || 0;
     document.getElementById('hud-defense').textContent = player.defense || 0;
