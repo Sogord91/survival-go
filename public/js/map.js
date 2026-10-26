@@ -53,6 +53,8 @@ function initMap(lat, lng) {
     lastFetchLat = lat;
     lastFetchLng = lng;
     startTracking();
+
+    initOtherPlayersListener();
 }
 
 function startTracking() {
@@ -76,6 +78,8 @@ function startTracking() {
                 lastLat = lat;
                 lastLng = lng;
                 playerMarker.setLatLng([lat, lng]);
+
+                sendMyPosition(lat, lng);
 
                 if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 300) {
                     fetchRealPOIs(lat, lng);
@@ -484,4 +488,59 @@ function completeLooting(b) {
         addXp(15);
     }
     saveGame();
+
+    // A többi játékos markereinek tárolása
+let otherPlayerMarkers = {};
+
+// Saját pozíció küldése a szervernek
+function sendMyPosition(lat, lng) {
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('update_position', {
+            username: player.username || 'Túlélő',
+            lat: lat,
+            lng: lng
+        });
+    }
+}
+
+// Hallgatjuk a többi játékos pozícióját a szerverről
+function initOtherPlayersListener() {
+    if (typeof socket === 'undefined' || !socket) return;
+
+    socket.on('players_update', (playersData) => {
+        if (!map || !playerMarker) return;
+
+        const myLatLng = playerMarker.getLatLng();
+
+        for (let id in playersData) {
+            const pData = playersData[id];
+            
+            // Ne magunkat rajzoljuk ki
+            if (pData.username === player.username) continue;
+
+            const otherLatLng = L.latLng(pData.lat, pData.lng);
+            const distance = myLatLng.distanceTo(otherLatLng); // Távolság méterben
+
+            if (distance <= 300) { // Ha 300 méteren belül van
+                if (!otherPlayerMarkers[id]) {
+                    const otherIcon = L.divIcon({
+                        className: 'other-player-icon',
+                        html: `<div style="background:#3b82f6;color:white;padding:2px 6px;border-radius:10px;font-size:11px;text-align:center;border:1px solid #fff;box-shadow:0 0 5px rgba(0,0,0,0.5);">👤 ${pData.username} (${Math.round(distance)}m)</div>`,
+                        iconSize: [80, 25],
+                        iconAnchor: [40, 12]
+                    });
+                    otherPlayerMarkers[id] = L.marker([pData.lat, pData.lng], { icon: otherIcon }).addTo(map);
+                } else {
+                    otherPlayerMarkers[id].setLatLng([pData.lat, pData.lng]);
+                }
+            } else {
+                // Ha távolabb ment (> 300m), eltávolítjuk a térképről
+                if (otherPlayerMarkers[id]) {
+                    map.removeLayer(otherPlayerMarkers[id]);
+                    delete otherPlayerMarkers[id];
+                }
+            }
+        }
+    });
+}
 }

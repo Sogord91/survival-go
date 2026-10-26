@@ -32,8 +32,24 @@ const playerSchema = new mongoose.Schema({
 const PlayerModel = mongoose.model('SurvivalPlayer', playerSchema);
 
 // Socket.io kapcsolatok kezelése
+// Aktív játékosok tárolása a szerver memóriájában
+const activePlayers = {};
+
 io.on('connection', (socket) => {
     console.log(`🔌 Új kliens csatlakozott: ${socket.id}`);
+
+    // Játékos pozíciójának fogadása és továbbítása a többieknek
+    socket.on('update_position', (data) => {
+        if (data && data.username && data.lat && data.lng) {
+            activePlayers[socket.id] = {
+                username: data.username,
+                lat: data.lat,
+                lng: data.lng
+            };
+            // Küldjük az összes többi kliensnek a friss pozíciókat
+            socket.broadcast.emit('players_update', activePlayers);
+        }
+    });
 
     socket.on('load_player', async (username) => {
         try {
@@ -51,9 +67,9 @@ io.on('connection', (socket) => {
     socket.on('save_player', async (data) => {
         try {
             await PlayerModel.findOneAndUpdate(
-                 { username: data.username },
-                 { playerData: data.player, buildings: data.buildings },
-                 { upsert: true, returnDocument: 'after' }
+                { username: data.username },
+                { playerData: data.player, buildings: data.buildings },
+                { upsert: true, returnDocument: 'after' }
             );
             socket.emit('save_success');
         } catch (e) {
@@ -63,6 +79,9 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`🔌 Kliens levált: ${socket.id}`);
+        delete activePlayers[socket.id];
+        // Értesítjük a többi játékost, hogy ez a kliens kilépett
+        io.emit('players_update', activePlayers);
     });
 });
 
