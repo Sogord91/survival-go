@@ -103,6 +103,14 @@ async function handleAuthSubmit() {
                 savedBuildings = data.buildings;
             }
 
+            // Ha vannak mentett épületek, átadjuk és kirajzoljuk a térképen
+            if (data.buildings) {
+                savedBuildings = data.buildings;
+                if (typeof refreshMapMarkers === 'function') {
+                    refreshMapMarkers();
+                }
+            }
+            
             // Eltüntetjük a modális ablakot
             setTimeout(() => {
                 document.getElementById('auth-modal').classList.add('hidden');
