@@ -210,20 +210,18 @@
  <!-- JÁTÉK HUD KONTÉNER (Minden benne van, és alapból rejtett a hud-hidden miatt) -->
     <div id="game-hud-container" class="hud-hidden">
 
-        <!-- FELSŐ HUD (Kompakt, reszponzív zöld stílus) -->
-        <div id="top-hud" class="absolute top-3 left-3 right-3 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4 hud-panel p-2.5 md:p-4 clipped-panel">
+        <!-- FELSŐ HUD (Kompakt, ikon + körbefutó csík stílus) -->
+        <div id="top-hud" class="absolute top-3 left-3 right-3 flex justify-between items-center hud-panel px-3 py-2 clipped-panel shadow-2xl">
             
-            <!-- Bal oldal: Avatár + Név + Statok -->
-            <div class="flex items-center gap-3 w-full md:w-auto border-b md:border-b-0 md:border-r border-emerald-900 pb-2 md:pb-0 md:pr-3">
-                
+            <!-- Bal oldal: Avatár + Név + Alap adatok -->
+            <div class="flex items-center gap-2.5">
                 <!-- Avatár -->
                 <div class="relative flex-shrink-0">
-                    <div class="w-11 h-11 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-emerald-900 p-0.5 clipped-badge shadow-lg flex items-center justify-center">
+                    <div class="w-11 h-11 bg-gradient-to-br from-emerald-500 to-emerald-900 p-0.5 clipped-badge shadow-lg flex items-center justify-center">
                         <div id="hud-avatar" class="w-full h-full bg-slate-950 clipped-badge overflow-hidden flex items-center justify-center">
                             <!-- Ide jön az avatár kép -->
                         </div>
                     </div>
-                    <!-- Szint jelző -->
                     <div class="absolute -bottom-1 -right-1 bg-emerald-600 text-slate-950 font-black text-[9px] px-1 clipped-badge shadow">
                         L<span id="hud-level">1</span>
                     </div>
@@ -231,55 +229,56 @@
 
                 <!-- Név és statok -->
                 <div class="flex flex-col">
-                    <div id="hud-name" class="text-xs md:text-sm font-black tracking-wider text-emerald-400 uppercase drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]">Túlélő</div>
-                    <div class="text-[10px] md:text-[11px] text-emerald-300/80 space-x-1.5">
+                    <div id="hud-name" class="text-xs font-black tracking-wider text-emerald-400 uppercase drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]">Túlélő</div>
+                    <div class="text-[10px] text-emerald-300/80 space-x-1">
                         <span>XP: <span id="hud-xp" class="text-white font-bold">0</span></span> | 
                         <span>🛡️ Véd: <span id="hud-defense" class="text-emerald-400 font-bold">0</span></span> | 
-                        <span>⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0/30 kg</span></span>
+                        <span>⚖️ <span id="hud-weight" class="text-amber-300 font-bold">0/30kg</span></span>
                     </div>
                 </div>
             </div>
 
-            <!-- Jobb oldal: Státusz csíkok (kompakt grid) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+            <!-- Jobb oldal: Kompakt Ikon-alapú Státuszjelzők -->
+            <div class="flex items-center gap-2">
                 <!-- Élet -->
-                <div class="bg-emerald-950/40 p-1.5 border border-emerald-800/60 clipped-badge shadow-inner">
-                    <div class="flex justify-between text-[10px] mb-0.5 font-bold text-emerald-300">
-                        <span>❤️ Élet</span><span id="stat-hp" class="text-red-400 text-[9px]">100/100</span>
+                <div class="relative group flex flex-col items-center bg-emerald-950/60 border border-emerald-800/80 p-1 clipped-badge w-10 h-10 justify-center shadow-inner" title="Élet">
+                    <span class="text-sm">❤️</span>
+                    <!-- Kis csík alul vagy körbefutó jelzés -->
+                    <div class="w-full bg-slate-950 h-1 rounded-full overflow-hidden mt-0.5 border border-emerald-900">
+                        <div id="bar-hp" class="bg-red-600 h-full w-full transition-all duration-300"></div>
                     </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
-                        <div id="bar-hp" class="bg-red-600 h-full w-full transition-all duration-300 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></div>
-                    </div>
+                    <span id="stat-hp" class="absolute -bottom-3 text-[8px] text-red-400 font-bold bg-slate-950/80 px-1 clipped-badge hidden group-hover:block">100/100</span>
                 </div>
+
                 <!-- Éhség -->
-                <div class="bg-emerald-950/40 p-1.5 border border-emerald-800/60 clipped-badge shadow-inner">
-                    <div class="flex justify-between text-[10px] mb-0.5 font-bold text-emerald-300">
-                        <span>🍗 Éhség</span><span id="stat-hunger" class="text-emerald-400 text-[9px]">100%</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
+                <div class="relative group flex flex-col items-center bg-emerald-950/60 border border-emerald-800/80 p-1 clipped-badge w-10 h-10 justify-center shadow-inner" title="Éhség">
+                    <span class="text-sm">🍗</span>
+                    <div class="w-full bg-slate-950 h-1 rounded-full overflow-hidden mt-0.5 border border-emerald-900">
                         <div id="bar-hunger" class="bg-amber-500 h-full w-full transition-all duration-300"></div>
                     </div>
+                    <span id="stat-hunger" class="absolute -bottom-3 text-[8px] text-amber-400 font-bold bg-slate-950/80 px-1 clipped-badge hidden group-hover:block">100%</span>
                 </div>
+
                 <!-- Szomjúság -->
-                <div class="bg-emerald-950/40 p-1.5 border border-emerald-800/60 clipped-badge shadow-inner">
-                    <div class="flex justify-between text-[10px] mb-0.5 font-bold text-emerald-300">
-                        <span>💧 Szomj</span><span id="stat-thirst" class="text-emerald-400 text-[9px]">100%</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
+                <div class="relative group flex flex-col items-center bg-emerald-950/60 border border-emerald-800/80 p-1 clipped-badge w-10 h-10 justify-center shadow-inner" title="Szomjúság">
+                    <span class="text-sm">💧</span>
+                    <div class="w-full bg-slate-950 h-1 rounded-full overflow-hidden mt-0.5 border border-emerald-900">
                         <div id="bar-thirst" class="bg-blue-500 h-full w-full transition-all duration-300"></div>
                     </div>
+                    <span id="stat-thirst" class="absolute -bottom-3 text-[8px] text-blue-400 font-bold bg-slate-950/80 px-1 clipped-badge hidden group-hover:block">100%</span>
                 </div>
+
                 <!-- Fáradtság -->
-                <div class="bg-emerald-950/40 p-1.5 border border-emerald-800/60 clipped-badge shadow-inner">
-                    <div class="flex justify-between text-[10px] mb-0.5 font-bold text-emerald-300"><span>⚡ Fáradt</span><span id="stat-fatigue" class="text-emerald-400 text-[9px]">0%</span></div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
+                <div class="relative group flex flex-col items-center bg-emerald-950/60 border border-emerald-800/80 p-1 clipped-badge w-10 h-10 justify-center shadow-inner" title="Fáradtság">
+                    <span class="text-sm">⚡</span>
+                    <div class="w-full bg-slate-950 h-1 rounded-full overflow-hidden mt-0.5 border border-emerald-900">
                         <div id="bar-fatigue" class="bg-purple-500 h-full w-0 transition-all duration-300"></div>
                     </div>
+                    <span id="stat-fatigue" class="absolute -bottom-3 text-[8px] text-purple-400 font-bold bg-slate-950/80 px-1 clipped-badge hidden group-hover:block">0%</span>
                 </div>
             </div>
 
         </div>
-
         <!-- ALSÓ MENÜSOR (Garantáltan 1 sorban, mobilon is) -->
         <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-max max-w-full px-3 hud-panel py-2 clipped-panel shadow-2xl">
             <div class="flex flex-row items-center justify-center gap-1.5 sm:gap-2">
