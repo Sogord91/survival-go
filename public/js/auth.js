@@ -81,6 +81,12 @@ async function handleAuthSubmit() {
             window.player.username = data.username;
             window.player.avatar = data.avatar;
             
+            // Frissítjük a nevet a HUD-ban a valós regisztrációs névre!
+            const hudName = document.getElementById('hud-name');
+            if (hudName) {
+                hudName.textContent = data.username || data.player.username;
+            }
+
             // Ha vannak mentett épületek, átadjuk a map.js-nek
             if (data.buildings && typeof savedBuildings !== 'undefined') {
                 savedBuildings = data.buildings;
