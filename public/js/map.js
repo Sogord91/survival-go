@@ -57,10 +57,11 @@ const buildingTypesConfig = {
 function initMap(lat, lng) {
     if (map) return;
     map = L.map('map').setView([lat, lng], 17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+    }).addTo(map);
 
     const avatarFile = player.avatar || 'avatar1.png';
     const icon = L.divIcon({

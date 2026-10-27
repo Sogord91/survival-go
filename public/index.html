@@ -28,19 +28,6 @@
             z-index: 1; 
         }
 
-        /* A sötét, zöldes áttetsző zóna réteg a térkép fölött, de a HUD alatt */
-        .map-dark-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(5, 20, 10, 0.75); /* Sötét zöldes-fekete árnyalat */
-            pointer-events: none; /* Átengedi a kattintásokat a térképre! */
-            z-index: 2;
-        }
-        
-        /* Zöld sugárzás panel stílusok */
         .hud-panel { 
             z-index: 1000; 
             background: rgba(5, 20, 10, 0.94); 
@@ -223,7 +210,6 @@
 
     <!-- TÉRKÉP KONTÉNER -->
     <div id="map"></div>
-    <div class="map-dark-overlay"></div>
 
     <div id="toast-notification" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-900/95 border border-amber-500/80 text-amber-300 px-4 py-2 rounded-xl text-xs font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 text-center max-w-sm">
         Üzenet helye
