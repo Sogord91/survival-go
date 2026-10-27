@@ -57,11 +57,11 @@ const buildingTypesConfig = {
 function initMap(lat, lng) {
     if (map) return;
     map = L.map('map').setView([lat, lng], 17);
-    // Ingyenes, API kulcs nélküli sötét térkép alap:
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // Ingyenes, kulcsmentes OpenStreetMap alapú sötét térkép:
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '&copy; CARTO'
-}).addTo(map);
+    attribution: '&copy; OpenStreetMap contributors, HOT'
+    }).addTo(map);
 
     const avatarFile = player.avatar || 'avatar1.png';
     const icon = L.divIcon({
