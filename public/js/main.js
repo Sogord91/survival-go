@@ -329,18 +329,31 @@ socket.on('player_loaded', (data) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Mivel a hátizsák és a felszerelés egy ablakban van, mindkettő az equipment-modal-t nyitja
-    document.getElementById('btn-open-inventory').addEventListener('click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
-    document.getElementById('btn-open-equipment').addEventListener('click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
-    document.getElementById('btn-close-equipment').addEventListener('click', () => { document.getElementById('equipment-modal').classList.add('hidden'); });
+    // Biztonságos eseménykezelők (ha egy elem hiányzik, nem dob hibát)
+    const safeAddEvent = (id, event, callback) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, callback);
+    };
 
-    document.getElementById('btn-open-crafting').addEventListener('click', () => { document.getElementById('crafting-modal').classList.remove('hidden'); updateUI(); });
-    document.getElementById('btn-close-crafting').addEventListener('click', () => { document.getElementById('crafting-modal').classList.add('hidden'); });
-    document.getElementById('btn-combat-attack').addEventListener('click', combatAttack);
-    document.getElementById('btn-combat-run').addEventListener('click', combatRun);
-    document.getElementById('btn-combat-heal-open').addEventListener('click', () => { updateUI(); document.getElementById('combat-heal-modal').classList.remove('hidden'); });
-    document.getElementById('btn-combat-heal-close').addEventListener('click', () => { document.getElementById('combat-heal-modal').classList.add('hidden'); });
-    document.getElementById('btn-open-settings').addEventListener('click', () => { document.getElementById('settings-modal').classList.remove('hidden'); });
-    document.getElementById('btn-close-settings').addEventListener('click', () => { document.getElementById('settings-modal').classList.add('hidden'); });
+    safeAddEvent('btn-open-inventory', 'click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
+    safeAddEvent('btn-close-inventory', 'click', () => { 
+        const inv = document.getElementById('inventory-modal');
+        if (inv) inv.classList.add('hidden'); 
+    });
+    
+    safeAddEvent('btn-open-equipment', 'click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
+    safeAddEvent('btn-close-equipment', 'click', () => { document.getElementById('equipment-modal').classList.add('hidden'); });
+
+    safeAddEvent('btn-open-crafting', 'click', () => { document.getElementById('crafting-modal').classList.remove('hidden'); updateUI(); });
+    safeAddEvent('btn-close-crafting', 'click', () => { document.getElementById('crafting-modal').classList.add('hidden'); });
+    
+    safeAddEvent('btn-combat-attack', 'click', combatAttack);
+    safeAddEvent('btn-combat-run', 'click', combatRun);
+    
+    safeAddEvent('btn-combat-heal-open', 'click', () => { updateUI(); document.getElementById('combat-heal-modal').classList.remove('hidden'); });
+    safeAddEvent('btn-combat-heal-close', 'click', () => { document.getElementById('combat-heal-modal').classList.add('hidden'); });
+    
+    safeAddEvent('btn-open-settings', 'click', () => { document.getElementById('settings-modal').classList.remove('hidden'); });
+    safeAddEvent('btn-close-settings', 'click', () => { document.getElementById('settings-modal').classList.add('hidden'); });
 
 });
