@@ -164,6 +164,12 @@ const itemDatabase = {
 
 
 
+// Böngésző támogatás (ha még nem létezett, rátesszük a window-ra)
+if (typeof window !== 'undefined') {
+    if (!window.itemDatabase) {
+        window.itemDatabase = itemDatabase;
+    }
+}
 
 // Szerver (Node.js) támogatás
 if (typeof module !== 'undefined' && module.exports) {
