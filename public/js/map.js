@@ -108,9 +108,9 @@ function startTracking() {
 
                 sendMyPosition(lat, lng);
 
-                if (lastFetchLat === null || lastFetchLng === null) || {
+                if (lastFetchLat === null || lastFetchLng === null) {
                     fetchRealPOIs(lat, lng);
-                    lastFetchLat = lat;
+                     lastFetchLat = lat;
                     lastFetchLng = lng;
                 }
             }
