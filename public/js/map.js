@@ -537,9 +537,11 @@ function completeLooting(b) {
     saveGame();
 
     if (typeof socket !== 'undefined' && socket) {
-        socket.emit('building_looted', { id: b.id });
+        socket.emit('building_looted', { 
+            id: b.id, 
+            username: player.username || currentUsername 
+        });
     }
-}
 
 
 // Saját pozíció küldése a szervernek

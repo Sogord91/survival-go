@@ -154,21 +154,21 @@ io.on('connection', (socket) => {
 
 // Épület kirablásának szinkronizálása a többiekkel
     socket.on('building_looted', async (data) => {
-    if (data && data.id && socket.userId) {
-        try {
-            // Hozzáadjuk a játékoshoz a MongoDB-ben (ha még nincs benne)
-            await User.findByIdAndUpdate(socket.userId, {
-                $addToSet: { lootedBuildings: data.id }
-            });
-        } catch (err) {
-            console.error("Hiba a kifosztott épület mentésekor:", err);
+        if (data && data.id && data.username) {
+            try {
+                // Frissítjük a játékos épületeit a PlayerModel segítségével
+                await PlayerModel.findOneAndUpdate(
+                    { username: data.username },
+                    { $addToSet: { buildings: data.id } }
+                );
+            } catch (err) {
+                console.error("Hiba a kifosztott épület mentésekor:", err);
+            }
+
+            // Továbbítjuk a többi online játékosnak is
+            socket.broadcast.emit('building_looted_update', { id: data.id });
         }
-
-        // Továbbítjuk a többi online játékosnak is
-        socket.broadcast.emit('building_looted_update', { id: data.id });
-    }
-});
-
+    });
     // Játékállás (leltár, HP, pénz, épületek állapota) mentése adatbázisba
     socket.on('save_player', async (data) => {
         try {
