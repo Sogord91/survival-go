@@ -1,5 +1,5 @@
 // recipes.js
-const craftingRecipes = [
+window.craftingRecipes = [
     { key: 'bandage', name: 'Rongy kötszer', desc: 'Gyors vérzéscsillapító', icon: ' bandages', req: { rag: 2 } },
     { key: 'mre_ration', name: 'MRE Csomag', desc: 'Katonai fejadag', icon: '📦', req: { canned_food: 2, water_bottle: 1 } },
     { key: 'ammo_9mm', name: '9mm Lőszer', desc: 'Pisztoly lőszer', icon: ' bullet', req: { scrap_metal: 2, gunpowder: 1 } },
@@ -9,10 +9,6 @@ const craftingRecipes = [
 ];
 
 
-if (typeof window !== 'undefined') {
-    window.craftingRecipes = craftingRecipes;
-       
-}
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = craftingRecipes;

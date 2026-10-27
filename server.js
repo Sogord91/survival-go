@@ -799,5 +799,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(config.PORT, () => {
-    console.log(`🚀 Survival GO szerver fut a http://localhost:${config.PORT} porton.`);
+    console.log(`🚀 Survival GO fut.`);
 });

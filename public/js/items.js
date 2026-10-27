@@ -1,5 +1,5 @@
 // items.js
-const itemDatabase = {
+window.itemDatabase = {
     'canned_food': { name: 'Babkonzerv', type: 'food', icon: '🥫', desc: '+40 Éhség', value: 40, weight: 0.4, stackable: true },
     'tuna_can': { name: 'Tonhalkonzerv', type: 'food', icon: '🐟', desc: '+45 Éhség', value: 45, weight: 0.4, stackable: true },
     'mre_ration': { name: 'Katonai MRE Adag', type: 'food', icon: '📦', desc: '+80 Éhség, -25 Fáradtság', value: 80, fatigueValue: 25, weight: 0.8, stackable: true },
@@ -163,10 +163,7 @@ const itemDatabase = {
 };
 
 
-// Böngésző támogatás
-if (typeof window !== 'undefined') {
-    window.itemDatabase = itemDatabase;
-}
+
 
 // Szerver (Node.js) támogatás
 if (typeof module !== 'undefined' && module.exports) {
