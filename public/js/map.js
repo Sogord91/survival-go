@@ -108,7 +108,7 @@ function startTracking() {
 
                 sendMyPosition(lat, lng);
 
-                if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 1) {
+                if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 100) {
                     fetchRealPOIs(lat, lng);
                     lastFetchLat = lat;
                     lastFetchLng = lng;
