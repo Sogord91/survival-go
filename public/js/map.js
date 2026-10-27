@@ -421,13 +421,20 @@ function interactWithBuilding(b) {
     }
 
     if (Math.random() < 0.08) {
+        // Harcba keveredik az épületben -> +6% fáradtság
+        player.fatigue = Math.min(100, (player.fatigue || 0) + 6);
+        logMessage("Veszély! Ellenség támadt rád az épületben!");
         startCombat(b);
     } else {
+        // Sikeres lootolás -> +3% fáradtság
+        player.fatigue = Math.min(100, (player.fatigue || 0) + 3);
         completeLooting(b);
     }
+    saveGame();
+    updateUI();
 }
 
-function rollLoot(buildingName) {
+function rollLoot(buildingName, isCombatWin = false) {
     let possibleItems = [];
     let emptyChance = 0.60;
 
@@ -499,9 +506,13 @@ function rollLoot(buildingName) {
     } 
     // Alapértelmezett (Romos ház és mindent fel nem sorolt)
     else {
-        possibleItems = ['rag', 'canned_food', 'stone', 'stick', 'bottle_cap'];
+        possibleItems = ['rag', 'canned_food', 'stone', 'stick', 'water_bottle', 'bottle_cap'];
         emptyChance = 0.75;
     }
+
+    if (isCombatWin) {
+        emptyChance = Math.max(0.10, emptyChance - 0.20);
+    } // <--- Ez a zárójel hiányzott!
 
     if (Math.random() < emptyChance) return [];
     
@@ -512,7 +523,6 @@ function rollLoot(buildingName) {
     }
     return found;
 }
-
 // Saját pozíció küldése a szervernek
 function sendMyPosition(lat, lng) {
     if (typeof socket !== 'undefined' && socket) {

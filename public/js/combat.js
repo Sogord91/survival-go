@@ -107,7 +107,11 @@ function combatRun() {
         currentCombat.active = false;
         document.getElementById('combat-modal').classList.add('hidden');
         playSound('win');
-        logMessage("Sikeres menekülés!");
+        
+        // 1. SZABÁLY: Menekülés -> 0 loot, de +6% fáradtság a pánik miatt!
+        player.fatigue = Math.min(100, (player.fatigue || 0) + 6);
+        
+        logMessage("Sikeres, de kimerítő menekülés! (+6% fáradtság)");
         const b = currentCombat.buildingObj;
         if (b) {
             b.lockedUntil = Date.now() + 5 * 60 * 1000;
@@ -115,6 +119,7 @@ function combatRun() {
             if (targetSaved) targetSaved.lockedUntil = b.lockedUntil;
         }
         saveGame();
+        updateUI();
         refreshMapMarkers();
     } else {
         combatLogAppend("Menekülés sikertelen!", "text-red-400");
@@ -151,6 +156,9 @@ function winCombat() {
     document.getElementById('combat-heal-modal').classList.add('hidden');
     playSound('win');
 
+    // 2. SZABÁLY: Győzelem a harcban -> +8% kimerítő fáradtság
+    player.fatigue = Math.min(100, (player.fatigue || 0) + 8);
+
     const b = currentCombat.buildingObj;
     if (b) {
         b.looted = true;
@@ -167,8 +175,9 @@ function winCombat() {
 
     refreshMapMarkers();
 
-    const foundItems = rollLoot(b ? b.name : 'Roncstelep');
-    let msg = `🎉 Győzelem! Találtál: `;
+    // Átadjuk a 'true'-t, hogy ez egy győztes harc, így jobb (magasabb) eséllyel esik a loot!
+    const foundItems = rollLoot(b ? b.name : 'Roncstelep', true);
+    let msg = `🎉 Győzelem! (+8% fáradtság). Találtál: `;
     if (foundItems.length === 0) {
         msg += " Semmi hasznosat.";
     } else {
@@ -179,8 +188,9 @@ function winCombat() {
     }
 
     logMessage(msg);
-    addXp(35);
+    addXp(25);
     saveGame();
+    updateUI(); // Frissíti a HUD-ot, hogy látszódjon a fáradtság és a leltár változása is!
 }
 
 function useCombatMedicine(index) {
