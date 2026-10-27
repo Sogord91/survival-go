@@ -349,7 +349,7 @@ function refreshMapMarkers() {
                 titleSuffix = ' [Szerelőműhely]';
             }
 
-            iconHtml = `<div style="position:relative;background:${config.color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:13px;box-shadow:0 0 10px rgba(0,0,0,0.5);">${config.icon}${badgeHtml}</div>`;
+            iconHtml = `<div style="position:relative;background:${config.color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #111;font-size:13px;box-shadow:0 0 10px rgba(0,0,0,0.8);">${config.icon}${badgeHtml}</div>`;
         }
 
         const marker = L.marker([bData.lat, bData.lng], {
@@ -594,7 +594,7 @@ function initOtherPlayersListener() {
             const otherLatLng = L.latLng(pData.lat, pData.lng);
             const distance = myLatLng.distanceTo(otherLatLng); // Távolság méterben
 
-            if (distance <= 300) { // Ha 300 méteren belül van
+            if (distance <= 150) { // Ha 150 méteren belül van
                 if (!otherPlayerMarkers[id]) {
                     const avatarFile = (pData.avatar && pData.avatar.includes('.')) ? pData.avatar : 'avatar1.png';
                     const otherIcon = L.divIcon({
