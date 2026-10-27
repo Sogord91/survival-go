@@ -513,37 +513,6 @@ function rollLoot(buildingName) {
     return found;
 }
 
-function completeLooting(b) {
-    b.looted = true;
-    b.lootedTime = Date.now();
-    const targetSaved = savedBuildings.find(sb => sb.id === b.id);
-    if(targetSaved) targetSaved.looted = true;
-
-    refreshMapMarkers();
-
-    const foundItems = rollLoot(b.name);
-    if (foundItems.length === 0) {
-        logMessage(`${b.name}: Üres volt.`);
-    } else {
-        let msg = `${b.name} átkutatva! Találtál: `;
-        foundItems.forEach(itKey => {
-            addItemToInventory(itKey, 1);
-            msg += `${itemDatabase[itKey].icon} ${itemDatabase[itKey].name} `;
-        });
-        logMessage(msg);
-        playSound('loot');
-        addXp(15);
-    }
-    saveGame();
-
-    if (typeof socket !== 'undefined' && socket) {
-        socket.emit('building_looted', { 
-            id: b.id, 
-            username: player.username || currentUsername 
-        });
-    }
-
-
 // Saját pozíció küldése a szervernek
 function sendMyPosition(lat, lng) {
     if (typeof socket !== 'undefined' && socket) {
