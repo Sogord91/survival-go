@@ -106,104 +106,99 @@
         </div>
     </div>
 
-    <!-- BEÁLLÍTÁSOK / MENÜ MODAL -->
     <div id="settings-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
-        <div class="bg-gray-900 border border-gray-700 w-full max-w-sm rounded-2xl p-5 flex flex-col shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-base font-bold text-amber-400">⚙️ Játék Menü & Adatok</h2>
-                <button id="btn-close-settings" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-5 flex flex-col shadow-2xl clipped-panel">
+            <div class="flex justify-between items-center mb-4 border-b border-emerald-500/30 pb-2">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">⚙️ JÁTÉK MENÜ</h2>
+                <button id="btn-close-settings" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold">✕</button>
             </div>
-            <p class="text-[11px] text-gray-400 mb-4">A játék automatikusan ment a MongoDB szerverre. Itt felsőbb szintű adatkezelést végezhetsz:</p>
+            <p class="text-[11px] text-emerald-300/80 mb-4">A karaktered adatai, pozíciója és a zóna állapota folyamatosan szinkronban van a központi szerverrel.</p>
             
             <div class="space-y-2.5">
-                <button onclick="exportSaveData()" class="w-full bg-blue-900/60 hover:bg-blue-800 border border-blue-600 py-2.5 rounded-xl text-xs font-bold text-blue-200 flex items-center justify-center gap-2">
-                    💾 Mentés Exportálása Fájlba
+                <button onclick="location.reload()" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
+                    🔄 Oldal Frissítése / Újratöltés
                 </button>
-                <label class="w-full bg-emerald-900/60 hover:bg-emerald-800 border border-emerald-600 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 cursor-pointer">
-                    📁 Mentés Importálása Fájlból 
-                    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importSaveData(event)">
-                </label>
             </div>
         </div>
     </div>
   
-    <!-- GAME OVER MODAL -->
+    <!-- GAME OVER MODAL (Zóna stílus) -->
     <div id="gameover-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[9999]">
-        <div class="bg-gray-900 border border-red-500/80 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center">
-            <h2 class="text-xl font-bold text-red-500 mb-2">💀 MEGHALTÁL A ZÓNÁBAN!</h2>
-            <p class="text-xs text-gray-300 mb-6">A túlélés ezúttal nem sikerült. A karaktered és a mentéseid megsemmisültek a sugárzásban.</p>
-            <button id="btn-gameover-reset" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg">Új Túlélő Indítása</button>
+        <div class="hud-panel border-red-500/80 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center clipped-panel shadow-[0_0_30px_rgba(239,68,68,0.4)]">
+            <h2 class="text-xl font-black text-red-500 mb-2 uppercase tracking-wider">💀 MEGHALTÁL A ZÓNÁBAN!</h2>
+            <p class="text-xs text-emerald-300/80 mb-6">A túlélés ezúttal nem sikerült. A karaktered és a mentéseid megsemmisültek a sugárzásban.</p>
+            <button id="btn-gameover-reset" class="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg clipped-badge uppercase tracking-wider">Új Túlélő Indítása</button>
         </div>
     </div>
 
-    <!-- HARC (COMBAT) MODAL -->
+    <!-- HARC (COMBAT) MODAL (Zóna stílus) -->
     <div id="combat-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[2500]">
-        <div id="combat-box" class="bg-gray-900 border-2 border-red-500/80 w-full max-w-lg rounded-2xl p-5 shadow-2xl flex flex-col combat-pulse">
-            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3">
+        <div id="combat-box" class="hud-panel border-2 border-red-500/80 w-full max-w-lg rounded-2xl p-5 shadow-2xl flex flex-col combat-pulse clipped-panel shadow-[0_0_25px_rgba(239,68,68,0.3)]">
+            <div class="flex justify-between items-center border-b border-emerald-500/30 pb-3 mb-3">
                 <div class="flex items-center gap-2">
                     <span id="enemy-avatar" class="text-3xl">🧟</span>
                     <div>
-                        <h2 id="enemy-name" class="text-sm font-bold text-red-400">Mutáns Ellenfél</h2>
-                        <div class="text-[10px] text-gray-400">Veszélyességi szint: <span id="enemy-level" class="text-amber-400">1</span></div>
+                        <h2 id="enemy-name" class="text-sm font-bold text-red-400 tracking-wider">Mutáns Ellenfél</h2>
+                        <div class="text-[10px] text-emerald-400/70">Veszélyességi szint: <span id="enemy-level" class="text-amber-400">1</span></div>
                     </div>
                 </div>
                 <div class="text-right">
-                    <div class="text-[10px] text-gray-400">Ellenfél HP</div>
+                    <div class="text-[10px] text-emerald-400/70">Ellenfél HP</div>
                     <div id="enemy-hp-text" class="text-xs font-bold text-red-500">100 / 100</div>
                 </div>
             </div>
 
-            <div class="w-full bg-gray-800 h-2.5 rounded-full overflow-hidden mb-4">
-                <div id="enemy-bar-hp" class="bg-red-600 h-full w-full transition-all duration-300"></div>
+            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden mb-4 border border-red-900/60 clipped-badge">
+                <div id="enemy-bar-hp" class="bg-red-600 h-full w-full transition-all duration-300 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></div>
             </div>
 
-            <div id="combat-log" class="bg-black/60 border border-gray-800 rounded-xl p-3 h-32 overflow-y-auto text-xs text-gray-300 mb-4 space-y-1">
+            <div id="combat-log" class="bg-emerald-950/40 border border-emerald-600/40 rounded-xl p-3 h-32 overflow-y-auto text-xs text-emerald-200/90 mb-4 space-y-1">
                 <div class="text-amber-400">[Harc] Ellenséges kontakt! Készülj a harcra vagy menekülj!</div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 bg-gray-800/80 p-3 rounded-xl border border-gray-700 mb-4 text-xs">
+            <div class="grid grid-cols-2 gap-3 bg-emerald-950/30 p-3 rounded-xl border border-emerald-600/40 mb-4 text-xs">
                 <div>
-                    <div class="flex justify-between mb-1"><span>❤️ Te Életed</span><span id="combat-player-hp">100%</span></div>
-                    <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden"><div id="combat-bar-hp" class="bg-green-500 h-full w-full transition-all"></div></div>
+                    <div class="flex justify-between mb-1 text-emerald-300"><span>❤️ Te Életed</span><span id="combat-player-hp">100%</span></div>
+                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-emerald-900 clipped-badge"><div id="combat-bar-hp" class="bg-emerald-500 h-full w-full transition-all shadow-[0_0_6px_rgba(34,197,94,0.8)]"></div></div>
                 </div>
                 <div>
-                    <div class="text-gray-400">Kezben tartott fegyver:</div>
-                    <div id="combat-weapon-name" class="font-bold text-amber-400 truncate">Nincs fegyver</div>
+                    <div class="text-[10px] text-emerald-400/70">Kézben tartott fegyver:</div>
+                    <div id="combat-weapon-name" class="font-bold text-amber-400 truncate text-xs">Nincs fegyver</div>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button id="btn-combat-attack" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">⚔️ Támadás</button>
-                <button id="btn-combat-dodge" class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">🛡️ Kitérés</button>
-                <button id="btn-combat-heal-open" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">💊 Gyógyul</button>
-                <button id="btn-combat-run" class="bg-amber-700 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1">🏃 Menekülés</button>
+                <button id="btn-combat-attack" class="bg-red-950/80 hover:bg-red-900 border border-red-700/80 text-red-200 font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1 clipped-badge">⚔️ Támadás</button>
+                <button id="btn-combat-dodge" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 text-emerald-200 font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1 clipped-badge">🛡️ Kitérés</button>
+                <button id="btn-combat-heal-open" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 text-emerald-200 font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1 clipped-badge">💊 Gyógyul</button>
+                <button id="btn-combat-run" class="bg-amber-950/80 hover:bg-amber-900 border border-amber-600/80 text-amber-200 font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-1 clipped-badge">🏃 Menekülés</button>
             </div>
         </div>
     </div>
 
-    <!-- HARC KÖZBENI GYÓGYULÁS MODAL -->
+    <!-- HARC KÖZBENI GYÓGYULÁS MODAL (Zóna stílus) -->
     <div id="combat-heal-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
-        <div class="bg-gray-900 border border-emerald-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl flex flex-col max-h-[70vh]">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-bold text-emerald-400">💊 Válassz orvosi eszközt</h3>
-                <button id="btn-combat-heal-close" class="text-gray-400 hover:text-white font-bold text-base">✕</button>
+        <div class="hud-panel border-emerald-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl flex flex-col max-h-[70vh] clipped-panel">
+            <div class="flex justify-between items-center mb-3 border-b border-emerald-500/30 pb-2">
+                <h3 class="text-sm font-bold text-emerald-400 tracking-wider">💊 VÁLASSZ ORVOSI ESZKÖZT</h3>
+                <button id="btn-combat-heal-close" class="text-emerald-500 hover:text-emerald-300 font-bold text-base">✕</button>
             </div>
-            <p class="text-[10px] text-gray-400 mb-3">Kattints arra a szerre, amit fel akarsz használni a harc hevületében:</p>
+            <p class="text-[10px] text-emerald-300/80 mb-3">Kattints arra a szerre, amit fel akarsz használni a harc hevületében:</p>
             <div id="combat-heal-list" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
         </div>
     </div>
 
-    <!-- MŰHELY INTERAKCIÓS MODAL -->
+    <!-- MŰHELY INTERAKCIÓS MODAL (Zóna stílus) -->
     <div id="workshop-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[2800]">
-        <div class="bg-gray-900 border-2 border-amber-500 w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col">
-            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-3">
+        <div class="hud-panel border-amber-500/80 w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col clipped-panel">
+            <div class="flex justify-between items-center border-b border-emerald-500/30 pb-3 mb-3">
                 <div class="flex items-center gap-2">
                     <span id="workshop-icon" class="text-2xl">🔥</span>
-                    <h3 id="workshop-title" class="text-sm font-bold text-amber-400">Műhely</h3>
+                    <h3 id="workshop-title" class="text-sm font-bold text-amber-400 tracking-wider">Műhely</h3>
                 </div>
-                <button onclick="closeWorkshopModal()" class="text-gray-400 hover:text-white font-bold text-base">✕</button>
+                <button onclick="closeWorkshopModal()" class="text-emerald-500 hover:text-emerald-300 font-bold text-base">✕</button>
             </div>
-            <p id="workshop-desc" class="text-xs text-gray-300 mb-4">Itt feldolgozhatod az alapanyagokat vagy megjavíthatod a felszerelésedet.</p>
+            <p id="workshop-desc" class="text-xs text-emerald-300/80 mb-4">Itt feldolgozhatod az alapanyagokat vagy megjavíthatod a felszerelésedet.</p>
             <div id="workshop-actions" class="space-y-2"></div>
         </div>
     </div>
@@ -379,15 +374,14 @@
     </div>
             </div>
 
-    <!-- BÁRKÁCSOLÁS ABLAK -->
-        <div id="crafting-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
-            <div class="hud-panel w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh] clipped-panel shadow-2xl">
-                <div class="flex justify-between items-center mb-4 border-b border-emerald-500/30 pb-2">
-                    <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🛠️ BÁRKÁCSOLÁSI RECEPTEK</h2>
-                    <button id="btn-close-crafting" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold">✕</button>
-                </div>
-                <div id="crafting-list" class="space-y-3 overflow-y-auto pr-1 flex-1"></div>
+    <!-- BÁRKÁCSOLÁSI ABLAK (Egységes Zóna stílus) -->
+    <div id="crafting-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh] clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-emerald-500/30 pb-2">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🛠️ BÁRKÁCSOLÁSI RECEPTEK</h2>
+                <button id="btn-close-crafting" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold">✕</button>
             </div>
+            <div id="crafting-list" class="space-y-3 overflow-y-auto pr-1 flex-1"></div>
         </div>
     </div>
 

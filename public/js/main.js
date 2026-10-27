@@ -106,46 +106,6 @@ socket.on('save_success', () => {
     console.log("💾 Játék sikeresen mentve MongoDB-be!");
 });
 
-function exportSaveData() {
-    if (!currentUsername) {
-        alert("Nincs aktív játékos!");
-        return;
-    }
-    const gameData = { username: currentUsername, player: player, buildings: savedBuildings };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameData));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `survival_go_${currentUsername}_save.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-    logMessage("Mentés exportálva fájlba!");
-}
-
-function importSaveData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const imported = JSON.parse(e.target.result);
-            currentUsername = imported.username;
-            player = Object.assign({}, player, imported.player);
-            savedBuildings = imported.buildings || [];
-            localStorage.setItem('zona_current_user', currentUsername);
-            saveGame();
-            document.getElementById('auth-modal').classList.add('hidden');
-            updateUI();
-            if (map) refreshMapMarkers();
-            else initMap(47.4979, 19.0402);
-            logMessage("Sikeres mentés importálás!");
-        } catch (err) {
-            alert("Hiba: " + err.message);
-        }
-    };
-    reader.readAsText(file);
-}
-
 function startSurvivalTick() {
     if (survivalInterval) clearInterval(survivalInterval);
     survivalInterval = setInterval(() => {
