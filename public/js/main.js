@@ -300,7 +300,7 @@ function triggerGameOver() {
 socket.on('player_loaded', (data) => {
     if (data.player) {
         player = Object.assign({}, player, data.player);
-        if (data.username) player.username = data.username; // Biztosítjuk, hogy a név átjöjjön
+        if (data.username) player.username = data.username;
         savedBuildings = data.buildings || [];
     } else {
         player.username = currentUsername;
@@ -314,7 +314,10 @@ socket.on('player_loaded', (data) => {
         savedBuildings = [];
     }
 
+    // Bejelentkezési ablak elrejtése és a Játékmód / HUD megjelenítése
     document.getElementById('auth-modal').classList.add('hidden');
+    document.getElementById('game-hud-container').classList.remove('hud-hidden'); // EZ HOZZÁ KELL!
+
     updateUI();
     startSurvivalTick();
 
