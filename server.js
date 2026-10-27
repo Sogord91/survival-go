@@ -6,21 +6,21 @@ const mongoose = require('mongoose');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const config = require('./config');
-const craftingRecipes = require('./recipes');
+const craftingRecipes = require('./public/js/recipes');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const itemDatabase = require('./items');
+const itemDatabase = require('./public/js/items');
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/recipes.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'recipes.js'));
+    res.sendFile(path.join(__dirname, 'public/js/recipes.js'));
 });
 app.get('/items.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'items.js'));
+    res.sendFile(path.join(__dirname, 'public/js/items.js'));
 });
 
 // MongoDB Kapcsolat
@@ -962,7 +962,7 @@ io.on('connection', (socket) => {
             console.error("Hiba a játékos mentése során:", err);
         }
     });
-    
+
 server.listen(config.PORT, () => {
     console.log(`🚀 Survival GO szerver fut a http://localhost:${config.PORT} porton.`);
 });
