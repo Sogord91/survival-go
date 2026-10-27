@@ -421,143 +421,28 @@ function interactWithBuilding(b) {
     }
 
     if (Math.random() < 0.05) {
-        // Harcba keveredik az épületben -> +6% fáradtság
+        // Harc az épületben -> +6% fáradtság
         player.fatigue = Math.min(100, (player.fatigue || 0) + 6);
         logMessage("Veszély! Ellenség támadt rád az épületben!");
         startCombat(b);
     } else {
-        // Sikeres lootolás -> +3% fáradtság
+        // Sikeres lootolás kérése a szervertől (Csalásmentes!)
         player.fatigue = Math.min(100, (player.fatigue || 0) + 3);
         
-        // 1. Beállítjuk az épület állapotát és a 4 órás zárolást (4 óra milliszekundumban)
-        b.looted = true;
-        b.lootedTime = Date.now();
-        b.lockedUntil = Date.now() + (4 * 60 * 60 * 1000);
-
-        // 2. Frissítjük a lokális savedBuildings tömbben is
-        const targetSaved = savedBuildings.find(sb => sb.id === b.id || sb === b.id);
-        if (targetSaved) {
-            if (typeof targetSaved === 'object') {
-                targetSaved.looted = true;
-                targetSaved.lockedUntil = b.lockedUntil;
-            }
-        } else {
-            savedBuildings.push({ 
-                id: b.id, 
-                lat: b.lat, 
-                lng: b.lng, 
-                name: b.name, 
-                looted: true, 
-                lockedUntil: b.lockedUntil 
+        if (typeof socket !== 'undefined' && socket) {
+            socket.emit('loot_building', {
+                username: player.username,
+                buildingId: b.id,
+                buildingName: b.name
             });
         }
-
-        // 3. Elküldjük a szervernek, hogy szétküldje a többieknek is
-        if (typeof socket !== 'undefined' && socket) {
-            socket.emit('building_looted', { id: b.id, username: player.username });
-        }
-
-        // 4. Megadjuk a lootot a játékosnak (ha a completeLooting végzi a tárgyak kiosztását)
-        if (typeof completeLooting === 'function') {
-            completeLooting(b);
-        }
-
-        // 5. Azonnal frissítjük a térképet, hogy a te oldaladon is lakatossá / szürkévé váljon
-        refreshMapMarkers();
     }
+    
     saveGame();
     updateUI();
 }
-
-function rollLoot(buildingName, isCombatWin = false) {
-    let possibleItems = [];
-    let emptyChance = 0.60;
-
-    // 1. Kereskedelmi / Boltok
-    if (buildingName.includes('Élelmiszerbolt') || buildingName.includes('Kisbolt / Trafik')) {
-        possibleItems = ['canned_food', 'tuna_can', 'mre_ration', 'energy_bar', 'water_bottle', 'kvass', 'energy_drink', 'cigarette'];
-        emptyChance = 0.35;
-    } 
-    // 2. Barkács, Ipari, Műhelyek
-    else if (buildingName.includes('Barkácsáruház') || buildingName.includes('Elhagyatott raktár') || buildingName.includes('Ipari létesítmény / Gyár')) {
-        possibleItems = ['scrap_metal', 'duct_tape', 'nails', 'wire', 'hammer', 'wrench', 'battery'];
-        emptyChance = 0.40;
-    } 
-    // 3. Autós témák / Szerviz / Roncstelep / Garázs
-    else if (buildingName.includes('Autószerviz') || buildingName.includes('Autóbontó') || buildingName.includes('Garázs')) {
-        possibleItems = ['scrap_metal', 'engine_parts', 'fuel_can', 'wrench', 'battery', 'duct_tape'];
-        emptyChance = 0.45;
-    } 
-    // 4. Benzinkút
-    else if (buildingName.includes('Benzinkút')) {
-        possibleItems = ['fuel_can', 'energy_drink', 'cigarette', 'canned_food', 'water_bottle'];
-        emptyChance = 0.40;
-    } 
-    // 5. Vendéglátás / Kocsma / Étterem
-    else if (buildingName.includes('Étterem') || buildingName.includes('Kocsma / Pub')) {
-        possibleItems = ['kvass', 'alcohol', 'canned_food', 'energy_bar', 'rag'];
-        emptyChance = 0.40;
-    } 
-    // 6. Egészségügy (Gyógyszertár / Kórház)
-    else if (buildingName.includes('Gyógyszertár') || buildingName.includes('Kórház')) {
-        possibleItems = ['painkillers', 'bandage', 'rag_bandage', 'antibiotics', 'alcohol', 'medkit'];
-        emptyChance = 0.30;
-    } 
-    // 7. Katonai / Rendőrség / Tűzoltóság / Bunker / Ellenőrzőpont
-    else if (buildingName.includes('Rendőrség') || buildingName.includes('Katonai bázis') || buildingName.includes('Bunker') || buildingName.includes('Ellenőrzőpont') || buildingName.includes('Vegyvédelmi')) {
-        possibleItems = ['makarov', 'ak47', 'ammo_9mm', 'ammo_762', 'kevlar_vest', 'military_helmet', 'gas_mask', 'mre_ration'];
-        emptyChance = 0.45;
-    } 
-    // 8. Intézmények / Iskola / Könyvtár / Városháza / Múzeum / Bíróság
-    else if (buildingName.includes('Iskola') || buildingName.includes('Könyvtár') || buildingName.includes('Városháza') || buildingName.includes('Múzeum') || buildingName.includes('Bíróság')) {
-        possibleItems = ['book', 'map', 'flashlight', 'paper', 'pen', 'canned_food'];
-        emptyChance = 0.55;
-    } 
-    // 9. Templom / Kolostor
-    else if (buildingName.includes('Templom') || buildingName.includes('Kolostor')) {
-        possibleItems = ['candle', 'cross', 'wine', 'book', 'rag'];
-        emptyChance = 0.60;
-    } 
-    // 10. Infrastruktúra / Víztorony / Trafóház / Vasút / Posta
-    else if (buildingName.includes('Víztorony') || buildingName.includes('Elektromos Alállomás') || buildingName.includes('Vasútállomás') || buildingName.includes('Posta')) {
-        possibleItems = ['wire', 'battery', 'scrap_metal', 'flashlight', 'duct_tape'];
-        emptyChance = 0.50;
-    } 
-    // 11. Mezőgazdaság / Téesz / Malom / Farm
-    else if (buildingName.includes('Mezőgazdasági') || buildingName.includes('Malom') || buildingName.includes('Állatfarm')) {
-        possibleItems = ['seeds', 'fertilizer', 'rope', 'canned_food', 'pitchfork'];
-        emptyChance = 0.50;
-    } 
-    // 12. Szálloda / Motel / Sport / Temető / Egyéb
-    else if (buildingName.includes('Szálloda') || buildingName.includes('Motel')) {
-        possibleItems = ['soap', 'towel', 'energy_bar', 'canned_food', 'rag'];
-        emptyChance = 0.50;
-    } else if (buildingName.includes('Sportcsarnok') || buildingName.includes('Stadion') || buildingName.includes('Strand')) {
-        possibleItems = ['energy_drink', 'water_bottle', 'energy_bar', 'rag'];
-        emptyChance = 0.55;
-    } else if (buildingName.includes('Temető')) {
-        possibleItems = ['bone', 'old_coin', 'rag', 'candle'];
-        emptyChance = 0.70;
-    } 
-    // Alapértelmezett (Romos ház és mindent fel nem sorolt)
-    else {
-        possibleItems = ['rag', 'canned_food', 'stone', 'stick', 'water_bottle', 'bottle_cap'];
-        emptyChance = 0.75;
-    }
-
-    if (isCombatWin) {
-        emptyChance = Math.max(0.10, emptyChance - 0.20);
-    } // <--- Ez a zárójel hiányzott!
-
-    if (Math.random() < emptyChance) return [];
-    
-    let found = [];
-    let dropCount = Math.random() < 0.2 ? 2 : 1; // Néha 2 tárgyat is dobhat
-    for(let i = 0; i < dropCount; i++) {
-        found.push(possibleItems[Math.floor(Math.random() * possibleItems.length)]);
-    }
-    return found;
-}
+        
+        
 // Saját pozíció küldése a szervernek
 function sendMyPosition(lat, lng) {
     if (typeof socket !== 'undefined' && socket) {
@@ -635,6 +520,51 @@ function initOtherPlayersListener() {
                 }
             }
         }
+    });
+}
+
+// --- BIZTONSÁGOS LOOT EREDMÉNY FOGADÁSA A SZERVERTŐL ---
+if (typeof socket !== 'undefined' && socket) {
+    socket.on('loot_result', (data) => {
+        if (!data.success) {
+            logMessage(data.message || "Hiba a lootolás során.");
+            playSound('hit');
+            return;
+        }
+
+        if (data.inventory) {
+            player.inventory = data.inventory;
+        }
+
+        let msg = `Átkutattad az épületet. Találtál: `;
+        if (!data.items || data.items.length === 0) {
+            msg = data.message || "Semmi hasznosat nem találtál.";
+        } else {
+            data.items.forEach(itKey => {
+                const itemCfg = itemDatabase[itKey] || { name: itKey, icon: '📦' };
+                msg += `${itemCfg.icon} ${itemCfg.name} `;
+            });
+            playSound('loot');
+        }
+
+        logMessage(msg);
+
+        // Épület zárolása lokálisan is
+        const targetSaved = savedBuildings.find(sb => sb.id === data.buildingId);
+        if (targetSaved) {
+            targetSaved.looted = true;
+            targetSaved.lockedUntil = data.lockedUntil;
+        } else {
+            savedBuildings.push({
+                id: data.buildingId,
+                looted: true,
+                lockedUntil: data.lockedUntil
+            });
+        }
+
+        refreshMapMarkers();
+        saveGame();
+        updateUI();
     });
 }
 

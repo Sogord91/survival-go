@@ -10,6 +10,54 @@ function initAudio() {
     }
 }
 
+// --- BIZTONSÁGOS, SZERVER VÉEZÉRELT TÚLÉLÉSI ADATOK FOGADÁSA ---
+socket.on('server_status_update', (data) => {
+    player.hunger = data.hunger;
+    player.thirst = data.thirst;
+    player.hp = data.hp;
+
+    if (data.isCritical) {
+        playSound('hit');
+    }
+    updateUI();
+});
+
+socket.on('xp_updated', (data) => {
+    player.xp = data.xp;
+    player.level = data.level;
+
+    if (data.leveledUp) {
+        logMessage(`🎉 SZINTLÉPÉS! Elérted a(z) ${player.level}. szintet a Zónában!`);
+        playSound('win');
+    }
+    updateHUD();
+});
+
+socket.on('game_over', () => {
+    triggerGameOver();
+});
+
+// --- BIZTONSÁGOS CRAFT EREDMÉNY FOGADÁSA A SZERVERTŐL ---
+if (typeof socket !== 'undefined' && socket) {
+    socket.on('craft_result', (data) => {
+        if (!data.success) {
+            logMessage(data.message || "Nem sikerült a barkácsolás.");
+            playSound('hit');
+            return;
+        }
+
+        if (data.inventory) {
+            player.inventory = data.inventory;
+        }
+
+        logMessage(data.message || "Sikeres barkácsolás!");
+        playSound('win');
+        
+        saveGame();
+        updateUI();
+    });
+}
+
 function playSound(type) {
     try {
         initAudio();
@@ -82,15 +130,12 @@ function logMessage(text) {
 }
 
 function addXp(amount) {
-    player.xp = (player.xp || 0) + amount;
-    let nextLevelXp = (player.level || 1) * 100;
-    if (player.xp >= nextLevelXp) {
-        player.level = (player.level || 1) + 1;
-        player.xp -= nextLevelXp;
-        logMessage(`🎉 SZINTLÉPÉS! Elérted a(z) ${player.level}. szintet a Zónában!`);
-    }
-    updateHUD();
-    saveGame();
+    if (!currentUsername) return;
+    // Elküldjük a szervernek a jóváírandó XP-t, a szerver számol és validál!
+    socket.emit('gain_xp', {
+        username: currentUsername,
+        amount: amount
+    });
 }
 
 function saveGame() {
@@ -105,23 +150,6 @@ function saveGame() {
 socket.on('save_success', () => {
     console.log("💾 Játék sikeresen mentve MongoDB-be!");
 });
-
-function startSurvivalTick() {
-    if (survivalInterval) clearInterval(survivalInterval);
-    survivalInterval = setInterval(() => {
-        if (!currentUsername || currentCombat.active) return;
-        player.hunger = Math.max(0, (Number(player.hunger) || 100) - 1);
-        player.thirst = Math.max(0, (Number(player.thirst) || 100) - 1.5);
-        if (player.hunger <= 0 || player.thirst <= 0) {
-            player.hp = Math.max(0, (player.hp || 100) - 5);
-            logMessage("⚠️ Kritikus állapot: Éhezel vagy szomjázol!");
-            playSound('hit');
-        }
-        if (player.hp <= 0) triggerGameOver();
-        saveGame();
-        updateUI();
-    }, 40000);
-}
 
 function updateHUD() {
     calculateStats();
@@ -288,7 +316,6 @@ socket.on('player_loaded', (data) => {
     document.getElementById('game-hud-container').classList.remove('hud-hidden'); // EZ HOZZÁ KELL!
 
     updateUI();
-    startSurvivalTick();
 
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {

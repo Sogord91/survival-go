@@ -18,31 +18,16 @@ const enemyPool = [
     { name: 'Nehézfegyveres Zsoldos', avatar: '🪖', hp: 130, dmg: 30, lvl: 4 }
 ];
 
-function startCombat(b) {
-    const enemyTemplate = enemyPool[Math.floor(Math.random() * enemyPool.length)];
-    currentCombat.active = true;
-    currentCombat.enemyName = enemyTemplate.name;
-    currentCombat.enemyAvatar = enemyTemplate.avatar;
-    currentCombat.enemyLevel = enemyTemplate.lvl + Math.floor(((player.level || 1) - 1) / 2);
-    currentCombat.enemyMaxHp = enemyTemplate.hp + (currentCombat.enemyLevel * 12);
-    currentCombat.enemyHp = currentCombat.enemyMaxHp;
-    currentCombat.enemyDmg = enemyTemplate.dmg + (currentCombat.enemyLevel * 3);
-    currentCombat.buildingObj = b;
+function startCombat(building) {
+    if (typeof socket !== 'undefined' && socket) {
+        logMessage("Harc kezdődött az épületben...");
+        playSound('hit');
 
-    document.getElementById('enemy-avatar').textContent = currentCombat.enemyAvatar;
-    document.getElementById('enemy-name').textContent = currentCombat.enemyName;
-    document.getElementById('enemy-level').textContent = currentCombat.enemyLevel;
-    
-    const weaponKey = player.equipment.weapon;
-    const weaponName = weaponKey ? itemDatabase[weaponKey].name : 'Puszta kéz';
-    document.getElementById('combat-weapon-name').textContent = weaponName;
-
-    const logBox = document.getElementById('combat-log');
-    logBox.innerHTML = `<div class="text-amber-400">[Harc] Egy ${currentCombat.enemyName} támad rád a(z) ${b.name} átkutatásakor!</div>`;
-
-    updateCombatUI();
-    document.getElementById('combat-modal').classList.remove('hidden');
-    playSound('hit');
+        socket.emit('resolve_combat', {
+            username: player.username,
+            buildingId: building.id
+        });
+    }
 }
 
 function updateCombatUI() {
@@ -53,6 +38,40 @@ function updateCombatUI() {
     let hpPercent = Math.max(0, Math.min(100, ((player.hp || 100) / (player.maxHp || 100)) * 100));
     document.getElementById('combat-player-hp').textContent = Math.round(player.hp || 100) + '/' + (player.maxHp || 100);
     document.getElementById('combat-bar-hp').style.width = hpPercent + '%';
+}
+
+
+if (typeof socket !== 'undefined' && socket) {
+    socket.on('combat_result', (data) => {
+        if (!data.success) {
+            logMessage(data.message || "Meghaltál a harcban!");
+            playSound('hit');
+            player.hp = 0;
+            updateUI();
+            // Itt jöhet a Game Over képernyő megjelenítése
+            return;
+        }
+
+        // Frissítjük a helyi játékos adatokat a szerver válasza alapján
+        if (data.player) {
+            player.hp = data.player.hp;
+            player.money = data.player.money;
+            player.xp = data.player.xp;
+            player.level = data.player.level;
+            player.maxHp = data.player.maxHp;
+            player.inventory = data.player.inventory;
+        }
+
+        logMessage(data.message);
+        playSound('win');
+
+        if (data.leveledUp) {
+            logMessage(`Szintlépés! Elérted a(z) ${player.level}. szintet!`);
+        }
+
+        saveGame();
+        updateUI();
+    });
 }
 
 function combatLogAppend(text, colorClass = 'text-gray-300') {
