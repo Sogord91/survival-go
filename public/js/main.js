@@ -270,16 +270,16 @@ function updateUI() {
             if(itemDatabase[mat]) reqText += `${qty}x ${itemDatabase[mat].name}, `;
         }
         craftList.innerHTML += `
-            <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl flex items-center justify-between">
+            <div class="hud-panel border border-emerald-600/40 p-3 rounded-xl flex items-center justify-between bg-emerald-950/40">
                 <div class="flex items-center gap-3">
                     <span class="text-2xl">${recipe.icon}</span>
                     <div>
-                        <div class="text-xs font-bold text-white">${recipe.name}</div>
-                        <div class="text-[10px] text-gray-400">${recipe.desc}</div>
-                        <div class="text-[9px] text-amber-500/80">Kell: ${reqText.slice(0, -2)}</div>
+                        <div class="text-xs font-bold text-emerald-300">${recipe.name}</div>
+                        <div class="text-[10px] text-emerald-400/80">${recipe.desc}</div>
+                        <div class="text-[9px] text-amber-300/80">Kell: ${reqText.slice(0, -2)}</div>
                     </div>
                 </div>
-                <button onclick='craftItem(${JSON.stringify(recipe)})' class="bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Barkács</button>
+                <button onclick='craftItem(${JSON.stringify(recipe)})' class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 py-1.5 clipped-badge text-xs font-bold text-emerald-200 transition shadow">Barkács</button>
             </div>
         `;
     });
