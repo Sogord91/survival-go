@@ -136,8 +136,8 @@ setInterval(async () => {
             if (!user || !user.playerData) continue;
 
             let p = user.playerData;
-            p.hunger = Math.max(0, (Number(p.hunger) || 100) - 1);
-            p.thirst = Math.max(0, (Number(p.thirst) || 100) - 1.5);
+            p.hunger = Math.max(0, (Number(p.hunger) || 100) - 0.9);
+            p.thirst = Math.max(0, (Number(p.thirst) || 100) - 0.7);
 
             let isCritical = false;
             if (p.hunger <= 0 && p.thirst <= 0) {
