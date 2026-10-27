@@ -58,9 +58,9 @@ function initMap(lat, lng) {
     if (map) return;
     map = L.map('map').setView([lat, lng], 17);
     // Ingyenes, kulcsmentes OpenStreetMap alapú sötét térkép:
-    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors, HOT'
+    L.tileLayer('https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+    maxZoom: 20,
+    attribution: '&copy; OpenStreetMap France'
     }).addTo(map);
 
     const avatarFile = player.avatar || 'avatar1.png';
