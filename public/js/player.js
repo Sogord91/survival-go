@@ -206,18 +206,3 @@ function unequip(slot) {
         updateUI();
     }
 }
-
-// Biztonságos, szerver oldali craftolás indítása
-function craftItem(recipe) {
-    if (!currentUsername && typeof player !== 'undefined') {
-        currentUsername = player.username;
-    }
-    if (!currentUsername) return;
-
-    if (typeof socket !== 'undefined' && socket) {
-        socket.emit('craft_item', {
-            username: currentUsername,
-            recipeKey: recipe.key
-        });
-    }
-}
