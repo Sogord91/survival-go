@@ -1,15 +1,5 @@
 // player.js
 
-const craftingRecipes = [
-    { id: 'bandage', name: 'Steril Kötszer készítése', icon: '🩹', req: { rag: 1, alcohol: 1 }, desc: '1x Szövet + 1x Fertőtlenítő' },
-    { id: 'coffee', name: 'Fekete Kávé főzés', icon: '☕', req: { water_bottle: 1 }, desc: '1x Vizespalack felforralása' },
-    { id: 'duct_tape', name: 'Ragasztószalag gyártás', icon: '🧻', req: { rag: 2, metal_scrap: 1 }, desc: '2x Szövet + 1x Fémhulladék' },
-    { id: 'bow', name: 'Kompozit Íj készítése', icon: '🏹', req: { stick: 2, rag: 1, stone: 1 }, desc: '2x Bot + 1x Szövet + 1x Kő' },
-    { id: 'ammo_9mm', name: '9mm Lőszer (x5)', icon: '🎯', req: { gunpowder: 1, metal_scrap: 1 }, desc: '1x Lőpor + 1x Fémhulladék', count: 5 },
-    { id: 'gp5_mask', name: 'GP-5 Gázálarc összeszerelés', icon: '🪖', req: { metal_scrap: 2, rag: 2, duct_tape: 1 }, desc: '2x Fém + 2x Szövet + 1x Szalag' },
-    { id: 'tactical_backpack', name: 'Katonai Assault Zsák', icon: '🎒', req: { rag: 4, metal_scrap: 2, duct_tape: 1 }, desc: '4x Szövet + 2x Fém + 1x Szalag' },
-    { id: 'kevlar_vest', name: 'Kevlár Mellény', icon: '🦺', req: { metal_scrap: 5, leather: 2, duct_tape: 1 }, desc: '5x Fém + 2x Bőr + 1x Szalag' }
-];
 
 let player = {
     username: 'Túlélő',
@@ -46,6 +36,21 @@ function calculateInventoryWeight() {
         }
     });
     return Math.round(totalWeight * 10) / 10;
+}
+
+// Biztonságos, szerver oldali craftolás indítása
+function craftItem(recipe) {
+    if (!currentUsername && typeof player !== 'undefined') {
+        currentUsername = player.username;
+    }
+    if (!currentUsername) return;
+
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('craft_item', {
+            username: currentUsername,
+            recipeKey: recipe.key
+        });
+    }
 }
 
 function calculateStats() {
