@@ -7,3 +7,14 @@ const craftingRecipes = [
     { key: 'kevlar_vest', name: 'Kevlár Mellény', desc: 'Védelmet nyújt', icon: '🦺', req: { scrap_metal: 5, duct_tape: 2 } },
     { key: 'lockpick', name: 'Álkulcs', desc: 'Zárak feltöréséhez', icon: '🔑', req: { scrap_metal: 1, wire: 1 } }
 ];
+
+
+if (typeof window !== 'undefined') {
+    window.craftingRecipes = craftingRecipes;
+       
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = craftingRecipes;
+       
+}

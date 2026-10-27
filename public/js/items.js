@@ -162,7 +162,13 @@ const itemDatabase = {
     'ammo_sniper': { name: '7.62x54mmR Mesterlövész', type: 'ammo', icon: '🎯', desc: 'SVD / Vadászpuska lőszer', ammoType: 'ammo_sniper', weight: 0.04, stackable: true }
 };
 
-// Ha a szerveren (Node.js) fut
+
+// Böngésző támogatás
+if (typeof window !== 'undefined') {
+    window.itemDatabase = itemDatabase;
+}
+
+// Szerver (Node.js) támogatás
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = itemDatabase;
 }
