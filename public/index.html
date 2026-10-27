@@ -289,16 +289,15 @@
             </div>
 
         </div>
-        <!-- ALSÓ MENÜSOR (Garantáltan 1 sorban, mobilon is) -->
-        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-max max-w-full px-3 hud-panel py-2 clipped-panel shadow-2xl">
-            <div class="flex flex-row items-center justify-center gap-1.5 sm:gap-2">
-                <button id="btn-open-inventory" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">🎒 Hátizsák</button>
-                <button id="btn-open-equipment" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">🛡️ Felszerelés</button>
-                <button id="btn-open-crafting" class="bg-emerald-700 hover:bg-emerald-600 border border-emerald-400 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-slate-950 flex items-center gap-1 transition shadow whitespace-nowrap">🛠️ Craft</button>
-                <button id="btn-open-settings" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">⚙️ Menü</button>
-            </div>
-        </div>
-
+       <!-- ALSÓ MENÜSOR (Garantáltan 1 sorban, mobilon is, teljesen egységesen) -->
+<div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-max max-w-full px-3 hud-panel py-2 clipped-panel shadow-2xl">
+    <div class="flex flex-row items-center justify-center gap-1.5 sm:gap-2">
+        <button id="btn-open-inventory" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">🎒 Hátizsák</button>
+        <button id="btn-open-equipment" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">🛡️ Felszerelés</button>
+        <button id="btn-open-crafting" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">🛠️ Craft</button>
+        <button id="btn-open-settings" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-2.5 sm:px-3.5 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1 transition shadow whitespace-nowrap">⚙️ Menü</button>
+    </div>
+</div>
         <!-- JÁTÉK NAPLÓ -->
         <div id="game-log" class="absolute bottom-20 left-4 w-80 hud-panel p-3 clipped-panel text-xs text-emerald-300/90 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
             <div>[Rendszer] Üdv a Zónában! A sugárzás szintje alacsony.</div>
@@ -306,65 +305,78 @@
 
     </div>
 
-    <!-- HÁTIZSÁK ABLAK -->
-    <div id="inventory-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh]">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-base font-bold text-amber-400">🎒 Hátizsák (<span id="inv-count">0</span> / <span id="inv-max">10</span>)</h2>
-                <button id="btn-close-inventory" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+    <!-- FELSZERELÉS ÉS HÁTIZSÁK EGYESÍTETT ABLAK -->
+    <div id="equipment-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-2 sm:p-4">
+        <div class="hud-panel w-full max-w-lg rounded-2xl p-4 sm:p-5 flex flex-col max-h-[92vh] clipped-panel shadow-2xl overflow-y-auto">
+            
+            <!-- Címsor -->
+            <div class="flex justify-between items-center mb-3 border-b border-emerald-500/30 pb-2">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🛡️ KARAKTER ÉS FELSZERELÉS</h2>
+                <button id="btn-close-equipment" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold">✕</button>
             </div>
-            <div id="inventory-grid" class="grid grid-cols-1 gap-2 overflow-y-auto pr-1 flex-1"></div>
-        </div>
-    </div>
 
-    <!-- FELSZERELÉS ABLAK -->
-    <div id="equipment-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[85vh]">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-base font-bold text-amber-400">🛡️ Karakter Felszerelés</h2>
-                <button id="btn-close-equipment" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
-            </div>
-            <div class="space-y-2.5 overflow-y-auto pr-1 flex-1">
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">🪖 Sisak / Maszk</div><div id="eq-helmet" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
-                    <button onclick="unequip('helmet')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
+            <!-- FELSZERELÉSI SLOTOK (Karakter körüli elrendezés) -->
+            <div class="relative bg-emerald-950/30 border border-emerald-600/40 rounded-xl p-3 mb-4 grid grid-cols-3 gap-2 items-center justify-items-center">
+                
+                <!-- Bal oszlop: Fegyver / Kiegészítő 1 -->
+                <div class="flex flex-col gap-2 w-full">
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center">
+                        <div class="text-[9px] text-emerald-400/70">⚔️ Kéz / Fegyver</div>
+                        <div id="eq-weapon" class="text-[11px] font-bold text-emerald-300 truncate">Nincs</div>
+                        <button onclick="unequip('weapon')" class="text-[9px] text-red-400 hover:underline mt-0.5">Levesz</button>
+                    </div>
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center">
+                        <div class="text-[9px] text-emerald-400/70">💍 Kiegészítő</div>
+                        <div id="eq-armor" class="text-[11px] font-bold text-emerald-300 truncate">Nincs</div>
+                        <button onclick="unequip('armor')" class="text-[9px] text-red-400 hover:underline mt-0.5">Levesz</button>
+                    </div>
                 </div>
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">👕 Felső</div><div id="eq-torso" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
-                    <button onclick="unequip('torso')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
-                </div>
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">🦺 Mellény / Páncél</div><div id="eq-armor" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
-                    <button onclick="unequip('armor')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
-                </div>
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">👖 Nadrág</div><div id="eq-legs" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
-                    <button onclick="unequip('legs')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
-                </div>
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">👞 Cipő / Lábbeli</div><div id="eq-shoes" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
-                    <button onclick="unequip('shoes')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
-                </div>
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">🎒 Hátizsák</div><div id="eq-backpack" class="text-xs font-bold text-white">Alap (10 hely)</div></div>
-                    <button onclick="unequip('backpack')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
-                </div>
-                <div class="flex justify-between items-center bg-gray-800 p-2.5 rounded-xl border border-gray-700">
-                    <div><div class="text-[10px] text-gray-400">⚔️ Kézben tartott tárgy / Fegyver</div><div id="eq-weapon" class="text-xs font-bold text-gray-500">Nincs felszerelve</div></div>
-                    <button onclick="unequip('weapon')" class="bg-red-900/40 text-red-300 px-2 py-1 rounded text-[10px]">Levesz</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- BÁRKÁCSOLÁS ABLAK -->
-    <div id="crafting-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-gray-700 w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh]">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-base font-bold text-amber-400">🛠️ Barkácsolási Receptek</h2>
-                <button id="btn-close-crafting" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+                <!-- Középső oszlop: Fej, Felső, Nadrág, Cipő -->
+                <div class="flex flex-col gap-1.5 w-full items-center">
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center w-full">
+                        <div class="text-[9px] text-emerald-400/70">🪖 Sisak</div>
+                        <div id="eq-helmet" class="text-[11px] font-bold text-emerald-300 truncate">Nincs</div>
+                        <button onclick="unequip('helmet')" class="text-[9px] text-red-400 hover:underline">Levesz</button>
+                    </div>
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center w-full">
+                        <div class="text-[9px] text-emerald-400/70">👕 Felső</div>
+                        <div id="eq-torso" class="text-[11px] font-bold text-emerald-300 truncate">Nincs</div>
+                        <button onclick="unequip('torso')" class="text-[9px] text-red-400 hover:underline">Levesz</button>
+                    </div>
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center w-full">
+                        <div class="text-[9px] text-emerald-400/70">👖 Nadrág</div>
+                        <div id="eq-legs" class="text-[11px] font-bold text-emerald-300 truncate">Nincs</div>
+                        <button onclick="unequip('legs')" class="text-[9px] text-red-400 hover:underline">Levesz</button>
+                    </div>
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center w-full">
+                        <div class="text-[9px] text-emerald-400/70">👞 Cipő</div>
+                        <div id="eq-shoes" class="text-[11px] font-bold text-emerald-300 truncate">Nincs</div>
+                        <button onclick="unequip('shoes')" class="text-[9px] text-red-400 hover:underline">Levesz</button>
+                    </div>
+                </div>
+
+                <!-- Jobb oszlop: Hátizsák / Egyéb slot -->
+                <div class="flex flex-col gap-2 w-full">
+                    <div class="bg-emerald-950/80 border border-emerald-600/60 rounded-lg p-1.5 text-center">
+                        <div class="text-[9px] text-emerald-400/70">🎒 Hátizsák</div>
+                        <div id="eq-backpack" class="text-[11px] font-bold text-emerald-200 truncate">Alap (10)</div>
+                        <button onclick="unequip('backpack')" class="text-[9px] text-red-400 hover:underline mt-0.5">Levesz</button>
+                    </div>
+                </div>
+
             </div>
-            <div id="crafting-list" class="space-y-3 overflow-y-auto pr-1 flex-1"></div>
+
+            <!-- ALSÓ SZEKCIÓ: HÁTIZSÁK TARTALMA (Rácsos elrendezésben, a képre hasonlító stílusban) -->
+            <div class="bg-emerald-950/40 border border-emerald-600/40 rounded-xl p-3 flex flex-col flex-1">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-emerald-300">📦 HÁTIZSÁK TARTALMA</span>
+                    <span class="text-[11px] text-emerald-400 font-mono">(<span id="inv-count">0</span> / <span id="inv-max">10</span>)</span>
+                </div>
+                <!-- Itt jelennek meg rácsban a tárgyak a hátizsák méretének megfelelően -->
+                <div id="inventory-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2 overflow-y-auto max-h-48 pr-1"></div>
+            </div>
+
         </div>
     </div>
 
