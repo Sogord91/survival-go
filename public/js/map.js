@@ -57,7 +57,8 @@ const buildingTypesConfig = {
 function initMap(lat, lng) {
     if (map) return;
     map = L.map('map').setView([lat, lng], 17);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Ingyenes, API kulcs nélküli sötét térkép alap:
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
     attribution: '&copy; CARTO'
 }).addTo(map);
