@@ -169,10 +169,19 @@ function updateUI() {
     player.inventory.forEach((slot, index) => {
         const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦', desc: '', weight: 0 };
         const countBadge = slot.count > 1 ? `<span class="bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">x${slot.count}</span>` : '';
+        
+        // ITT VÁLTJUK ÁT: Ha az icon tartalmazza a '/' jelet vagy '.png'-t, akkor képként illesztjük be, ha nem, akkor emojiként!
+        let iconHtml = '';
+        if (item.icon && (item.icon.includes('/') || item.icon.includes('.png'))) {
+            iconHtml = `<img src="${item.icon}" class="w-8 h-8 object-contain" alt="${item.name}">`;
+        } else {
+            iconHtml = `<span class="text-xl">${item.icon || '📦'}</span>`;
+        }
+
         invGrid.innerHTML += `
             <div class="bg-gray-800 border border-gray-700 p-2 rounded-xl flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <span class="text-xl">${item.icon}</span>
+                    <div class="w-9 h-9 flex items-center justify-center bg-gray-900 rounded-lg border border-gray-700">${iconHtml}</div>
                     <div>
                         <div class="text-xs font-bold text-white flex items-center">${item.name} ${countBadge}</div>
                         <div class="text-[10px] text-gray-400">${item.desc} | Súly: ${(item.weight || 0) * slot.count} kg</div>

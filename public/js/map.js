@@ -108,7 +108,7 @@ function startTracking() {
 
                 sendMyPosition(lat, lng);
 
-                if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 300) {
+                if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 1) {
                     fetchRealPOIs(lat, lng);
                     lastFetchLat = lat;
                     lastFetchLng = lng;
@@ -126,7 +126,7 @@ function startTracking() {
 }
 
 function fetchRealPOIs(lat, lng) {
-    const radius = 400;
+    const radius = 300;
     const query = `
         [out:json];
         (
@@ -420,7 +420,7 @@ function interactWithBuilding(b) {
         return;
     }
 
-    if (Math.random() < 0.08) {
+    if (Math.random() < 0.05) {
         // Harcba keveredik az épületben -> +6% fáradtság
         player.fatigue = Math.min(100, (player.fatigue || 0) + 6);
         logMessage("Veszély! Ellenség támadt rád az épületben!");
@@ -428,7 +428,42 @@ function interactWithBuilding(b) {
     } else {
         // Sikeres lootolás -> +3% fáradtság
         player.fatigue = Math.min(100, (player.fatigue || 0) + 3);
-        completeLooting(b);
+        
+        // 1. Beállítjuk az épület állapotát és a 4 órás zárolást (4 óra milliszekundumban)
+        b.looted = true;
+        b.lootedTime = Date.now();
+        b.lockedUntil = Date.now() + (4 * 60 * 60 * 1000);
+
+        // 2. Frissítjük a lokális savedBuildings tömbben is
+        const targetSaved = savedBuildings.find(sb => sb.id === b.id || sb === b.id);
+        if (targetSaved) {
+            if (typeof targetSaved === 'object') {
+                targetSaved.looted = true;
+                targetSaved.lockedUntil = b.lockedUntil;
+            }
+        } else {
+            savedBuildings.push({ 
+                id: b.id, 
+                lat: b.lat, 
+                lng: b.lng, 
+                name: b.name, 
+                looted: true, 
+                lockedUntil: b.lockedUntil 
+            });
+        }
+
+        // 3. Elküldjük a szervernek, hogy szétküldje a többieknek is
+        if (typeof socket !== 'undefined' && socket) {
+            socket.emit('building_looted', { id: b.id, username: player.username });
+        }
+
+        // 4. Megadjuk a lootot a játékosnak (ha a completeLooting végzi a tárgyak kiosztását)
+        if (typeof completeLooting === 'function') {
+            completeLooting(b);
+        }
+
+        // 5. Azonnal frissítjük a térképet, hogy a te oldaladon is lakatossá / szürkévé váljon
+        refreshMapMarkers();
     }
     saveGame();
     updateUI();
@@ -607,10 +642,33 @@ function initBuildingSyncListener() {
     if (typeof socket === 'undefined' || !socket) return;
 
     socket.on('building_looted_update', (data) => {
-        const targetSaved = savedBuildings.find(sb => sb.id === data.id);
-        if (targetSaved) {
-            targetSaved.looted = true;
-            refreshMapMarkers(); // Újrarajzolja a térképet, így a másikon is lakat/szürke ikon lesz
+        // Megkeressük az épületet a lokális savedBuildings tömbben
+        let targetSaved = savedBuildings.find(sb => sb === data.id || sb.id === data.id);
+        
+        if (!targetSaved) {
+            // Ha még nincs benne a tömbben, de valaki kirabolta a közelben, adjuk hozzá
+            targetSaved = { 
+                id: data.id, 
+                looted: data.looted, 
+                lockedUntil: data.lockedUntil 
+            };
+            savedBuildings.push(targetSaved);
+        } else if (typeof targetSaved === 'string') {
+            // Ha régebbi formátumú string volt, cseréljük objektumra
+            const index = savedBuildings.indexOf(targetSaved);
+            targetSaved = { 
+                id: data.id, 
+                looted: data.looted, 
+                lockedUntil: data.lockedUntil 
+            };
+            savedBuildings[index] = targetSaved;
+        } else {
+            // Ha már objektum, frissítjük az adatait
+            targetSaved.looted = data.looted;
+            targetSaved.lockedUntil = data.lockedUntil;
         }
+
+        // Azonnal frissítjük a térkép jelölőit (így azonnal piros lakat lesz rajta bárkinél, aki látja)
+        refreshMapMarkers();
     });
 }

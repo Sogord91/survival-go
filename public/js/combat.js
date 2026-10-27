@@ -65,7 +65,11 @@ function combatLogAppend(text, colorClass = 'text-gray-300') {
 }
 
 function combatAttack() {
-    if (!currentCombat.active) return;
+    // 🛡️ BIZTONSÁGI ELLENŐRZÉS: Ha a harc véget ért, vagy a játékos halott, ne csináljon semmit!
+    if (!currentCombat.active || (player.hp || 100) <= 0) {
+        return;
+    }
+
     let baseDmg = 12;
     const weaponKey = player.equipment.weapon;
     
@@ -89,7 +93,6 @@ function combatAttack() {
     playSound('attack');
     combatLogAppend(`Beviszel ${finalPlayerDmg} sebzést.`, 'text-amber-300');
 
-    // Lőszerfogyás és harc közbeni állapot azonnali mentése
     saveGame();
     updateUI();
 
@@ -97,9 +100,12 @@ function combatAttack() {
         winCombat();
         return;
     }
-    enemyTurn();
+    
+    // Ellenség köre előtt is ellenőrizzük, hogy a játékos él-e még
+    if ((player.hp || 100) > 0) {
+        enemyTurn();
+    }
 }
-
 
 function combatRun() {
     if (!currentCombat.active) return;
@@ -163,13 +169,17 @@ function winCombat() {
     if (b) {
         b.looted = true;
         b.lootedTime = Date.now();
-        b.lockedUntil = null;
+        b.lockedUntil = Date.now() + (4 * 60 * 60 * 1000); // Itt is 4 óra zárás!
 
         const targetSaved = savedBuildings.find(sb => sb.id === b.id);
         if(targetSaved) {
             targetSaved.looted = true;
-            targetSaved.lootedTime = b.lootedTime;
-            targetSaved.lockedUntil = null;
+            targetSaved.lockedUntil = b.lockedUntil;
+        }
+
+        // Itt is elküldjük a szervernek
+        if (typeof socket !== 'undefined' && socket) {
+            socket.emit('building_looted', { id: b.id, username: player.username });
         }
     }
 

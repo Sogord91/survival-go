@@ -154,21 +154,28 @@ io.on('connection', (socket) => {
 
 // Épület kirablásának szinkronizálása a többiekkel
     socket.on('building_looted', async (data) => {
-        if (data && data.id && data.username) {
-            try {
-                // Frissítjük a játékos épületeit a PlayerModel segítségével
-                await PlayerModel.findOneAndUpdate(
-                    { username: data.username },
-                    { $addToSet: { buildings: data.id } }
-                );
-            } catch (err) {
-                console.error("Hiba a kifosztott épület mentésekor:", err);
-            }
+    if (data && data.id && data.username) {
+        const lockDuration = 4 * 60 * 60 * 1000; // 4 óra milliszekundumban
+        const lockedUntilTime = Date.now() + lockDuration;
 
-            // Továbbítjuk a többi online játékosnak is
-            socket.broadcast.emit('building_looted_update', { id: data.id });
+        try {
+            // Elmentjük a játékos adatbázismodelljébe objektumként (id + lockedUntil)
+            await PlayerModel.findOneAndUpdate(
+                { username: data.username },
+                { $addToSet: { buildings: { id: data.id, lockedUntil: lockedUntilTime } } }
+            );
+        } catch (err) {
+            console.error("Hiba a kifosztott épület mentésekor:", err);
         }
-    });
+
+        // Továbbítjuk a MINDEN online játékosnak (io.emit), hogy bárki a közelben van, azonnal lássa a zárolást!
+        io.emit('building_looted_update', { 
+            id: data.id, 
+            looted: true, 
+            lockedUntil: lockedUntilTime 
+        });
+    }
+});
     // Játékállás (leltár, HP, pénz, épületek állapota) mentése adatbázisba
     socket.on('save_player', async (data) => {
         try {
