@@ -329,31 +329,58 @@ socket.on('player_loaded', (data) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Biztonságos eseménykezelők (ha egy elem hiányzik, nem dob hibát)
     const safeAddEvent = (id, event, callback) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener(event, callback);
     };
 
-    safeAddEvent('btn-open-inventory', 'click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
-    safeAddEvent('btn-close-inventory', 'click', () => { 
-        const inv = document.getElementById('inventory-modal');
-        if (inv) inv.classList.add('hidden'); 
+    // Készlet (egyesített felszerelés és hátizsák ablak) nyitása
+    safeAddEvent('btn-open-equipment', 'click', () => { 
+        const modal = document.getElementById('equipment-modal');
+        if (modal) modal.classList.remove('hidden'); 
+        if (typeof updateUI === 'function') updateUI(); 
     });
     
-    safeAddEvent('btn-open-equipment', 'click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
-    safeAddEvent('btn-close-equipment', 'click', () => { document.getElementById('equipment-modal').classList.add('hidden'); });
+    safeAddEvent('btn-close-equipment', 'click', () => { 
+        const modal = document.getElementById('equipment-modal');
+        if (modal) modal.classList.add('hidden'); 
+    });
 
-    safeAddEvent('btn-open-crafting', 'click', () => { document.getElementById('crafting-modal').classList.remove('hidden'); updateUI(); });
-    safeAddEvent('btn-close-crafting', 'click', () => { document.getElementById('crafting-modal').classList.add('hidden'); });
+    // Craft ablak
+    safeAddEvent('btn-open-crafting', 'click', () => { 
+        const modal = document.getElementById('crafting-modal');
+        if (modal) modal.classList.remove('hidden'); 
+        if (typeof updateUI === 'function') updateUI(); 
+    });
     
-    safeAddEvent('btn-combat-attack', 'click', combatAttack);
-    safeAddEvent('btn-combat-run', 'click', combatRun);
+    safeAddEvent('btn-close-crafting', 'click', () => { 
+        const modal = document.getElementById('crafting-modal');
+        if (modal) modal.classList.add('hidden'); 
+    });
+
+    // Harc és beállítások
+    safeAddEvent('btn-combat-attack', 'click', typeof combatAttack === 'function' ? combatAttack : null);
+    safeAddEvent('btn-combat-run', 'click', typeof combatRun === 'function' ? combatRun : null);
     
-    safeAddEvent('btn-combat-heal-open', 'click', () => { updateUI(); document.getElementById('combat-heal-modal').classList.remove('hidden'); });
-    safeAddEvent('btn-combat-heal-close', 'click', () => { document.getElementById('combat-heal-modal').classList.add('hidden'); });
+    safeAddEvent('btn-combat-heal-open', 'click', () => { 
+        if (typeof updateUI === 'function') updateUI(); 
+        const modal = document.getElementById('combat-heal-modal');
+        if (modal) modal.classList.remove('hidden'); 
+    });
     
-    safeAddEvent('btn-open-settings', 'click', () => { document.getElementById('settings-modal').classList.remove('hidden'); });
-    safeAddEvent('btn-close-settings', 'click', () => { document.getElementById('settings-modal').classList.add('hidden'); });
+    safeAddEvent('btn-combat-heal-close', 'click', () => { 
+        const modal = document.getElementById('combat-heal-modal');
+        if (modal) modal.classList.add('hidden'); 
+    });
+    
+    safeAddEvent('btn-open-settings', 'click', () => { 
+        const modal = document.getElementById('settings-modal');
+        if (modal) modal.classList.remove('hidden'); 
+    });
+    
+    safeAddEvent('btn-close-settings', 'click', () => { 
+        const modal = document.getElementById('settings-modal');
+        if (modal) modal.classList.add('hidden'); 
+    });
 
 });
