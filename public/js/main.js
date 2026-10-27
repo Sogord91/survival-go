@@ -329,10 +329,11 @@ socket.on('player_loaded', (data) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    document.getElementById('btn-open-inventory').addEventListener('click', () => { document.getElementById('inventory-modal').classList.remove('hidden'); updateUI(); });
-    document.getElementById('btn-close-inventory').addEventListener('click', () => { document.getElementById('inventory-modal').classList.add('hidden'); });
+    // Mivel a hátizsák és a felszerelés egy ablakban van, mindkettő az equipment-modal-t nyitja
+    document.getElementById('btn-open-inventory').addEventListener('click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
     document.getElementById('btn-open-equipment').addEventListener('click', () => { document.getElementById('equipment-modal').classList.remove('hidden'); updateUI(); });
     document.getElementById('btn-close-equipment').addEventListener('click', () => { document.getElementById('equipment-modal').classList.add('hidden'); });
+
     document.getElementById('btn-open-crafting').addEventListener('click', () => { document.getElementById('crafting-modal').classList.remove('hidden'); updateUI(); });
     document.getElementById('btn-close-crafting').addEventListener('click', () => { document.getElementById('crafting-modal').classList.add('hidden'); });
     document.getElementById('btn-combat-attack').addEventListener('click', combatAttack);
@@ -342,5 +343,4 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-open-settings').addEventListener('click', () => { document.getElementById('settings-modal').classList.remove('hidden'); });
     document.getElementById('btn-close-settings').addEventListener('click', () => { document.getElementById('settings-modal').classList.add('hidden'); });
 
-    
 });
