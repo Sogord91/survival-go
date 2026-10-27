@@ -121,7 +121,11 @@ function startTracking() {
             }
         }, error => {
             logMessage("GPS figyelmeztetés: Alapértelmezett koordináta használata.");
-        }, { enableHighAccuracy: true });
+        }, { 
+            enableHighAccuracy: true, // Valódi GPS hardver kényszerítése
+            timeout: 15000,           // 15 mp türelmi idő a pontos jelhez
+            maximumAge: 0             // Nincs régóta mentett/cache-elt pozíció
+        });
     }
 }
 
