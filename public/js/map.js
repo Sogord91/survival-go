@@ -9,6 +9,7 @@ let lastFetchLng = null;
 let savedBuildings = [];
 let buildings = [];
 let otherPlayerMarkers = {};
+let hasFetchedRealGPS = false;
 
 const buildingTypesConfig = {
     'Élelmiszerbolt': { icon: '🛒', color: '#10b981' },
@@ -93,6 +94,16 @@ function startTracking() {
             const currentLatLng = L.latLng(lat, lng);
 
             if (playerMarker) {
+                // Ha ez az első valódi GPS jel, vagy még nem töltöttünk le POI-t a valós helyre:
+                if (!hasFetchedRealGPS) {
+                    map.setView([lat, lng], 17);
+                    fetchRealPOIs(lat, lng);
+                    lastFetchLat = lat;
+                    lastFetchLng = lng;
+                    hasFetchedRealGPS = true;
+                    logMessage("[GPS] Valódi pozíció rögzítve, épületek betöltése...");
+                }
+
                 if (lastLat !== null && lastLng !== null) {
                     const distanceMoved = L.latLng(lastLat, lastLng).distanceTo(currentLatLng);
                     if (distanceMoved > 5 && accuracy < 60) {
@@ -108,23 +119,24 @@ function startTracking() {
 
                 sendMyPosition(lat, lng);
 
-                if (lastFetchLat === null || lastFetchLng === null) {
+                // Távolság-alapú frissítés, ha odébb sétálsz (pl. 150 méter)
+                if (lastFetchLat !== null && lastFetchLng !== null && L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 150) {
                     fetchRealPOIs(lat, lng);
-                     lastFetchLat = lat;
+                    lastFetchLat = lat;
                     lastFetchLng = lng;
                 }
             }
 
-            if (!isMapInitialized && map) {
+            if (!isMapInitialized && map && hasFetchedRealGPS) {
                 map.setView([lat, lng], 17);
                 isMapInitialized = true;
             }
         }, error => {
             logMessage("GPS figyelmeztetés: Alapértelmezett koordináta használata.");
         }, { 
-            enableHighAccuracy: true, // Valódi GPS hardver kényszerítése
-            timeout: 15000,           // 15 mp türelmi idő a pontos jelhez
-            maximumAge: 0             // Nincs régóta mentett/cache-elt pozíció
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
         });
     }
 }
