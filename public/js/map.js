@@ -1,65 +1,129 @@
 // map.js
 let map = null;
 let playerMarker = null;
-let lastLat = null;
-let lastLng = null;
 let isMapInitialized = false;
 let lastFetchLat = null;
 let lastFetchLng = null;
-let savedBuildings = [];
+let savedBuildings = [];   // a környék épületei (OSM), csak a böngészőben élnek
+let buildingLocks = {};    // épület-azonosító -> zár lejárata (a szervertől); a később betöltött épületekre is ráhúzzuk
 let buildings = [];
+
+// Egy épület zárolásának rögzítése. Ha az épület még nincs betöltve, csak megjegyezzük,
+// és amikor az OSM-ből megérkezik, zároltként jelenik meg (így nem keletkezik név nélküli "csonk" bejegyzés).
+// A zár lejárta után az épület magától újra lootolható lesz.
+function applyBuildingLock(id, lockedUntil) {
+    if (typeof id !== 'string') return;
+    buildingLocks[id] = lockedUntil || null;
+    const target = savedBuildings.find(sb => sb.id === id);
+    if (target) target.lockedUntil = lockedUntil || null;
+}
+
+// A betöltött épületek zárállapotának lekérése a szervertől (kötegekben)
+function requestBuildingStatus(ids) {
+    if (typeof socket === 'undefined' || !socket || !socket.connected) return;
+    for (let i = 0; i < ids.length; i += 500) {
+        socket.emit('building_status', { ids: ids.slice(i, i + 500) });
+    }
+}
+
+if (typeof socket !== 'undefined' && socket) {
+    socket.on('building_status', (data) => {
+        if (!data || !data.locks) return;
+        Object.keys(data.locks).forEach(id => applyBuildingLock(id, data.locks[id]));
+        refreshMapMarkers();
+    });
+
+    // (Újra)csatlakozáskor a már betöltött épületek zárállapotát is lekérjük
+    socket.on('connect', () => requestBuildingStatus(savedBuildings.map(b => b.id)));
+}
+
 let otherPlayerMarkers = {};
 let hasFetchedRealGPS = false;
 
-const buildingTypesConfig = {
-    'Élelmiszerbolt': { icon: '🛒', color: '#10b981' },
-    'Kisbolt / Trafik': { icon: '🏪', color: '#14b8a6' },
-    'Barkácsáruház': { icon: '🛠️', color: '#d97706' },
-    'Étterem / Kávézó / Fagyizó / Csárda': { icon: '☕', color: '#ec4899' },
-    'Benzinkút / Kút': { icon: '⛽', color: '#dc2626' },
-    'Kocsma / Pub / Söröző': { icon: '🍺', color: '#f97316' },
-    'Gyógyszertár': { icon: '💊', color: '#ef4444' },
-    'Kórház': { icon: '🏥', color: '#dc2626' },
-    'Rendőrség': { icon: '🛡️', color: '#3b82f6' },
-    'Tűzoltóság': { icon: '🚒', color: '#f97316' },
-    'Katonai bázis': { icon: '⭐', color: '#b91c1c' },
-    'Kormányzati Bunker / Óvóhely': { icon: '☢️', color: '#7f1d1d' },
-    'Elhagyatott Katonai Ellenőrzőpont / Blokád': { icon: '🚧', color: '#b45309' },
-    'Katasztrófavédelmi / Vegyvédelmi Központ': { icon: '☣️', color: '#047857' },
-    'Iskola / Óvoda': { icon: '🏫', color: '#0ea5e9' },
-    'Könyvtár': { icon: '📚', color: '#8b5cf6' },
-    'Templom / Kápolna': { icon: '⛪', color: '#eab308' },
-    'Kolostor / Apátság': { icon: '⛪', color: '#ca8a04' },
-    'Városháza / Polgármesteri Hivatal': { icon: '🏛️', color: '#6366f1' },
-    'Múzeum / Kiállítóterem': { icon: '🏛️', color: '#a855f7' },
-    'Bíróság / Ügyvédi Iroda': { icon: '⚖️', color: '#4f46e5' },
-    'Mozi / Színház / Művelődési Ház': { icon: '🎭', color: '#db2777' },
-    'Elhagyatott raktár': { icon: '🏭', color: '#f59e0b' },
-    'Ipari létesítmény / Gyár': { icon: '⚙️', color: '#7c2d12' },
-    'Autószerviz / Gumis': { icon: '🔧', color: '#b45309' },
-    'Autóbontó / Roncstelep': { icon: '🚗', color: '#78716c' },
-    'Garázs': { icon: '🚗', color: '#78716c' },
-    'Vasútállomás / Rendezőpályaudvar': { icon: '🚂', color: '#374151' },
-    'Posta / Csomagátvevő pont': { icon: '📦', color: '#d97706' },
-    'Mezőgazdasági Géptelep / Téesz': { icon: '🚜', color: '#65a30d' },
-    'Malom / Gabonasiló': { icon: '🌾', color: '#ca8a04' },
-    'Állatfarm / Lovarda': { icon: '🐎', color: '#854d0e' },
-    'Víztorony / Vízmű': { icon: '💧', color: '#0284c7' },
-    'Elektromos Alállomás / Trafóház': { icon: '⚡', color: '#eab308' },
-    'Romos ház': { icon: '🏠', color: '#6b7280' },
-    'Szálloda / Hotel / Panzió': { icon: '🏨', color: '#9333ea' },
-    'Motel / Kamionos pihenő': { icon: '🏨', color: '#793e75' },
-    'Sportcsarnok / Edzőterem': { icon: '🏋️', color: '#2563eb' },
-    'Stadion / Futballpálya': { icon: '⚽', color: '#16a34a' },
-    'Strand / Uszoda': { icon: '🏊', color: '#06b6d4' },
-    'Temető': { icon: '⚰️', color: '#3f3f46' }
+
+// --- TÉRKÉPSTÍLUS ---
+// A CSS szűrő csak a térképcsempékre kerül (.zone-tiles), ezért az épületek és a játékosok jelölői
+// megtartják a saját színüket. A választás a Menüben állítható, és a böngésző megjegyzi.
+const MAP_STYLES = {
+    military: { label: 'Katonai zöld', filter: 'sepia(0.85) hue-rotate(50deg) saturate(1.6) brightness(0.95) contrast(1.1)' },
+    olive:    { label: 'Tompa olajzöld', filter: 'sepia(0.6) hue-rotate(35deg) saturate(1.3) brightness(0.85) contrast(1.05)' },
+    nightvision: { label: 'Éjjellátó', filter: 'sepia(1) hue-rotate(65deg) saturate(3) brightness(1.1) contrast(1.25)' },
+    original: { label: 'Eredeti (sötét)', filter: 'none' }
 };
+const MAP_STYLE_KEY = 'survival_go_map_style';
+const DEFAULT_MAP_STYLE = 'military';
+
+function loadMapStyle() {
+    try {
+        const saved = localStorage.getItem(MAP_STYLE_KEY);
+        if (saved && MAP_STYLES[saved]) return saved;
+    } catch (e) { /* a böngésző tárolója nem elérhető */ }
+    return DEFAULT_MAP_STYLE;
+}
+
+let currentMapStyle = DEFAULT_MAP_STYLE;
+
+// A csempék szűrője: a választott stílus, éjszaka sötétebben
+function applyTileFilter() {
+    const base = (MAP_STYLES[currentMapStyle] || MAP_STYLES[DEFAULT_MAP_STYLE]).filter;
+    const parts = [base === 'none' ? '' : base, nightState.night ? 'brightness(0.5)' : ''].filter(Boolean);
+    document.documentElement.style.setProperty('--zone-tile-filter', parts.length ? parts.join(' ') : 'none');
+}
+
+function applyMapStyle(name) {
+    currentMapStyle = MAP_STYLES[name] ? name : DEFAULT_MAP_STYLE;
+    applyTileFilter();
+    try { localStorage.setItem(MAP_STYLE_KEY, name); } catch (e) { /* nincs teendő */ }
+    const select = document.getElementById('map-style-select');
+    if (select && select.value !== name) select.value = name;
+}
+
+// --- ÉJSZAKA ---
+// A játékos SAJÁT helyén napnyugtától napkeltéig sötét van. Fényforrás (fáklya, elemlámpa, lámpás) nélkül
+// csak NIGHT_VISIBILITY_METERS méterre látod az épületeket, fénnyel ugyanannyira, mint nappal.
+const NIGHT_VISIBILITY_METERS = 30;
+const nightState = { night: false, light: false };
+
+// Van-e működő fényforrás (nem merült le, vagy van hozzá elem / lámpaolaj) – ugyanaz, mint a szerveren
+function hasLightSource() {
+    return !!SurvivalStats.findUsableLight(player.inventory, itemDatabase);
+}
+
+function updateNightState() {
+    const pos = playerMarker ? playerMarker.getLatLng() : null;
+    const night = !!(pos && SurvivalSun.isNight(pos.lat, pos.lng, new Date()));
+    const light = hasLightSource();
+    const changed = night !== nightState.night || light !== nightState.light;
+    if (night !== nightState.night) {
+        logMessage(night
+            ? (light ? '🌙 Leszállt az éj. A fényforrásod világít.' : '🌙 Leszállt az éj. Fényforrás nélkül csak a közvetlen környezetedet látod!')
+            : '☀️ Felkelt a nap.');
+    }
+    nightState.night = night;
+    nightState.light = light;
+    if (changed) applyTileFilter();
+    const indicator = document.getElementById('night-indicator');
+    if (indicator) {
+        indicator.classList.toggle('hidden', !night);
+        indicator.textContent = night ? (light ? '🌙🔦' : `🌙 ${NIGHT_VISIBILITY_METERS} m`) : '';
+    }
+}
+
+// Látszik-e az épület (éjszaka fény nélkül csak a közelben)
+function isBuildingVisible(bData) {
+    if (!nightState.night || nightState.light || !playerMarker) return true;
+    const pos = playerMarker.getLatLng();
+    return SurvivalBuildings.distanceToBuilding({ lat: pos.lat, lng: pos.lng }, bData) <= NIGHT_VISIBILITY_METERS;
+}
+
+applyMapStyle(loadMapStyle());
 
 function initMap(lat, lng) {
     if (map) return;
     map = L.map('map').setView([lat, lng], 17);
     L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
     maxZoom: 20,
+    className: 'zone-tiles', // a térképstílus szűrője csak erre a rétegre hat (a jelölőkre nem)
     attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 }).addTo(map);
 
@@ -83,6 +147,9 @@ function initMap(lat, lng) {
 
     initOtherPlayersListener();
     initBuildingSyncListener();
+
+    // A lejárt zárak percenként eltűnnek a térképről
+    setInterval(refreshMapMarkers, 60000);
 }
 
 function startTracking() {
@@ -104,23 +171,15 @@ function startTracking() {
                     logMessage("[GPS] Valódi pozíció rögzítve, épületek betöltése...");
                 }
 
-                if (lastLat !== null && lastLng !== null) {
-                    const distanceMoved = L.latLng(lastLat, lastLng).distanceTo(currentLatLng);
-                    if (distanceMoved > 5 && accuracy < 60) {
-                        let fatigueMultiplier = (player.equipment.shoes === 'combat_boots') ? 0.6 : 1.0;
-                        player.fatigue = Math.min(100, (player.fatigue || 0) + (distanceMoved * 0.02) * fatigueMultiplier);
-                        addXp(1);
-                        saveGame();
-                    }
-                }
-                lastLat = lat;
-                lastLng = lng;
+                // A megtett távot, a fáradtságot és a mozgásért járó XP-t a szerver számolja
+                // a beküldött pozíciókból (a GPS pontosságát is elküldjük a szűréshez).
                 playerMarker.setLatLng([lat, lng]);
 
-                sendMyPosition(lat, lng);
+                sendMyPosition(lat, lng, accuracy);
+                refreshMapMarkers(); // éjszaka a látható kör a játékossal együtt mozog
 
                 // Távolság-alapú frissítés, ha odébb sétálsz (pl. 150 méter)
-                if (lastFetchLat !== null && lastFetchLng !== null && L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 150) {
+                if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 150) {
                     fetchRealPOIs(lat, lng);
                     lastFetchLat = lat;
                     lastFetchLng = lng;
@@ -155,7 +214,7 @@ function fetchRealPOIs(lat, lng) {
             way(around:${radius},${lat},${lng})[shop];
             way(around:${radius},${lat},${lng})[amenity];
         );
-        out center;
+        out center bb;
     `;
 
     // Itt vannak a tárcsifüleink (tartalék szerverek sorban)
@@ -169,6 +228,8 @@ function fetchRealPOIs(lat, lng) {
     let tryFetchUrl = (index) => {
         if (index >= overpassUrls.length) {
             console.warn("Az összes Overpass szerver hibát jelzett vagy elérhetetlen.");
+            logMessage("[Zóna] Most nem sikerült betölteni a környék épületeit. Kicsit odébb sétálva újra próbálkozik.");
+            lastFetchLat = null; // a következő GPS-frissítésnél újrapróbálja
             return;
         }
 
@@ -189,136 +250,47 @@ function fetchRealPOIs(lat, lng) {
                     return;
                 }
 
-                if (!data.elements) return;
+                if (!data || !Array.isArray(data.elements)) {
+                    // hibás / túlterhelt válasz (pl. "rate limited"): jöhet a következő szerver
+                    tryFetchUrl(index + 1);
+                    return;
+                }
 
-                let newFound = false;
+                const newIds = [];
                 data.elements.forEach((element) => {
                     const elLat = element.lat || (element.center ? element.center.lat : null);
                     const elLon = element.lon || (element.center ? element.center.lon : null);
                     if (!elLat || !elLon) return;
 
-                    const uniqueId = 'osm_' + element.id;
+                    // Egyértelmű azonosító (node / way) és a szerverrel KÖZÖS besorolás (buildings.js)
+                    const uniqueId = SurvivalBuildings.buildingId(element);
                     const exists = savedBuildings.some(sb => sb.id === uniqueId);
                     if (exists) return;
 
-                    let tags = element.tags || {};
-                    let buildingName = 'Romos ház';
-                    let isPotentialWorkshop = false;
+                    const tags = element.tags || {};
+                    const buildingType = SurvivalBuildings.classifyBuilding(tags);
 
-                if (tags.shop === 'supermarket' || tags.shop === 'grocery') {
-                    buildingName = 'Élelmiszerbolt';
-                } else if (tags.shop === 'convenience' || tags.shop === 'kiosk' || tags.shop === 'general') {
-                    buildingName = 'Kisbolt / Trafik';
-                } else if (tags.shop === 'hardware' || tags.shop === 'doityourself' || tags.shop === 'houseware') {
-                    buildingName = 'Barkácsáruház';
-                    isPotentialWorkshop = true;
-                } else if (tags.shop === 'car_repair' || tags.shop === 'tyres' || tags.shop === 'car_parts') {
-                    buildingName = 'Autószerviz / Gumis';
-                    isPotentialWorkshop = true;
-                } else if (tags.shop === 'agrarian' || tags.shop === 'farm') {
-                    buildingName = 'Mezőgazdasági Géptelep / Téesz';
-                } else if (tags.shop === 'post' || tags.amenity === 'post_office') {
-                    buildingName = 'Posta / Csomagátvevő pont';
-                } else if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'ice_cream' || tags.amenity === 'fast_food') {
-                    buildingName = 'Étterem / Kávézó / Fagyizó / Csárda';
-                } else if (tags.amenity === 'pub' || tags.amenity === 'bar' || tags.amenity === 'nightclub') {
-                    buildingName = 'Kocsma / Pub / Söröző';
-                } else if (tags.amenity === 'cinema' || tags.amenity === 'theatre' || tags.amenity === 'arts_centre' || tags.amenity === 'community_centre') {
-                    buildingName = 'Mozi / Színház / Művelődési Ház';
-                } else if (tags.amenity === 'pharmacy') {
-                    buildingName = 'Gyógyszertár';
-                } else if (tags.amenity === 'hospital' || tags.amenity === 'clinic') {
-                    buildingName = 'Kórház';
-                } else if (tags.amenity === 'police') {
-                    buildingName = 'Rendőrség';
-                } else if (tags.amenity === 'fire_station') {
-                    buildingName = 'Tűzoltóság';
-                } else if (tags.military === 'bunker' || tags.bunker === 'yes') {
-                    buildingName = 'Kormányzati Bunker / Óvóhely';
-                } else if (tags.military === 'checkpoint' || tags.barrier === 'blockade') {
-                    buildingName = 'Elhagyatott Katonai Ellenőrzőpont / Blokád';
-                } else if (tags.military === 'danger_area' || tags.amenity === 'cbrn') {
-                    buildingName = 'Katasztrófavédelmi / Vegyvédelmi Központ';
-                } else if (tags.military) {
-                    buildingName = 'Katonai bázis';
-                } else if (tags.amenity === 'school' || tags.amenity === 'kindergarten' || tags.amenity === 'university' || tags.amenity === 'college') {
-                    buildingName = 'Iskola / Óvoda';
-                } else if (tags.amenity === 'library') {
-                    buildingName = 'Könyvtár';
-                } else if (tags.amenity === 'place_of_worship') {
-                    if (tags.religion === 'christian' && (tags.building === 'monastery' || tags.building === ' abbey')) {
-                        buildingName = 'Kolostor / Apátság';
-                    } else {
-                        buildingName = 'Templom / Kápolna';
-                    }
-                } else if (tags.amenity === 'townhall' || tags.amenity === 'public_building') {
-                    buildingName = 'Városháza / Polgármesteri Hivatal';
-                } else if (tags.tourism === 'museum' || tags.amenity === 'arts_centre') {
-                    buildingName = 'Múzeum / Kiállítóterem';
-                } else if (tags.amenity === 'court') {
-                    buildingName = 'Bíróság / Ügyvédi Iroda';
-                } else if (tags.building === 'warehouse' || tags.building === 'industrial') {
-                    buildingName = 'Elhagyatott raktár';
-                    isPotentialWorkshop = true;
-                } else if (tags.industrial || tags.building === 'factory') {
-                    buildingName = 'Ipari létesítmény / Gyár';
-                    isPotentialWorkshop = true;
-                } else if (tags.amenity === 'fuel') {
-                    buildingName = 'Benzinkút / Kút';
-                } else if (tags.building === 'garages' || tags.amenity === 'parking') {
-                    buildingName = 'Garázs';
-                } else if (tags.landuse === 'garages') {
-                    buildingName = 'Autóbontó / Roncstelep';
-                } else if (tags.railway === 'station' || tags.building === 'train_station') {
-                    buildingName = 'Vasútállomás / Rendezőpályaudvar';
-                } else if (tags.man_made === 'water_tower' || tags.utility === 'water') {
-                    buildingName = 'Víztorony / Vízmű';
-                } else if (tags.power === 'substation' || tags.building === 'transformer_tower') {
-                    buildingName = 'Elektromos Alállomás / Trafóház';
-                } else if (tags.building === 'windmill' || tags.man_made === 'windmill' || tags.building === 'silo') {
-                    buildingName = 'Malom / Gabonasiló';
-                } else if (tags.tourism === 'hotel' || tags.tourism === 'hostel' || tags.tourism === 'guest_house') {
-                    buildingName = 'Szálloda / Hotel / Panzió';
-                } else if (tags.tourism === 'motel') {
-                    buildingName = 'Motel / Kamionos pihenő';
-                } else if (tags.leisure === 'sports_centre' || tags.amenity === 'gym') {
-                    buildingName = 'Sportcsarnok / Edzőterem';
-                } else if (tags.leisure === 'stadium' || tags.pitch) {
-                    buildingName = 'Stadion / Futballpálya';
-                } else if (tags.leisure === 'water_park' || tags.amenity === 'swimming_pool') {
-                    buildingName = 'Strand / Uszoda';
-                } else if (tags.amenity === 'grave_yard' || tags.landuse === 'cemetery') {
-                    buildingName = 'Temető';
-                } else if (tags.landuse === 'farm' || tags.amenity === 'animal_shelter') {
-                    buildingName = 'Állatfarm / Lovarda';
-                }
+                    // (A műhelyek – olvasztás, javítás – egy későbbi frissítésben jönnek; addig minden épület sima, lootolható épület.)
 
-                let workshopType = null;
-                const lowerName = buildingName.toLowerCase();
-                const isBlacklisted = lowerName.includes('étterem') || lowerName.includes('bolt');
-
-                if (isPotentialWorkshop && !isBlacklisted) {
-                    let hash = Math.abs(Number(element.id)) % 8;
-                    if (hash === 0) workshopType = 'smelter';
-                    else if (hash === 1) workshopType = 'repair';
-                }
-
-                savedBuildings.push({
-                    id: uniqueId,
-                    lat: elLat,
-                    lng: elLon,
-                    name: tags.name ? `${buildingName} (${tags.name})` : buildingName,
-                    looted: false,
-                    lootedTime: null,
-                    lockedUntil: null,
-                    workshop: workshopType
+                    const knownLock = buildingLocks[uniqueId] || null;
+                    savedBuildings.push({
+                        id: uniqueId,
+                        lat: elLat,
+                        lng: elLon,
+                        bounds: SurvivalBuildings.cleanBounds(element.bounds),
+                        type: buildingType,
+                        name: SurvivalBuildings.displayName(buildingType, tags),
+                        lockedUntil: knownLock
+                    });
+                    newIds.push(uniqueId);
                 });
-                newFound = true;
-            });
 
-            if (newFound) {
-                saveGame();
+            // A messze hagyott épületeket elfelejtjük, így séta közben sem nő a végtelenségig a jelölők száma
+            pruneFarBuildings(lat, lng);
+
+            if (newIds.length > 0) {
                 refreshMapMarkers();
+                requestBuildingStatus(newIds);
                 logMessage("[Zóna] Térkép sikeresen feltöltve a környék épületeivel!");
             }
         })
@@ -332,59 +304,81 @@ function fetchRealPOIs(lat, lng) {
     tryFetchUrl(0);
 }
 
+// Menekülés utáni SZEMÉLYES zár (csak neked): az ellenség még bent van
+function dangerUntilFor(id) {
+    const until = player.dangerUntil && player.dangerUntil[id];
+    return until && until > Date.now() ? until : 0;
+}
+
+// Egy épület jelölőjének kinézete:
+//  'locked' (mindenkinek zárva, kifosztották): piros lakat
+//  'danger' (csak neked, elmenekültél onnan): narancs figyelmeztető jel
+//  'free': a típus ikonja és színe
+function buildingMarkerIcon(bData, state) {
+    let iconHtml;
+    if (state === 'danger') {
+        iconHtml = '<div style="background:#c2410c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px dashed #fdba74;font-size:13px;box-shadow:0 0 10px rgba(249,115,22,0.7);">⚠️</div>';
+    } else if (state === 'locked') {
+        iconHtml = '<div style="background:#b91c1c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #f87171;font-size:12px;box-shadow:0 0 10px rgba(239,68,68,0.7);">🔒</div>';
+    } else {
+        const config = SurvivalBuildings.typeInfo(bData.type);
+        iconHtml = `<div style="position:relative;background:${config.color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #111;font-size:13px;box-shadow:0 0 10px rgba(0,0,0,0.8);">${config.icon}</div>`;
+    }
+    return L.divIcon({ className: 'custom-icon', html: iconHtml, iconSize: [26, 26] });
+}
+
+// A jelölők FOKOZATOS frissítése: új épületnél új jelölő, zárállapot-változásnál csak az ikon cserélődik,
+// az elfelejtett épületek jelölője eltűnik. (Eddig minden frissítés az összes jelölőt újraépítette.)
+const markerById = new Map(); // épület-azonosító -> { id, lat, lng, name, type, looted, lockedUntil, marker }
 function refreshMapMarkers() {
     if (!map) return;
-    buildings.forEach(b => map.removeLayer(b.marker));
-    buildings = [];
+    updateNightState();
+    const now = Date.now();
+    const alive = new Set();
 
     savedBuildings.forEach(bData => {
-        let matchType = 'Romos ház';
-        for (let key in buildingTypesConfig) {
-            if (bData.name.includes(key)) {
-                matchType = key;
-                break;
-            }
+        // Csak a teljes (név + koordináta) épületek rajzolhatók ki
+        if (!bData || typeof bData.name !== 'string' || typeof bData.lat !== 'number' || typeof bData.lng !== 'number') return;
+        alive.add(bData.id);
+        const locked = !!(bData.lockedUntil && now < bData.lockedUntil);
+        const state = locked ? 'locked' : (dangerUntilFor(bData.id) ? 'danger' : 'free');
+
+        let obj = markerById.get(bData.id);
+        if (!obj) {
+            const marker = L.marker([bData.lat, bData.lng], { icon: buildingMarkerIcon(bData, state) }).addTo(map);
+            obj = { id: bData.id, lat: bData.lat, lng: bData.lng, bounds: bData.bounds, name: bData.name, type: bData.type, looted: locked, state, lockedUntil: bData.lockedUntil, marker };
+            marker.on('click', () => interactWithBuilding(obj));
+            markerById.set(bData.id, obj);
+        } else if (obj.state !== state) {
+            obj.marker.setIcon(buildingMarkerIcon(bData, state));
         }
+        obj.looted = locked;
+        obj.state = state;
+        obj.lockedUntil = bData.lockedUntil;
 
-        const config = buildingTypesConfig[matchType] || { icon: '🏠', color: '#6b7280' };
-        let iconHtml = '';
-        const isLocked = bData.lockedUntil && Date.now() < bData.lockedUntil;
-
-        if (bData.looted) {
-            iconHtml = '<div style="background:#4b5563;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid #fff;font-size:10px;">⭕</div>';
-        } else if (isLocked) {
-            iconHtml = '<div style="background:#b91c1c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #f87171;font-size:12px;box-shadow:0 0 10px rgba(239,68,68,0.7);">🔒</div>';
-        } else {
-            let badgeHtml = '';
-            let titleSuffix = '';
-            if (bData.workshop === 'smelter') {
-                badgeHtml = '<span style="position:absolute;top:-6px;right:-6px;font-size:10px;background:#111;border-radius:50%;padding:1px;">🔥</span>';
-                titleSuffix = ' [Olvasztóműhely]';
-            } else if (bData.workshop === 'repair') {
-                badgeHtml = '<span style="position:absolute;top:-6px;right:-6px;font-size:10px;background:#111;border-radius:50%;padding:1px;">⚙️</span>';
-                titleSuffix = ' [Szerelőműhely]';
-            }
-
-            iconHtml = `<div style="position:relative;background:${config.color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #111;font-size:13px;box-shadow:0 0 10px rgba(0,0,0,0.8);">${config.icon}${badgeHtml}</div>`;
+        // Éjszakai láthatóság
+        const visible = isBuildingVisible(bData);
+        if (obj.visible === undefined) obj.visible = true;
+        if (visible !== obj.visible) {
+            if (visible) obj.marker.addTo(map);
+            else map.removeLayer(obj.marker);
+            obj.visible = visible;
         }
-
-        const marker = L.marker([bData.lat, bData.lng], {
-            icon: L.divIcon({ className: 'custom-icon', html: iconHtml, iconSize: [26, 26] })
-        }).addTo(map);
-
-        const buildingObj = { 
-            id: bData.id, 
-            lat: bData.lat, 
-            lng: bData.lng, 
-            name: bData.name, 
-            looted: bData.looted, 
-            lockedUntil: bData.lockedUntil, 
-            workshop: bData.workshop,
-            marker: marker 
-        };
-        marker.on('click', () => interactWithBuilding(buildingObj));
-        buildings.push(buildingObj);
     });
+
+    markerById.forEach((obj, id) => {
+        if (alive.has(id)) return;
+        if (obj.visible !== false) map.removeLayer(obj.marker);
+        markerById.delete(id);
+    });
+    buildings = Array.from(markerById.values());
+}
+
+// A játékostól BUILDING_KEEP_RADIUS_METERS-nél messzebb lévő épületek törlése a listából
+const BUILDING_KEEP_RADIUS_METERS = 1500;
+function pruneFarBuildings(lat, lng) {
+    const here = L.latLng(lat, lng);
+    savedBuildings = savedBuildings.filter(b => here.distanceTo([b.lat, b.lng]) <= BUILDING_KEEP_RADIUS_METERS);
 }
 
 function closeWorkshopModal() {
@@ -400,27 +394,30 @@ function interactWithBuilding(b) {
         return;
     }
     const pLatLng = playerMarker.getLatLng();
-    const distance = pLatLng.distanceTo([b.lat, b.lng]);
+    const distance = SurvivalBuildings.distanceToBuilding({ lat: pLatLng.lat, lng: pLatLng.lng }, b); // nagy létesítménynél a szélétől
 
-    if (distance > 30) {
+    if (distance > 45) { // a szerver is 30 m + 15 m GPS-tűréssel számol
         logMessage(`Túl messze vagy az épülettől! (${Math.round(distance)}m - Menj 30 méteren belülre)`);
         return;
     }
 
-    if (b.workshop) {
-        openWorkshopModal(b);
-        return;
-    }
-
-    if (b.lockedUntil && Date.now() < b.lockedUntil) {
+if (b.lockedUntil && Date.now() < b.lockedUntil) {
         const remainingMin = Math.ceil((b.lockedUntil - Date.now()) / 60000);
-        logMessage(`Veszélyes! Ellenség van az épületben, gyere vissza később! (Kb. ${remainingMin} perc)`);
+        logMessage(`Ezt az épületet nemrég kifosztották. Gyere vissza később! (Kb. ${remainingMin} perc)`);
         playSound('hit');
         return;
     }
 
-    if (b.looted) {
-        logMessage(`Ez a(z) ${b.name} már ki van rabolva.`);
+    const danger = dangerUntilFor(b.id);
+    if (danger) {
+        const remainingMin = Math.ceil((danger - Date.now()) / 60000);
+        logMessage(`Az ellenség még bent van, ahonnan elmenekültél. Gyere vissza később! (Kb. ${remainingMin} perc)`);
+        playSound('hit');
+        return;
+    }
+
+    if (player.combat) {
+        logMessage("Harc közben nem kutathatsz át másik épületet!");
         return;
     }
 
@@ -436,37 +433,23 @@ function interactWithBuilding(b) {
         return;
     }
 
-    if (Math.random() < 0.05) {
-        // Harc az épületben -> +6% fáradtság
-        player.fatigue = Math.min(100, (player.fatigue || 0) + 6);
-        logMessage("Veszély! Ellenség támadt rád az épületben!");
-        startCombat(b);
-    } else {
-        // Sikeres lootolás kérése a szervertől (Csalásmentes!)
-        player.fatigue = Math.min(100, (player.fatigue || 0) + 3);
-        
-        if (typeof socket !== 'undefined' && socket) {
-            socket.emit('loot_building', {
-                username: player.username,
-                buildingId: b.id,
-                buildingName: b.name
-            });
-        }
+    // A döntés a szerveré: ő kérdezi le az épületet, ellenőrzi a távolságot és a zárat,
+    // és ő sorsolja a találkozást és a lootot. A kliens csak az azonosítót küldi.
+    if (typeof socket !== 'undefined' && socket) {
+        logMessage(`Átkutatod: ${b.name}...`);
+        socket.emit('loot_building', { buildingId: b.id });
     }
-    
-    saveGame();
-    updateUI();
 }
-        
-        
+
+
+
 // Saját pozíció küldése a szervernek
-function sendMyPosition(lat, lng) {
+function sendMyPosition(lat, lng, accuracy) {
     if (typeof socket !== 'undefined' && socket) {
         socket.emit('update_position', {
-            username: player.username || 'Túlélő',
-            avatar: player.avatar || 'avatar1.png',
             lat: lat,
-            lng: lng
+            lng: lng,
+            accuracy: typeof accuracy === 'number' ? accuracy : null
         });
     }
 }
@@ -493,50 +476,60 @@ function initMapAndGame() {
     }
 }
 
-// Hallgatjuk a többi játékos pozícióját a szerverről
+// A többi játékos: a szerver CSAK a közelben lévőket küldi (nappal 150 m, éjszaka fény nélkül 30 m),
+// mindig a teljes listát. Ami nincs benne, annak a jelölője eltűnik (így nem maradnak "szellem" jelölők).
+const SAFE_AVATAR = /^avatar[1-9]\.png$/;
+
+function otherPlayerIcon(pData) {
+    const avatarFile = SAFE_AVATAR.test(pData.avatar || '') ? pData.avatar : 'avatar1.png';
+    return L.divIcon({
+        className: 'other-player-icon',
+        html: `
+            <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #940e0e; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
+                <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
+            </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+    });
+}
+
 function initOtherPlayersListener() {
     if (typeof socket === 'undefined' || !socket) return;
 
     socket.on('players_update', (playersData) => {
-        if (!map || !playerMarker) return;
+        if (!map || !playersData || typeof playersData !== 'object') return;
+        const present = new Set();
 
-        const myLatLng = playerMarker.getLatLng();
+        Object.keys(playersData).forEach(name => {
+            const pData = playersData[name];
+            if (!pData || pData.username === player.username) return;
+            if (typeof pData.lat !== 'number' || typeof pData.lng !== 'number') return;
+            present.add(name);
 
-        for (let id in playersData) {
-            const pData = playersData[id];
-            
-            // Ne magunkat rajzoljuk ki
-            if (pData.username === player.username) continue;
-
-            const otherLatLng = L.latLng(pData.lat, pData.lng);
-            const distance = myLatLng.distanceTo(otherLatLng); // Távolság méterben
-
-            if (distance <= 150) { // Ha 150 méteren belül van
-                if (!otherPlayerMarkers[id]) {
-                    const avatarFile = (pData.avatar && pData.avatar.includes('.')) ? pData.avatar : 'avatar1.png';
-                    const otherIcon = L.divIcon({
-                        className: 'other-player-icon',
-                        html: `
-                            <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #940e0e; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
-                                <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
-                            </div>
-                        `,
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 18]
-                    });
-                    otherPlayerMarkers[id] = L.marker([pData.lat, pData.lng], { icon: otherIcon }).addTo(map);
-                } else {
-                    otherPlayerMarkers[id].setLatLng([pData.lat, pData.lng]);
-                }
+            const existing = otherPlayerMarkers[name];
+            if (existing) {
+                existing.marker.setLatLng([pData.lat, pData.lng]);
+                existing.data = pData;
             } else {
-                // Ha távolabb ment (> 300m), eltávolítjuk a térképről
-                if (otherPlayerMarkers[id]) {
-                    map.removeLayer(otherPlayerMarkers[id]);
-                    delete otherPlayerMarkers[id];
-                }
+                const marker = L.marker([pData.lat, pData.lng], { icon: otherPlayerIcon(pData) }).addTo(map);
+                const entry = { marker, data: pData };
+                // Kattintásra a játékos neve és szintje (később innen indulhat a PvP)
+                marker.on('click', () => showOtherPlayer(entry.data));
+                otherPlayerMarkers[name] = entry;
             }
-        }
+        });
+
+        Object.keys(otherPlayerMarkers).forEach(name => {
+            if (present.has(name)) return;
+            map.removeLayer(otherPlayerMarkers[name].marker);
+            delete otherPlayerMarkers[name];
+        });
     });
+}
+
+function showOtherPlayer(pData) {
+    logMessage(`👤 ${pData.username} – ${pData.level || 1}. szintű túlélő`);
 }
 
 // --- BIZTONSÁGOS LOOT EREDMÉNY FOGADÁSA A SZERVERTŐL ---
@@ -548,39 +541,25 @@ if (typeof socket !== 'undefined' && socket) {
             return;
         }
 
-        if (data.inventory) {
-            player.inventory = data.inventory;
-        }
-
-        let msg = `Átkutattad az épületet. Találtál: `;
-        if (!data.items || data.items.length === 0) {
-            msg = data.message || "Semmi hasznosat nem találtál.";
-        } else {
-            data.items.forEach(itKey => {
-                const itemCfg = itemDatabase[itKey] || { name: itKey, icon: '📦' };
-                msg += `${itemCfg.icon} ${itemCfg.name} `;
-            });
+        // Az új leltár és fáradtság a player_state üzenettel érkezik.
+        // A szerver üzenete (pl. találkozás az ellenséggel, üres épület) elöl áll.
+        const parts = [];
+        if (data.message) parts.push(data.message);
+        if (data.items && data.items.length > 0) {
+            const list = data.items.map(it => {
+                const cfg = itemDatabase[it.key] || { name: it.key, icon: '📦' };
+                return `${cfg.icon} ${it.count > 1 ? it.count + '× ' : ''}${cfg.name}`;
+            }).join(', ');
+            parts.push(`Találtál: ${list}`);
             playSound('loot');
+        } else if (!data.message) {
+            parts.push('Semmi hasznosat nem találtál.');
         }
+        logMessage(parts.join(' '));
 
-        logMessage(msg);
-
-        // Épület zárolása lokálisan is
-        const targetSaved = savedBuildings.find(sb => sb.id === data.buildingId);
-        if (targetSaved) {
-            targetSaved.looted = true;
-            targetSaved.lockedUntil = data.lockedUntil;
-        } else {
-            savedBuildings.push({
-                id: data.buildingId,
-                looted: true,
-                lockedUntil: data.lockedUntil
-            });
-        }
-
+        // Épület zárolása lokálisan is (a többiek a building_looted_update üzenetből tudják meg)
+        applyBuildingLock(data.buildingId, data.lockedUntil);
         refreshMapMarkers();
-        saveGame();
-        updateUI();
     });
 }
 
@@ -588,31 +567,9 @@ function initBuildingSyncListener() {
     if (typeof socket === 'undefined' || !socket) return;
 
     socket.on('building_looted_update', (data) => {
-        // Megkeressük az épületet a lokális savedBuildings tömbben
-        let targetSaved = savedBuildings.find(sb => sb === data.id || sb.id === data.id);
-        
-        if (!targetSaved) {
-            // Ha még nincs benne a tömbben, de valaki kirabolta a közelben, adjuk hozzá
-            targetSaved = { 
-                id: data.id, 
-                looted: data.looted, 
-                lockedUntil: data.lockedUntil 
-            };
-            savedBuildings.push(targetSaved);
-        } else if (typeof targetSaved === 'string') {
-            // Ha régebbi formátumú string volt, cseréljük objektumra
-            const index = savedBuildings.indexOf(targetSaved);
-            targetSaved = { 
-                id: data.id, 
-                looted: data.looted, 
-                lockedUntil: data.lockedUntil 
-            };
-            savedBuildings[index] = targetSaved;
-        } else {
-            // Ha már objektum, frissítjük az adatait
-            targetSaved.looted = data.looted;
-            targetSaved.lockedUntil = data.lockedUntil;
-        }
+        if (!data) return;
+        // Ha az épület még nincs betöltve, csak megjegyezzük a zárat (nem hozunk létre név nélküli bejegyzést)
+        applyBuildingLock(data.id, data.lockedUntil);
 
         // Azonnal frissítjük a térkép jelölőit (így azonnal piros lakat lesz rajta bárkinél, aki látja)
         refreshMapMarkers();

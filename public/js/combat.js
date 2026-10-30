@@ -1,81 +1,13 @@
 // combat.js
-let currentCombat = {
-    active: false,
-    enemyName: '',
-    enemyAvatar: '',
-    enemyLevel: 1,
-    enemyMaxHp: 100,
-    enemyHp: 100,
-    enemyDmg: 10,
-    buildingObj: null
-};
+// KÖRÖS HARC – kliens oldal. A harcot a szerver vezeti: a harc állapota a player_state üzenet "combat" mezőjében jön
+// (újracsatlakozás után is), a gombok csak a választott lépést küldik el, az eredmény eseménylistaként érkezik.
+// (Az eseménylistára később animációk építhetők, pl. Shakes & Fidget-stílusban.)
 
-const enemyPool = [
-    { name: 'Kóbor Mutáns', avatar: '🧟', hp: 50, dmg: 10, lvl: 1 },
-    { name: 'Sugárzott Ghoulish', avatar: '👹', hp: 75, dmg: 15, lvl: 2 },
-    { name: 'Zóna Bandita', avatar: '🦹', hp: 70, dmg: 18, lvl: 2 },
-    { name: 'Mutáns Fenevad', avatar: '🐺', hp: 95, dmg: 24, lvl: 3 },
-    { name: 'Nehézfegyveres Zsoldos', avatar: '🪖', hp: 130, dmg: 30, lvl: 4 }
-];
-
-function startCombat(building) {
-    if (typeof socket !== 'undefined' && socket) {
-        logMessage("Harc kezdődött az épületben...");
-        playSound('hit');
-
-        socket.emit('resolve_combat', {
-            username: player.username,
-            buildingId: building.id
-        });
-    }
-}
-
-function updateCombatUI() {
-    document.getElementById('enemy-hp-text').textContent = `${Math.max(0, Math.round(currentCombat.enemyHp))} / ${currentCombat.enemyMaxHp}`;
-    const enemyHpPct = Math.max(0, (currentCombat.enemyHp / currentCombat.enemyMaxHp) * 100);
-    document.getElementById('enemy-bar-hp').style.width = enemyHpPct + '%';
-
-    let hpPercent = Math.max(0, Math.min(100, ((player.hp || 100) / (player.maxHp || 100)) * 100));
-    document.getElementById('combat-player-hp').textContent = Math.round(player.hp || 100) + '/' + (player.maxHp || 100);
-    document.getElementById('combat-bar-hp').style.width = hpPercent + '%';
-}
-
-
-if (typeof socket !== 'undefined' && socket) {
-    socket.on('combat_result', (data) => {
-        if (!data.success) {
-            logMessage(data.message || "Meghaltál a harcban!");
-            playSound('hit');
-            player.hp = 0;
-            updateUI();
-            // Itt jöhet a Game Over képernyő megjelenítése
-            return;
-        }
-
-        // Frissítjük a helyi játékos adatokat a szerver válasza alapján
-        if (data.player) {
-            player.hp = data.player.hp;
-            player.money = data.player.money;
-            player.xp = data.player.xp;
-            player.level = data.player.level;
-            player.maxHp = data.player.maxHp;
-            player.inventory = data.player.inventory;
-        }
-
-        logMessage(data.message);
-        playSound('win');
-
-        if (data.leveledUp) {
-            logMessage(`Szintlépés! Elérted a(z) ${player.level}. szintet!`);
-        }
-
-        saveGame();
-        updateUI();
-    });
-}
+let shownCombatKey = null; // az épp megjelenített harc azonosítója (új harcnál a napló kiürül)
 
 function combatLogAppend(text, colorClass = 'text-gray-300') {
     const logBox = document.getElementById('combat-log');
+    if (!logBox) return;
     const div = document.createElement('div');
     div.className = colorClass;
     div.textContent = text;
@@ -83,169 +15,129 @@ function combatLogAppend(text, colorClass = 'text-gray-300') {
     logBox.scrollTop = logBox.scrollHeight;
 }
 
-function combatAttack() {
-    // 🛡️ BIZTONSÁGI ELLENŐRZÉS: Ha a harc véget ért, vagy a játékos halott, ne csináljon semmit!
-    if (!currentCombat.active || (player.hp || 100) <= 0) {
-        return;
-    }
+// A harcablak a szerver állapotából (player.combat)
+function syncCombatUI() {
+    const modal = document.getElementById('combat-modal');
+    if (!modal) return;
+    const combat = player.combat;
 
-    let baseDmg = 12;
-    const weaponKey = player.equipment.weapon;
-    
-    if (weaponKey && itemDatabase[weaponKey]) {
-        const weapon = itemDatabase[weaponKey];
-        baseDmg = weapon.dmg || 12;
-        if (weapon.reqAmmo) {
-            let ammoSlot = player.inventory.find(s => s.key === weapon.reqAmmo);
-            if (ammoSlot && ammoSlot.count > 0) {
-                ammoSlot.count--;
-                if (ammoSlot.count <= 0) player.inventory = player.inventory.filter(s => s.key !== weapon.reqAmmo);
-            } else {
-                baseDmg = 6;
-            }
-        }
-    }
-
-    baseDmg += ((player.level || 1) * 3);
-    let finalPlayerDmg = Math.max(5, baseDmg + Math.floor(Math.random() * 8) - 3);
-    currentCombat.enemyHp -= finalPlayerDmg;
-    playSound('attack');
-    combatLogAppend(`Beviszel ${finalPlayerDmg} sebzést.`, 'text-amber-300');
-
-    saveGame();
-    updateUI();
-
-    if (currentCombat.enemyHp <= 0) {
-        winCombat();
-        return;
-    }
-    
-    // Ellenség köre előtt is ellenőrizzük, hogy a játékos él-e még
-    if ((player.hp || 100) > 0) {
-        enemyTurn();
-    }
-}
-
-function combatRun() {
-    if (!currentCombat.active) return;
-    if (Math.random() < 0.80) {
-        currentCombat.active = false;
-        document.getElementById('combat-modal').classList.add('hidden');
-        playSound('win');
-        
-        // 1. SZABÁLY: Menekülés -> 0 loot, de +6% fáradtság a pánik miatt!
-        player.fatigue = Math.min(100, (player.fatigue || 0) + 6);
-        
-        logMessage("Sikeres, de kimerítő menekülés! (+6% fáradtság)");
-        const b = currentCombat.buildingObj;
-        if (b) {
-            b.lockedUntil = Date.now() + 5 * 60 * 1000;
-            const targetSaved = savedBuildings.find(sb => sb.id === b.id);
-            if (targetSaved) targetSaved.lockedUntil = b.lockedUntil;
-        }
-        saveGame();
-        updateUI();
-        refreshMapMarkers();
-    } else {
-        combatLogAppend("Menekülés sikertelen!", "text-red-400");
-        enemyTurn();
-    }
-}
-
-function enemyTurn() {
-    if (!currentCombat.active) return;
-    let mitigation = 1 - Math.min(0.75, (player.defense || 0) * 0.015);
-    let enemyDmg = Math.max(3, Math.round(currentCombat.enemyDmg * mitigation));
-    player.hp = Math.max(0, (player.hp || 100) - enemyDmg);
-    playSound('hit');
-    combatLogAppend(`Ellenség ütése: ${enemyDmg} sebzés.`, 'text-red-400');
-    checkPlayerHpInCombat();
-    saveGame();
-    updateUI();
-    updateCombatUI();
-}
-
-function checkPlayerHpInCombat() {
-    if ((player.hp || 100) <= 0) {
-        currentCombat.active = false;
-        document.getElementById('combat-modal').classList.add('hidden');
+    if (!combat || player.dead) {
+        modal.classList.add('hidden');
         document.getElementById('combat-heal-modal').classList.add('hidden');
-        playSound('lose');
-        triggerGameOver();
+        shownCombatKey = null;
+        return;
     }
+
+    const key = `${combat.buildingId}:${combat.startedAt}`;
+    if (shownCombatKey !== key) {
+        shownCombatKey = key;
+        document.getElementById('combat-log').innerHTML = '';
+        combatLogAppend(`[Harc] ${combat.enemy.avatar} ${combat.enemy.name} támadt rád itt: ${combat.buildingName}. Harcolj vagy menekülj!`, 'text-amber-400');
+        playSound('hit');
+    }
+    modal.classList.remove('hidden');
+
+    const enemy = combat.enemy;
+    document.getElementById('enemy-avatar').textContent = enemy.avatar;
+    document.getElementById('enemy-name').textContent = enemy.name;
+    document.getElementById('enemy-level').textContent = enemy.lvl;
+    document.getElementById('enemy-hp-text').textContent = `${Math.max(0, Math.round(enemy.hp))} / ${enemy.maxHp}`;
+    document.getElementById('enemy-bar-hp').style.width = Math.max(0, (enemy.hp / enemy.maxHp) * 100) + '%';
+
+    const hp = player.hp ?? 100;
+    const maxHp = player.maxHp || 100;
+    document.getElementById('combat-player-hp').textContent = Math.max(0, Math.ceil(hp)) + '/' + maxHp;
+    document.getElementById('combat-bar-hp').style.width = Math.max(0, Math.min(100, (hp / maxHp) * 100)) + '%';
+
+    // Támadógombok a három fegyverhelyhez (üres elsődleges / másodlagos helynél nincs gomb; közelharcban puszta kéz)
+    COMBAT_SLOTS.forEach(slot => {
+        const btn = document.getElementById('btn-combat-attack-' + slot);
+        if (!btn) return;
+        const label = attackButtonLabel(slot);
+        btn.classList.toggle('hidden', !label);
+        btn.textContent = label || '';
+    });
 }
 
-function winCombat() {
-    currentCombat.active = false;
-    document.getElementById('combat-modal').classList.add('hidden');
-    document.getElementById('combat-heal-modal').classList.add('hidden');
-    playSound('win');
+const COMBAT_SLOTS = ['weapon', 'secondary', 'melee'];
 
-    // 2. SZABÁLY: Győzelem a harcban -> +8% kimerítő fáradtság
-    player.fatigue = Math.min(100, (player.fatigue || 0) + 8);
-
-    const b = currentCombat.buildingObj;
-    if (b) {
-        b.looted = true;
-        b.lootedTime = Date.now();
-        b.lockedUntil = Date.now() + (4 * 60 * 60 * 1000); // Itt is 4 óra zárás!
-
-        const targetSaved = savedBuildings.find(sb => sb.id === b.id);
-        if(targetSaved) {
-            targetSaved.looted = true;
-            targetSaved.lockedUntil = b.lockedUntil;
-        }
-
-        // Itt is elküldjük a szervernek
-        if (typeof socket !== 'undefined' && socket) {
-            socket.emit('building_looted', { id: b.id, username: player.username });
-        }
+function attackButtonLabel(slot) {
+    const weapon = player.equipment && itemDatabase[player.equipment[slot]];
+    if (!weapon) return slot === 'melee' ? '👊 Puszta kéz' : '';
+    let text = `${weapon.icon || '⚔️'} ${weapon.name}`;
+    if (weapon.reqAmmo) {
+        const ammo = player.inventory.filter(s => s.key === weapon.reqAmmo).reduce((sum, s) => sum + s.count, 0);
+        text += ammo > 0 ? ` (${ammo})` : ' (nincs lőszer)';
     }
-
-    refreshMapMarkers();
-
-    // Átadjuk a 'true'-t, hogy ez egy győztes harc, így jobb (magasabb) eséllyel esik a loot!
-    const foundItems = rollLoot(b ? b.name : 'Roncstelep', true);
-    let msg = `🎉 Győzelem! (+8% fáradtság). Találtál: `;
-    if (foundItems.length === 0) {
-        msg += " Semmi hasznosat.";
-    } else {
-        foundItems.forEach(itKey => {
-            addItemToInventory(itKey, 1);
-            msg += `${itemDatabase[itKey].icon} ${itemDatabase[itKey].name} `;
-        });
-    }
-
-    logMessage(msg);
-    addXp(25);
-    saveGame();
-    updateUI(); // Frissíti a HUD-ot, hogy látszódjon a fáradtság és a leltár változása is!
+    return text;
 }
 
+// Egy lépés küldése a szervernek
+function sendCombatAction(action, itemKey) {
+    if (!player.combat || typeof socket === 'undefined' || !socket) return;
+    const data = { action };
+    if (itemKey) data.itemKey = itemKey;
+    socket.emit('combat_action', data);
+}
+
+// Támadás a választott fegyverrel: weapon (elsődleges) | secondary (másodlagos) | melee (közelharci)
+function combatAttack(slot) {
+    if (!player.combat || typeof socket === 'undefined' || !socket) return;
+    socket.emit('combat_action', { action: 'attack', slot: COMBAT_SLOTS.includes(slot) ? slot : 'weapon' });
+}
+function combatRun() { sendCombatAction('flee'); }
+
+// Gyógyítás harc közben (a gyógyítás elvesz egy kört: utána az ellenség üt)
 function useCombatMedicine(index) {
     const slot = player.inventory[index];
     if (!slot) return;
-    const item = itemDatabase[slot.key];
-    if (item && item.type === 'medicine') {
-        player.hp = Math.min(player.maxHp, (player.hp || 100) + item.value);
-        slot.count--;
-        if (slot.count <= 0) player.inventory.splice(index, 1);
-        logMessage(`Harc közben bevetted: ${item.name} (+${item.value} HP)`);
-        playSound('loot');
-        document.getElementById('combat-heal-modal').classList.add('hidden');
-        saveGame();
-        updateUI();
-        updateCombatUI();
-        
-        if (player.hp <= 0) {
-            checkPlayerHpInCombat();
+    sendCombatAction('heal', slot.key);
+    document.getElementById('combat-heal-modal').classList.add('hidden');
+}
+
+// Egy esemény szövege a harcnaplóba
+function describeCombatEvent(ev, enemyName) {
+    if (ev.actor === 'enemy') return [`${enemyName} megsebzett: ${ev.amount} sebzés.`, 'text-red-400'];
+    switch (ev.type) {
+        case 'hit': return [ev.noAmmo ? `Nincs lőszered, puskatussal ütsz: ${ev.amount} sebzés.` : `Beviszel ${ev.amount} sebzést (${ev.weapon}).${ev.casing ? ' (+1 üres hüvely)' : ''}`, 'text-amber-300'];
+        case 'crit': return [`KRITIKUS TALÁLAT! ${ev.amount} sebzés (${ev.weapon}).`, 'text-yellow-300 font-bold'];
+        case 'heal': return [`Bevetted: ${ev.item} (+${ev.amount} élet). Ez nem vett el kört.`, 'text-emerald-400'];
+        case 'flee': return ['Sikerült elmenekülnöd!', 'text-emerald-300'];
+        case 'flee_fail': return ['A menekülés nem sikerült!', 'text-red-400'];
+        default: return ['', ''];
+    }
+}
+
+if (typeof socket !== 'undefined' && socket) {
+    socket.on('combat_result', (data) => {
+        if (!data.success) {
+            logMessage(data.message || "Ezt most nem lehet.");
+            playSound('hit');
             return;
         }
+        const enemyName = (data.enemy && data.enemy.name) || 'Az ellenség';
+        (data.events || []).forEach(ev => {
+            const [text, cls] = describeCombatEvent(ev, enemyName);
+            if (text) combatLogAppend(text, cls);
+            if (ev.actor === 'enemy') playSound('hit');
+            else if (ev.type === 'hit' || ev.type === 'crit') playSound('attack');
+        });
 
-        setTimeout(() => {
-            if (currentCombat.active) {
-                enemyTurn();
+        if (data.outcome === 'won') {
+            const parts = [data.message];
+            if (data.items && data.items.length > 0) {
+                parts.push('Találtál: ' + data.items.map(it => {
+                    const cfg = itemDatabase[it.key] || { name: it.key, icon: '📦' };
+                    return `${cfg.icon} ${it.count > 1 ? it.count + '× ' : ''}${cfg.name}`;
+                }).join(', '));
             }
-        }, 300);
-    }
+            logMessage(parts.join(' '));
+            playSound('win');
+        } else if (data.outcome === 'fled') {
+            logMessage(data.message);
+        } else if (data.outcome === 'lost') {
+            logMessage(data.message);
+        }
+        // A harcablak és a játékos állapota a player_state üzenettel frissül
+    });
 }

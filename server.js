@@ -6,8 +6,13 @@ const mongoose = require('mongoose');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const config = require('./config');
+const authToken = require('./auth-token');
 const craftingRecipes = require('./public/js/recipes');
 const itemDatabase = require('./public/js/items');
+const SurvivalStats = require('./public/js/stats'); // közös számítások (a kliens is ezt használja)
+const SurvivalBuildings = require('./public/js/buildings'); // közös épülettípusok és loot-sorsolás
+const Combat = require('./combat-engine'); // körös harc szabályai
+const SurvivalSun = require('./public/js/sun'); // napkelte / napnyugta (éjszaka)
 
 const app = express();
 const server = http.createServer(app);
@@ -18,23 +23,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/recipes.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/js/recipes.js'));
-});
-app.get('/items.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/js/items.js'));
-});
+// A Render (és a legtöbb tárhely) proxy mögött fut: a valódi IP-cím az X-Forwarded-For fejlécben van
+app.set('trust proxy', 1);
 
 // MongoDB Kapcsolat
 mongoose.connect(config.MONGO_URI, {}).then(() => {
     console.log("🔥 MongoDB sikeresen csatlakoztatva!");
 }).catch(err => {
     console.error("❌ MongoDB csatlakozási hiba:", err);
+    process.exit(1); // adatbázis nélkül nincs értelme futni; a tárhely újraindítja a szervert
 });
 
 // Teljes körű Felhasználói Séma
 const userSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
+    usernameLower: { type: String, unique: true, sparse: true }, // a kis- és nagybetűtől független egyediséghez
     email: { type: String, required: true },
     password: { type: String, required: true },
     avatar: { type: String, default: 'avatar1.png' },
@@ -55,23 +58,72 @@ const userSchema = new mongoose.Schema({
             helmet: { type: String, default: null },
             torso: { type: String, default: null },
             legs: { type: String, default: null },
-            backpack: { type: String, default: null }
-        }
-    },
-    buildings: { type: Array, default: [] }
+            backpack: { type: String, default: null },
+            secondary: { type: String, default: null },  // másodlagos fegyver (pisztoly)
+            melee: { type: String, default: null }       // közelharci fegyver (kés, macseta...)
+        },
+        lastSeen: { type: Number, default: null }, // utolsó online pillanat (az offline pihenéshez)
+        dead: { type: Boolean, default: false },   // halott karakter: csak az újrakezdés (respawn) engedélyezett
+        combat: { type: mongoose.Schema.Types.Mixed, default: null },     // folyamatban lévő harc (újracsatlakozás után is folytatódik)
+        dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} }   // személyes zárak menekülés után: { épület-azonosító: lejárat }
+    }
 });
 
 const PlayerModel = mongoose.model('SurvivalUser', userSchema);
 
+// Egy friss túlélő adatai (regisztrációkor és a halál utáni újrakezdéskor), kezdőcsomaggal
+function newPlayerData() {
+    return {
+        hp: 100, maxHp: 100, money: 100, level: 1, xp: 0,
+        fatigue: 0, hunger: 100, thirst: 100,
+        inventory: config.STARTER_KIT.map(s => ({ key: s.key, count: s.count })),
+        equipment: { weapon: null, armor: null, shoes: null, helmet: null, torso: null, legs: null, backpack: null, secondary: null, melee: null },
+        lastSeen: null,
+        dead: false,
+        combat: null,
+        dangerUntil: {}
+    };
+}
+
+// --- FIÓKSZABÁLYOK ---
+// Felhasználónév: 3-16 karakter, csak betűk (ékezetesek is) és számok. Jelszó: legalább 4 karakter.
+const USERNAME_RE = new RegExp(`^[\\p{L}\\p{N}]{${config.USERNAME_MIN},${config.USERNAME_MAX}}$`, 'u');
+function validateRegistration(username, email, password) {
+    if (!USERNAME_RE.test(username)) return `A felhasználónév ${config.USERNAME_MIN}-${config.USERNAME_MAX} karakter lehet, csak betűkből és számokból.`;
+    if (password.length < config.PASSWORD_MIN) return `A jelszó legalább ${config.PASSWORD_MIN} karakter legyen.`;
+    if (password.length > config.PASSWORD_MAX) return `A jelszó legfeljebb ${config.PASSWORD_MAX} karakter lehet.`;
+    if (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Adj meg egy érvényes e-mail címet.';
+    return null;
+}
+
+// --- BELÉPÉSI PRÓBÁLKOZÁSOK KORLÁTOZÁSA (jelszó-találgatás ellen) ---
+const loginFails = new Map(); // IP -> { count, firstAt }
+function loginBlocked(ip) {
+    const entry = loginFails.get(ip);
+    if (!entry) return false;
+    if (Date.now() - entry.firstAt > config.LOGIN_WINDOW_MINUTES * 60000) { loginFails.delete(ip); return false; }
+    return entry.count >= config.LOGIN_MAX_FAILS;
+}
+function recordLoginFail(ip) {
+    const entry = loginFails.get(ip);
+    if (!entry || Date.now() - entry.firstAt > config.LOGIN_WINDOW_MINUTES * 60000) loginFails.set(ip, { count: 1, firstAt: Date.now() });
+    else entry.count += 1;
+    if (loginFails.size > 10000) loginFails.clear(); // memória-védelem
+}
+
 // --- REGISZTRÁCIÓS VÉGPONT ---
 app.post('/api/register', async (req, res) => {
     try {
-        const { username, email, password, avatar } = req.body;
-        if (!username || !email || !password) {
+        const { username, email, password, avatar } = req.body || {};
+        if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !username || !email || !password) {
             return res.status(400).json({ success: false, message: 'Minden mezőt ki kell tölteni!' });
         }
+        const invalid = validateRegistration(username, email, password);
+        if (invalid) return res.status(400).json({ success: false, message: invalid });
 
-        const existingUser = await PlayerModel.findOne({ username });
+        // "Peti" és "peti" ne lehessen két külön játékos (megszemélyesítés ellen)
+        const usernameLower = username.toLocaleLowerCase('hu');
+        const existingUser = await PlayerModel.findOne({ username }) || await PlayerModel.findOne({ usernameLower });
         if (existingUser) {
             return res.status(400).json({ success: false, message: 'Ez a felhasználónév már foglalt!' });
         }
@@ -80,15 +132,11 @@ app.post('/api/register', async (req, res) => {
 
         const newUser = new PlayerModel({
             username,
+            usernameLower,
             email,
             password: hashedPassword,
-            avatar: avatar || 'avatar1.png',
-            playerData: {
-                hp: 100, maxHp: 100, money: 100, level: 1, xp: 0,
-                fatigue: 0, hunger: 100, thirst: 100, inventory: [],
-                equipment: { weapon: null, armor: null, shoes: null, helmet: null, torso: null, legs: null, backpack: null }
-            },
-            buildings: []
+            avatar: safeAvatar(avatar),
+            playerData: newPlayerData()
         });
 
         await newUser.save();
@@ -99,702 +147,1118 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
+// --- MUNKAMENET (TOKEN) SEGÉDFÜGGVÉNYEK ---
+function issueToken(username) {
+    return authToken.sign({ username }, config.JWT_SECRET, config.TOKEN_TTL_SECONDS);
+}
+
+// A belépés és a munkamenet-visszaállítás ugyanazt a választ adja, hogy a kliens egy helyen kezelhesse.
+function buildSessionPayload(user, token) {
+    return {
+        success: true,
+        username: user.username,
+        avatar: safeAvatar(user.avatar),
+        player: user.playerData,
+        token
+    };
+}
+
 // --- BEJELENTKEZÉSI VÉGPONT ---
 app.post('/api/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const ip = req.ip || 'unknown';
+        if (loginBlocked(ip)) {
+            return res.status(429).json({ success: false, message: `Túl sok sikertelen próbálkozás. Próbáld újra ${config.LOGIN_WINDOW_MINUTES} perc múlva!` });
+        }
+        const { username, password } = req.body || {};
+        if (typeof username !== 'string' || typeof password !== 'string' || password.length > config.PASSWORD_MAX) {
+            recordLoginFail(ip);
+            return res.status(400).json({ success: false, message: 'Hibás felhasználónév vagy jelszó!' });
+        }
         const user = await PlayerModel.findOne({ username });
         if (!user) {
+            recordLoginFail(ip);
             return res.status(400).json({ success: false, message: 'Hibás felhasználónév vagy jelszó!' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            recordLoginFail(ip);
             return res.status(400).json({ success: false, message: 'Hibás felhasználónév vagy jelszó!' });
         }
+        loginFails.delete(ip);
 
-        res.json({
-            success: true,
-            username: user.username,
-            avatar: user.avatar,
-            player: user.playerData,
-            buildings: user.buildings
-        });
+        res.json(buildSessionPayload(user, issueToken(user.username)));
     } catch (e) {
         console.error("Hiba bejelentkezéskor:", e);
         res.status(500).json({ success: false, message: 'Szerverhiba történt a bejelentkezés során.' });
     }
 });
 
+// --- MUNKAMENET VISSZAÁLLÍTÁSA TOKENNEL (automatikus belépés oldalfrissítés után) ---
+app.get('/api/session', async (req, res) => {
+    try {
+        const header = req.headers.authorization || '';
+        const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+
+        let payload;
+        try {
+            payload = authToken.verify(token, config.JWT_SECRET);
+        } catch (e) {
+            return res.status(401).json({ success: false, code: e.code || 'TOKEN_INVALID', message: 'Érvénytelen vagy lejárt munkamenet.' });
+        }
+        if (typeof payload.username !== 'string') {
+            return res.status(401).json({ success: false, code: 'TOKEN_INVALID', message: 'Érvénytelen vagy lejárt munkamenet.' });
+        }
+
+        const user = await PlayerModel.findOne({ username: payload.username });
+        if (!user) {
+            return res.status(401).json({ success: false, code: 'TOKEN_INVALID', message: 'Érvénytelen vagy lejárt munkamenet.' });
+        }
+
+        res.json(buildSessionPayload(user, token));
+    } catch (e) {
+        console.error("Hiba a munkamenet visszaállításakor:", e);
+        res.status(500).json({ success: false, message: 'Szerverhiba történt a munkamenet visszaállítása során.' });
+    }
+});
+
+// Az online játékosok (felhasználónév -> { socketId, username, avatar, lat, lng }).
+// A kapcsolat létrejöttekor kerülnek be, a pozíció (lat/lng) az első update_position után töltődik ki.
 const activePlayers = {};
 
+// Csak a térképen megjeleníthető adatokat adjuk ki másoknak: socket azonosítót és
+// még pozíció nélküli játékost nem.
+// Csak a fehérlistás avatar fogadható el (a többi játékosnál HTML-be kerül, így nem lehet benne kód)
+function safeAvatar(avatar) {
+    return config.AVATARS.includes(avatar) ? avatar : config.AVATARS[0];
+}
+
+// A néző látótávolsága: nappal 150 m; éjszaka (a néző helyén) működő fényforrás nélkül 30 m
+function viewRadius(viewer) {
+    if (viewer.lat === null) return 0;
+    const night = SurvivalSun.isNight(viewer.lat, viewer.lng, new Date(Date.now()));
+    return night && !viewer.hasLight ? config.PLAYER_VIEW_NIGHT_METERS : config.PLAYER_VIEW_METERS;
+}
+
+// A néző közelében lévő többi játékos (név, avatar, szint, hely) – a pontos helyet csak a közelieknek adjuk ki
+function nearbyPlayers(viewerName) {
+    const viewer = activePlayers[viewerName];
+    const result = {};
+    if (!viewer || viewer.lat === null) return result;
+    const radius = viewRadius(viewer);
+    for (const name in activePlayers) {
+        if (name === viewerName) continue;
+        const p = activePlayers[name];
+        if (p.lat === null) continue;
+        if (SurvivalBuildings.haversine(viewer.lat, viewer.lng, p.lat, p.lng) > radius) continue;
+        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, lat: p.lat, lng: p.lng };
+    }
+    return result;
+}
+
+function sendNearby(name) {
+    const entry = activePlayers[name];
+    if (entry) io.to(entry.socketId).emit('players_update', nearbyPlayers(name));
+}
+
+// Akiket érint egy mozgás / kilépés: mindenki, aki a régi vagy az új hely közelében van
+function notifyAround(points, exceptName) {
+    const maxRadius = config.PLAYER_VIEW_METERS;
+    for (const name in activePlayers) {
+        if (name === exceptName) continue;
+        const p = activePlayers[name];
+        if (p.lat === null) continue;
+        if (points.some(pt => pt && SurvivalBuildings.haversine(pt.lat, pt.lng, p.lat, p.lng) <= maxRadius)) sendNearby(name);
+    }
+}
+
+// ===================== JÁTÉKOS-ÁLLAPOT (A SZERVER AZ EGYETLEN IGAZSÁGFORRÁS) =====================
+const { num } = SurvivalStats;
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+const REST_PER_MS = 100 / (config.FATIGUE_FULL_REST_MINUTES * 60 * 1000); // fáradtság-csökkenés ezredmásodpercenként
+
+// A mentett adatok egységes formára hozása (hiányzó vagy régi mezők kitöltése)
+function normalizePlayer(raw) {
+    const p = raw || {};
+    const eq = p.equipment || {};
+    const equipment = {};
+    SurvivalStats.EQUIPMENT_SLOTS.forEach(slot => {
+        equipment[slot] = typeof eq[slot] === 'string' && eq[slot] ? eq[slot] : null;
+    });
+    const inventory = [];
+    (Array.isArray(p.inventory) ? p.inventory : [])
+        .filter(s => s && typeof s.key === 'string' && Math.floor(num(s.count, 0)) > 0)
+        .forEach(s => {
+            const count = Math.floor(num(s.count, 0));
+            const item = itemDatabase[s.key];
+            if (item && !item.stackable) {
+                // nem stackelhető: darabonként; a kopó tárgyak (szerszámok) megtartják a tartósságukat
+                for (let i = 0; i < count; i++) inventory.push(newSlot(s.key, s.dur));
+            } else {
+                const existing = inventory.find(x => x.key === s.key);
+                if (existing) existing.count += count;
+                else inventory.push({ key: s.key, count });
+            }
+        });
+    return {
+        hp: num(p.hp, 100),
+        maxHp: num(p.maxHp, 100),
+        money: num(p.money, 100),
+        level: Math.max(1, Math.floor(num(p.level, 1))),
+        xp: num(p.xp, 0),
+        fatigue: clamp(num(p.fatigue, 0), 0, 100),
+        hunger: clamp(num(p.hunger, 100), 0, 100),
+        thirst: clamp(num(p.thirst, 100), 0, 100),
+        inventory,
+        equipment,
+        lastSeen: (p.lastSeen === null || p.lastSeen === undefined) ? null : num(p.lastSeen, null),
+        dead: !!p.dead,
+        combat: p.combat && typeof p.combat === 'object' && p.combat.enemy ? p.combat : null,
+        dangerUntil: activeDangerLocks(p.dangerUntil)
+    };
+}
+
+// A még érvényes személyes zárak (a lejártak kimaradnak)
+function activeDangerLocks(raw) {
+    const now = Date.now();
+    const result = {};
+    if (raw && typeof raw === 'object') {
+        Object.keys(raw).forEach(id => { if (num(raw[id], 0) > now) result[id] = num(raw[id], 0); });
+    }
+    return result;
+}
+
+// Halott karakter semmilyen akciót nem végezhet (csak újrakezdhet)
+const DEAD_MESSAGE = 'Meghaltál. Indíts új túlélőt!';
+function aliveOnly(fn) {
+    return (p) => (p.dead ? { save: false, error: DEAD_MESSAGE } : fn(p));
+}
+
+// Harc közben a tárgyakkal, a felszereléssel és a lootolással nem lehet mást csinálni (csak a harcablakból)
+function freeOnly(fn) {
+    return aliveOnly((p) => (p.combat ? { save: false, error: 'Harc közben ezt nem teheted!' } : fn(p)));
+}
+
+function playerStats(p) {
+    return SurvivalStats.computeStats(p, itemDatabase);
+}
+
+// Mentés előtt: a max HP mindig a szintből és a felszerelésből jön, a HP nem lépheti túl.
+// (Felszereléskor a HP NEM nő automatikusan, különben fel-le vevéssel lehetne gyógyulni.)
+function finalizePlayer(p) {
+    const stats = playerStats(p);
+    p.maxHp = stats.maxHp;
+    p.hp = clamp(p.hp, 0, p.maxHp);
+    p.fatigue = clamp(p.fatigue, 0, 100);
+    p.hunger = clamp(p.hunger, 0, 100);
+    p.thirst = clamp(p.thirst, 0, 100);
+    if (p.hp <= 0) { p.dead = true; p.combat = null; } // bármi viszi 0-ra a HP-t (éhezés, harc), a karakter meghal
+    return stats;
+}
+
+// A kliensnek küldött állapot (a belső mezők nélkül)
+function publicPlayerData(p) {
+    const { lastSeen, ...rest } = p;
+    return rest;
+}
+
+// --- JÁTÉKOSONKÉNTI SOR ---
+// Egy játékos összes művelete (tick, tárgyhasználat, loot, mozgás...) szigorúan egymás után fut,
+// így nem írhatják felül egymás eredményét, és a gyors dupla kattintás sem duplikál tárgyat.
+// fn(p) a friss adatokon dolgozik; ha { save: false }-t ad vissza, semmi nem mentődik.
+// Visszatérés: { p, result } (vagy null, ha nincs ilyen játékos).
+const playerQueues = new Map();
+function withPlayer(username, fn) {
+    const prev = playerQueues.get(username) || Promise.resolve();
+    const run = prev.then(async () => {
+        const user = await PlayerModel.findOne({ username });
+        if (!user) return null;
+        const raw = user.playerData && typeof user.playerData.toObject === 'function'
+            ? user.playerData.toObject()
+            : user.playerData;
+        const p = normalizePlayer(raw);
+        const result = (await fn(p)) || {};
+        if (result.save !== false) {
+            finalizePlayer(p);
+            const update = { playerData: p };
+            if (result.extraUpdate) Object.assign(update, result.extraUpdate);
+            await PlayerModel.findOneAndUpdate({ username }, update);
+        }
+        return { p, result };
+    });
+    const tail = run.catch(() => {});
+    playerQueues.set(username, tail);
+    tail.then(() => { if (playerQueues.get(username) === tail) playerQueues.delete(username); });
+    return run;
+}
+
+// A teljes, friss állapot elküldése a játékos aktív kapcsolatára
+function sendPlayerState(username, p, extra) {
+    const entry = activePlayers[username];
+    if (!entry) return;
+    entry.level = p.level;                                                  // a többiek ezt látják
+    entry.hasLight = !!SurvivalStats.findUsableLight(p.inventory, itemDatabase); // éjszakai látótávolsághoz
+    io.to(entry.socketId).emit('player_state', {
+        player: publicPlayerData(p),
+        stats: playerStats(p),
+        ...(extra || {})
+    });
+}
+
+// --- LELTÁR SEGÉDFÜGGVÉNYEK (slot = kemény határ, súly = 150%-os plafon) ---
+// Stackelhető tárgyból egy slotban bármennyi lehet; a nem stackelhető minden darabja külön slot.
+function isStackable(key) {
+    const item = itemDatabase[key];
+    return !!(item && item.stackable);
+}
+
+function findSlot(p, key) {
+    return p.inventory.find(s => s.key === key);
+}
+
+// Az adott tárgy összes darabja (a nem stackelhetők több slotban is lehetnek)
+function countItem(p, key) {
+    return p.inventory.reduce((sum, s) => sum + (s.key === key ? s.count : 0), 0);
+}
+
+function removeItem(p, key, count) {
+    if (countItem(p, key) < count) return false;
+    let left = count;
+    for (let i = p.inventory.length - 1; i >= 0 && left > 0; i--) {
+        const slot = p.inventory[i];
+        if (slot.key !== key) continue;
+        const take = Math.min(slot.count, left);
+        slot.count -= take;
+        left -= take;
+    }
+    p.inventory = p.inventory.filter(s => s.count > 0);
+    return true;
+}
+
+// Behelyezés kapacitás-ellenőrzés nélkül (csak a stackelhetőség szerint)
+// Egy nem stackelhető tárgy új slotja; a kopó tárgyaknál (durability) a tartósság is (alapból teljes)
+function newSlot(key, dur) {
+    const item = itemDatabase[key];
+    const max = item && Number(item.durability);
+    if (!max) return { key, count: 1 };
+    if (dur === undefined || dur === null) return { key, count: 1, dur: max }; // új tárgy: teljes
+    const d = Number(dur);
+    // a lemerült lámpa 0-n marad (a fény percben, törtszámmal fogy)
+    return { key, count: 1, dur: Number.isFinite(d) ? Math.min(Math.max(d, 0), max) : max };
+}
+
+function pushItem(p, key, count) {
+    if (isStackable(key)) {
+        const slot = findSlot(p, key);
+        if (slot) slot.count += count;
+        else p.inventory.push({ key, count });
+        return;
+    }
+    for (let i = 0; i < count; i++) p.inventory.push(newSlot(key));
+}
+
+function slotsNeeded(p, key, count) {
+    return isStackable(key) ? (findSlot(p, key) ? 0 : 1) : count;
+}
+
+// Felvehető-e a tárgy? { ok: true } vagy { ok: false, reason: 'unknown' | 'slots' | 'weight' }
+function canAddItem(p, key, count) {
+    const item = itemDatabase[key];
+    if (!item) return { ok: false, reason: 'unknown' };
+    const stats = playerStats(p);
+    if (p.inventory.length + slotsNeeded(p, key, count) > stats.slots) return { ok: false, reason: 'slots' };
+    if (stats.weight + num(item.weight, 0) * count > stats.weightHardCap + 1e-9) return { ok: false, reason: 'weight' };
+    return { ok: true };
+}
+
+function addItem(p, key, count) {
+    const check = canAddItem(p, key, count);
+    if (!check.ok) return check;
+    pushItem(p, key, count);
+    return check;
+}
+
+// Belefér-e a jelenlegi leltár (csere vagy levétel után)? null, 'slots' vagy 'weight'
+function capacityProblem(p) {
+    const stats = playerStats(p);
+    if (p.inventory.length > stats.slots) return 'slots';
+    if (stats.weight > stats.weightHardCap + 1e-9) return 'weight';
+    return null;
+}
+
+const EFFECT_LABELS = { hunger: 'Éhség', thirst: 'Szomjúság', hp: 'Élet', fatigue: 'Fáradtság' };
+function describeChanges(changes) {
+    return Object.entries(changes)
+        .map(([key, value]) => `${value > 0 ? '+' : ''}${Math.round(value)} ${EFFECT_LABELS[key]}`)
+        .join(', ');
+}
+
+const CAPACITY_MESSAGES = {
+    slots: 'A hátizsákod tele van!',
+    weight: 'Túl nehéz! Ennyit már nem bírsz el.',
+    unknown: 'Ismeretlen tárgy!'
+};
+
+// XP jóváírása (több szintlépés is lehet egyszerre). Szintlépéskor teljes gyógyulás.
+function grantXp(p, amount) {
+    p.xp += amount;
+    let levels = 0;
+    while (p.xp >= p.level * 100) {
+        p.xp -= p.level * 100;
+        p.level += 1;
+        levels += 1;
+    }
+    if (levels > 0) p.hp = playerStats(p).maxHp;
+    return levels;
+}
+
+// Fáradtság növelése: a felszerelés (pl. harci bakancs) és a túlsúly szorzójával
+function addFatigue(p, amount) {
+    const stats = playerStats(p);
+    p.fatigue = clamp(p.fatigue + amount * stats.fatigueRate * stats.overweightMultiplier, 0, 100);
+}
+
+// Pihenés: 100%-ról 0-ra FATIGUE_FULL_REST_MINUTES alatt
+function restFatigue(p, ms) {
+    if (ms > 0) p.fatigue = clamp(p.fatigue - ms * REST_PER_MS, 0, 100);
+}
+
+// Két GPS pont távolsága méterben (haversine)
+function distanceMeters(a, b) {
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// --- TÚLÉLÉS: ms ezredmásodpercnyi online idő hatása ---
+// Az éhség és a szomjúság időarányosan fogy. Ha valamelyik 0, a karakter a max HP-ja ARÁNYÁBAN sebződik
+// (így a ~40 / ~20 perc mindenkire igaz, páncéltól függetlenül). Ha mindkettő 80% fölött van, lassan gyógyul.
+function applySurvival(p, ms) {
+    const minutes = Math.max(0, ms) / 60000;
+    const maxHp = playerStats(p).maxHp;
+    p.hunger = clamp(p.hunger - minutes * 100 / config.HUNGER_FULL_MINUTES, 0, 100);
+    p.thirst = clamp(p.thirst - minutes * 100 / config.THIRST_FULL_MINUTES, 0, 100);
+
+    const emptyBars = (p.hunger <= 0 ? 1 : 0) + (p.thirst <= 0 ? 1 : 0);
+    if (emptyBars > 0) {
+        const starveMinutes = emptyBars === 2 ? config.STARVE_BOTH_MINUTES : config.STARVE_ONE_MINUTES;
+        p.hp = clamp(p.hp - minutes * maxHp / starveMinutes, 0, maxHp);
+    } else if (p.hunger > config.REGEN_ABOVE_PERCENT && p.thirst > config.REGEN_ABOVE_PERCENT) {
+        p.hp = clamp(p.hp + minutes * maxHp / config.REGEN_FULL_MINUTES, 0, maxHp);
+    }
+    return { critical: emptyBars > 0 };
+}
+
+// Egyszeri figyelmeztetés, amikor az éhség / szomjúság a küszöb alá esik (újra, ha előtte fölé ment)
+function collectWarnings(entry, p) {
+    const warnings = [];
+    entry.warned = entry.warned || {};
+    ['hunger', 'thirst'].forEach(key => {
+        if (p[key] < config.WARN_BELOW_PERCENT) {
+            if (!entry.warned[key]) warnings.push(key);
+            entry.warned[key] = true;
+        } else {
+            entry.warned[key] = false;
+        }
+    });
+    return warnings;
+}
+
+// --- FÉNYFORRÁSOK FOGYÁSA (éjszaka, online) ---
+// A fény percben fogy. Lemerült lámpába automatikusan új elem / lámpaolaj kerül, ha van; a fáklya elég.
+// Visszaadja az üzeneteket (pl. "Elégett a fáklyád").
+function burnLight(p, minutes) {
+    const notices = [];
+    let remaining = minutes;
+    let guard = 0;
+    while (remaining > 1e-9 && guard++ < 20) {
+        const light = SurvivalStats.findUsableLight(p.inventory, itemDatabase);
+        if (!light) {
+            notices.push('Nincs működő fényforrásod, sötétben vagy.');
+            break;
+        }
+        const { slot, item } = light;
+        if (light.needsRefill) {
+            removeItem(p, item.light.fuel, 1);
+            slot.dur = item.durability;
+            notices.push(`${itemDatabase[item.light.fuel].name} került ebbe: ${item.name}.`);
+        }
+        const use = Math.min(remaining, slot.dur);
+        slot.dur = Math.round((slot.dur - use) * 1000) / 1000;
+        remaining -= use;
+        if (slot.dur <= 0) {
+            if (!item.light.fuel) {
+                p.inventory = p.inventory.filter(s => s !== slot);
+                notices.push(`Elégett: ${item.name}.`);
+            } else {
+                slot.dur = 0;
+                notices.push(`Lemerült: ${item.name}.`);
+            }
+        }
+    }
+    // A "sötétben vagy" üzenet csak akkor kell, ha közben fogyott el az utolsó fény
+    return notices.length === 1 && notices[0].startsWith('Nincs') && minutes === remaining ? [] : notices;
+}
+
 // --- SZERVER OLDALI TÚLÉLÉSI CIKLUS ---
-setInterval(async () => {
-    for (let username in activePlayers) {
+// A tényleg eltelt időt számoljuk (nem fix lépést), így a tick késése nem torzítja az ütemet.
+const TICK_MS = 40000;
+setInterval(() => {
+    const now = Date.now();
+    for (const username in activePlayers) {
+        const entry = activePlayers[username];
+        const dt = now - (entry.lastTickAt || now);
+        entry.lastTickAt = now;
+
+        withPlayer(username, (p) => {
+            if (p.dead) return { save: false, skip: true }; // halott karakterrel már nem történik semmi
+
+            const { critical } = applySurvival(p, dt);
+
+            // Online pihenés: ha a játékos legalább REST_IDLE_MINUTES óta egy helyben van
+            if (now - entry.lastMovedAt >= config.REST_IDLE_MINUTES * 60 * 1000) restFatigue(p, dt);
+
+            // Éjszaka (a játékos helyén) ég a fényforrás
+            let notices = [];
+            if (entry.lat !== null && SurvivalSun.isNight(entry.lat, entry.lng, new Date(now))) notices = burnLight(p, dt / 60000);
+
+            p.lastSeen = now;
+            return { critical, warnings: collectWarnings(entry, p), notices };
+        }).then(r => {
+            if (!r || r.result.skip) return;
+            sendPlayerState(username, r.p, { critical: r.result.critical, warnings: r.result.warnings, notices: r.result.notices });
+            sendNearby(username); // időnként frissül a közeli játékosok listája (pl. ha leszáll az éj)
+        }).catch(err => console.error("Hiba a szerver oldali túlélési tick során:", err));
+    }
+}, TICK_MS);
+
+// ===================== ÉPÜLETEK: KÖZÖS (GLOBÁLIS) ÁLLAPOT =====================
+// Minden épület egy dokumentum: a típusát és helyét a SZERVER kérdezi le az OSM-ből (a kliensnek nem hiszünk),
+// a zár (lockedUntil) pedig mindenkire érvényes.
+const buildingSchema = new mongoose.Schema({
+    _id: { type: String },                 // pl. 'osm_n123456' vagy 'osm_w98765'
+    type: { type: String },                // épülettípus (buildings.js)
+    name: { type: String },
+    lat: { type: Number },
+    bounds: { type: mongoose.Schema.Types.Mixed, default: null }, // befoglaló téglalap (nagy létesítményeknél a széltől mérünk)
+    lng: { type: Number },
+    lockedUntil: { type: Number, default: 0 },
+    lastLootedBy: { type: String, default: null },
+    fetchedAt: { type: Number }
+});
+const BuildingModel = mongoose.model('SurvivalBuilding', buildingSchema);
+
+const buildingCache = new Map();    // memória-gyorsítótár: id -> { id, type, name, lat, lng }
+const missingBuildings = new Map(); // nem létező OSM azonosítók -> lejárat (ne kérdezzük le újra és újra)
+const buildingFetches = new Map();  // folyamatban lévő lekérdezések (két játékos ne kérdezze le kétszer)
+const BUILDING_CACHE_LIMIT = 5000;
+
+function osmError(code) {
+    const err = new Error(code);
+    err.code = code;
+    return err;
+}
+
+// Egy épület lekérdezése az OSM-ből (Overpass), a tartalék szerverekkel
+async function fetchBuildingFromOsm(id) {
+    const parsed = SurvivalBuildings.parseBuildingId(id);
+    if (!parsed) throw osmError('NOT_FOUND');
+    const query = `[out:json][timeout:10];${parsed.osmType}(${parsed.osmId});out center bb tags;`;
+
+    for (const url of config.OVERPASS_URLS) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), config.OVERPASS_TIMEOUT_MS);
         try {
-            const user = await PlayerModel.findOne({ username });
-            if (!user || !user.playerData) continue;
-
-            let p = user.playerData;
-            p.hunger = Math.max(0, (Number(p.hunger) || 100) - 0.9);
-            p.thirst = Math.max(0, (Number(p.thirst) || 100) - 0.7);
-
-            let isCritical = false;
-            if (p.hunger <= 0 && p.thirst <= 0) {
-                p.hp = Math.max(0, (Number(p.hp) || 100) - 10);
-                isCritical = true;
-            } else if (p.hunger <= 0 || p.thirst <= 0) {
-                p.hp = Math.max(0, (Number(p.hp) || 100) - 5);
-                isCritical = true;
-            }
-
-            await PlayerModel.findOneAndUpdate({ username }, { playerData: p });
-
-            const socketId = activePlayers[username].socketId;
-            io.to(socketId).emit('server_status_update', {
-                hunger: p.hunger,
-                thirst: p.thirst,
-                hp: p.hp,
-                isCritical: isCritical
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'SurvivalGO/1.0' },
+                body: 'data=' + encodeURIComponent(query),
+                signal: controller.signal
             });
-
-            if (p.hp <= 0) {
-                io.to(socketId).emit('game_over');
-            }
+            if (!res.ok) continue;
+            const json = await res.json();
+            const el = json && Array.isArray(json.elements) ? json.elements[0] : null;
+            if (!el) throw osmError('NOT_FOUND');
+            const lat = typeof el.lat === 'number' ? el.lat : (el.center && el.center.lat);
+            const lng = typeof el.lon === 'number' ? el.lon : (el.center && el.center.lon);
+            if (typeof lat !== 'number' || typeof lng !== 'number') throw osmError('NOT_FOUND');
+            const type = SurvivalBuildings.classifyBuilding(el.tags);
+            return { id, type, name: SurvivalBuildings.displayName(type, el.tags), lat, lng, bounds: SurvivalBuildings.cleanBounds(el.bounds) };
         } catch (err) {
-            console.error("Hiba a szerver oldali túlélési tick során:", err);
+            if (err.code === 'NOT_FOUND') throw err;
+            // hálózati hiba / időtúllépés / hibás válasz: jöhet a következő szerver
+        } finally {
+            clearTimeout(timer);
         }
     }
-}, 40000);
-
-
-
-
-
-/*/ ---------------------------------------------------------------------------------------- TELJES, VALÓSÁGHŰ ÉS RÉSZLETES SZERVER OLDALI LOOT SORSOLÁS ---
-function rollServerLoot(buildingName) {
-    let possibleItems = [];
-    let emptyChance = 0.50; // Alapértelmezetten kicsit barátságosabb esély, hogy mindenhol lehessen találni valamit
-
-    if (buildingName.includes('Élelmiszerbolt')) {
-        possibleItems = ['canned_food', 'tuna_can', 'mre_ration', 'energy_bar', 'water_bottle', 'kvass', 'energy_drink', 'cigarette'];
-        emptyChance = 0.30;
-    } else if (buildingName.includes('Kisbolt / Trafik')) {
-        possibleItems = ['cigarette', 'energy_drink', 'canned_food', 'energy_bar', 'water_bottle', 'lighter'];
-        emptyChance = 0.30;
-    } else if (buildingName.includes('Barkácsáruház')) {
-        possibleItems = ['scrap_metal', 'duct_tape', 'nails', 'wire', 'hammer', 'wrench', 'battery'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Étterem / Kávézó / Fagyizó / Csárda')) {
-        possibleItems = ['energy_bar', 'water_bottle', 'canned_food', 'bottle_cap', 'rag'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Benzinkút / Kút')) {
-        possibleItems = ['fuel_can', 'energy_drink', 'cigarette', 'canned_food', 'water_bottle', 'lighter'];
-        emptyChance = 0.30;
-    } else if (buildingName.includes('Kocsma / Pub / Söröző')) {
-        possibleItems = ['kvass', 'alcohol', 'canned_food', 'energy_bar', 'rag', 'cigarette'];
-        emptyChance = 0.30;
-    } else if (buildingName.includes('Gyógyszertár')) {
-        possibleItems = ['painkillers', 'bandage', 'rag_bandage', 'antibiotics', 'alcohol', 'medkit'];
-        emptyChance = 0.25;
-    } else if (buildingName.includes('Kórház')) {
-        possibleItems = ['painkillers', 'bandage', 'rag_bandage', 'antibiotics', 'alcohol', 'medkit'];
-        emptyChance = 0.25;
-    } else if (buildingName.includes('Rendőrség')) {
-        possibleItems = ['makarov', 'ammo_9mm', 'kevlar_vest', 'handcuffs', 'bandage'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Tűzoltóság')) {
-        possibleItems = ['axe', 'rope', 'flashlight', 'water_bottle', 'rag'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Katonai bázis')) {
-        possibleItems = ['ak47', 'makarov', 'ammo_9mm', 'ammo_762', 'kevlar_vest', 'military_helmet', 'gas_mask', 'mre_ration'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Kormányzati Bunker / Óvóhely')) {
-        possibleItems = ['gas_mask', 'mre_ration', 'filter', 'water_bottle', 'ammo_762', 'medkit'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Elhagyatott Katonai Ellenőrzőpont / Blokád')) {
-        possibleItems = ['makarov', 'ammo_9mm', 'barbed_wire', 'military_helmet', 'canned_food'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Katasztrófavédelmi / Vegyvédelmi Központ')) {
-        possibleItems = ['gas_mask', 'filter', 'antibiotics', 'medkit', 'hazmat_suit'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Iskola / Óvoda')) {
-        possibleItems = ['book', 'pencil', 'pen', 'paper', 'map', 'canned_food', 'flashlight'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Könyvtár')) {
-        possibleItems = ['book', 'paper', 'pen', 'map', 'flashlight'];
-        emptyChance = 0.30;
-    } else if (buildingName.includes('Templom / Kápolna')) {
-        possibleItems = ['candle', 'cross', 'wine', 'book', 'rag', 'old_coin'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Kolostor / Apátság')) {
-        possibleItems = ['wine', 'book', 'candle', 'herbs', 'cross', 'rag'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Városháza / Polgármesteri Hivatal')) {
-        possibleItems = ['key', 'document', 'pen', 'paper', 'old_coin', 'map'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Múzeum / Kiállítóterem')) {
-        possibleItems = ['old_coin', 'antique_item', 'book', 'painting_fragment', 'rag'];
-        emptyChance = 0.45;
-    } else if (buildingName.includes('Bíróság / Ügyvédi Iroda')) {
-        possibleItems = ['document', 'pen', 'paper', 'briefcase', 'book'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Mozi / Színház / Művelődési Ház')) {
-        possibleItems = ['ticket', 'flashlight', 'energy_bar', 'rag', 'popcorn'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Elhagyatott raktár')) {
-        possibleItems = ['scrap_metal', 'cardboard_box', 'duct_tape', 'crowbar', 'wire'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Ipari létesítmény / Gyár')) {
-        possibleItems = ['scrap_metal', 'steel_plate', 'wrench', 'battery', 'engine_parts'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Autószerviz / Gumis')) {
-        possibleItems = ['wrench', 'jack', 'fuel_can', 'tire', 'scrap_metal', 'engine_parts'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Autóbontó / Roncstelep')) {
-        possibleItems = ['scrap_metal', 'tire', 'engine_parts', 'car_battery', 'metal_pipe'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Garázs')) {
-        possibleItems = ['wrench', 'hammer', 'gas_can', 'scrap_metal', 'rag', 'flashlight'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Vasútállomás / Rendezőpályaudvar')) {
-        possibleItems = ['metal_plate', 'coal', 'wrench', 'flashlight', 'map', 'rag'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Posta / Csomagátvevő pont')) {
-        possibleItems = ['package', 'tape', 'letter', 'pen', 'scissors'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Mezőgazdasági Géptelep / Téesz')) {
-        possibleItems = ['pitchfork', 'shovel', 'seeds', 'fertilizer', 'fuel_can', 'rope'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Malom / Gabonasiló')) {
-        possibleItems = ['flour_bag', 'grain', 'shovel', 'rope', 'sack'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Állatfarm / Lovarda')) {
-        possibleItems = ['pitchfork', 'rope', 'horseshoe', 'apple', 'bucket'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Víztorony / Vízmű')) {
-        possibleItems = ['pipe', 'wrench', 'valve', 'water_bottle', 'filter'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Elektromos Alállomás / Trafóház')) {
-        possibleItems = ['copper_wire', 'battery', 'pliers', 'fuse', 'insulator'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Szálloda / Hotel / Panzió')) {
-        possibleItems = ['soap', 'towel', 'energy_bar', 'water_bottle', 'pillow', 'rag'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Motel / Kamionos pihenő')) {
-        possibleItems = ['soap', 'towel', 'energy_drink', 'cigarette', 'canned_food', 'rag'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Sportcsarnok / Edzőterem')) {
-        possibleItems = ['energy_drink', 'water_bottle', 'dumbbell', 'towel', 'energy_bar'];
-        emptyChance = 0.35;
-    } else if (buildingName.includes('Stadion / Futballpálya')) {
-        possibleItems = ['football', 'water_bottle', 'energy_bar', 'whistle', 'rag'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Strand / Uszoda')) {
-        possibleItems = ['swimsuit', 'towel', 'goggles', 'water_bottle', 'flip_flops'];
-        emptyChance = 0.40;
-    } else if (buildingName.includes('Temető')) {
-        possibleItems = ['bone', 'old_coin', 'rag', 'candle', 'wreath'];
-        emptyChance = 0.50;
-    } else {
-        // Alapértelmezett (Romos ház / egyéb)
-        possibleItems = ['rag', 'canned_food', 'stone', 'stick', 'water_bottle', 'bottle_cap'];
-        emptyChance = 0.50;
-    } 
-
-    if (Math.random() < emptyChance) return [];
-    
-    let found = [];
-    let dropCount = Math.random() < 0.3 ? 2 : 1; // Kicsit nagyobb esély 2 tárgyra is
-    for (let i = 0; i < dropCount; i++) {
-        found.push(possibleItems[Math.floor(Math.random() * possibleItems.length)]);
-    }
-    return found;
+    throw osmError('OSM_UNAVAILABLE');
 }
 
+// Az épület adatai: memóriából, adatbázisból, vagy (első alkalommal) az OSM-ből
+async function getBuilding(id) {
+    if (buildingCache.has(id)) return buildingCache.get(id);
+    if ((missingBuildings.get(id) || 0) > Date.now()) throw osmError('NOT_FOUND');
+    if (buildingFetches.has(id)) return buildingFetches.get(id);
 
-
-------------------------------------------------00000000-------------------------------------------------------*/
-
-
-
-
-
-
-// --- DINAMIKUS ÉS AUTOMATA SZERVER OLDALI LOOT SORSOLÁS ---
-function rollServerLoot(buildingName) {
-    let emptyChance = 0.40; // Alap üresen maradás esélye
-    let matchingItems = [];
-
-    // Végigfutunk a központi itemDatabase-en, amit a szerver betölt
-    for (let key in itemDatabase) {
-        let item = itemDatabase[key];
-        
-        // Ha a tárgynak van megadva lehetséges helye (canSpawnIn tömb)
-        if (item.canSpawnIn && Array.isArray(item.canSpawnIn)) {
-            // Megnézzük, hogy az épület neve vagy típusa illeszkedik-e valamelyik kulcsszóra
-            let matches = item.canSpawnIn.some(locationKey => 
-                buildingName.toLowerCase().includes(locationKey.toLowerCase())
-            );
-            
-            if (matches) {
-                matchingItems.push(key);
+    const job = (async () => {
+        const stored = await BuildingModel.findOne({ _id: id });
+        let building;
+        if (stored && stored.type && typeof stored.lat === 'number' && typeof stored.lng === 'number') {
+            building = { id, type: stored.type, name: stored.name, lat: stored.lat, lng: stored.lng, bounds: SurvivalBuildings.cleanBounds(stored.bounds) };
+        } else {
+            try {
+                building = await fetchBuildingFromOsm(id);
+            } catch (err) {
+                if (err.code === 'NOT_FOUND') {
+                    if (missingBuildings.size >= BUILDING_CACHE_LIMIT) missingBuildings.clear();
+                    missingBuildings.set(id, Date.now() + 60 * 60 * 1000);
+                }
+                throw err;
             }
+            await BuildingModel.updateOne(
+                { _id: id },
+                { $set: { type: building.type, name: building.name, lat: building.lat, lng: building.lng, bounds: building.bounds, fetchedAt: Date.now() },
+                  $setOnInsert: { lockedUntil: 0 } },
+                { upsert: true }
+            );
         }
-    }
+        if (buildingCache.size >= BUILDING_CACHE_LIMIT) buildingCache.delete(buildingCache.keys().next().value);
+        buildingCache.set(id, building);
+        return building;
+    })();
 
-    // Ha egyetlen tárgy sem illik az épülethez, visszatérünk egy alapértelmezett romos hájas listával
-    if (matchingItems.length === 0) {
-        matchingItems = ['rag', 'canned_food', 'stone', 'stick', 'water_bottle', 'bottle_cap'];
-        emptyChance = 0.60;
+    buildingFetches.set(id, job);
+    try {
+        return await job;
+    } finally {
+        buildingFetches.delete(id);
     }
-
-    // Dobás: üres lesz-e az épület?
-    if (Math.random() < emptyChance) return [];
-    
-    let found = [];
-    let dropCount = Math.random() < 0.25 ? 2 : 1; // Néha 2 tárgyat is dobhat
-    for (let i = 0; i < dropCount; i++) {
-        let randomKey = matchingItems[Math.floor(Math.random() * matchingItems.length)];
-        found.push(randomKey);
-    }
-    
-    return found;
 }
+
+// ATOMI zárolás: csak akkor sikerül, ha az épület épp nincs zárva. Ha ketten egyszerre próbálják,
+// az adatbázis csak az egyiküknek engedi (a másik null-t kap).
+async function lockBuilding(id, username, now, until) {
+    const doc = await BuildingModel.findOneAndUpdate(
+        { _id: id, $or: [{ lockedUntil: { $lte: now } }, { lockedUntil: null }] },
+        { $set: { lockedUntil: until, lastLootedBy: username } },
+        { new: true }
+    );
+    return !!doc;
+}
+
+async function currentLock(id) {
+    const doc = await BuildingModel.findOne({ _id: id });
+    return doc && typeof doc.lockedUntil === 'number' ? doc.lockedUntil : 0;
+}
+
+// ===================== HARC: SEGÉDFÜGGVÉNYEK =====================
+// Menekülés után a globális zárat feloldjuk (csak ha még a mi zárunk), hogy mások lootolhassák az épületet.
+async function releaseBuildingLock(id, username, lockedUntil) {
+    const doc = await BuildingModel.findOneAndUpdate(
+        { _id: id, lastLootedBy: username, lockedUntil },
+        { $set: { lockedUntil: 0 } },
+        { new: true }
+    );
+    return !!doc;
+}
+
+// Egy épület átkutatása (loot-sorsolás és jóváírás). emptyFactor < 1: kisebb eséllyel üres (pl. győzelem után)
+function lootBuilding(p, building, emptyFactor) {
+    const found = SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor });
+    const added = [];
+    const skipped = [];
+    found.forEach(({ key, count }) => {
+        if (addItem(p, key, count).ok) added.push({ key, count });
+        else skipped.push({ key, count });
+    });
+    return { found, added, skipped };
+}
+
+// --- SOCKET HITELESÍTÉS ---
+// Csak érvényes tokennel lehet csatlakozni. A játékos kilétét ezután mindig a token adja
+// (socket.data.username), a kliens által küldött felhasználónevet a szerver nem veszi figyelembe.
+io.use(async (socket, next) => {
+    const token = socket.handshake.auth && socket.handshake.auth.token;
+    if (!token) return next(new Error('AUTH_REQUIRED'));
+
+    let payload;
+    try {
+        payload = authToken.verify(token, config.JWT_SECRET);
+    } catch (e) {
+        return next(new Error(e.code === 'TOKEN_EXPIRED' ? 'AUTH_EXPIRED' : 'AUTH_INVALID'));
+    }
+    if (typeof payload.username !== 'string') return next(new Error('AUTH_INVALID'));
+
+    try {
+        const user = await PlayerModel.findOne({ username: payload.username }, 'username avatar');
+        if (!user) return next(new Error('AUTH_INVALID'));
+        socket.data.username = user.username;
+        socket.data.avatar = safeAvatar(user.avatar);
+        next();
+    } catch (err) {
+        console.error("Hiba a socket hitelesítés közben:", err);
+        next(new Error('SERVER_ERROR'));
+    }
+});
 
 io.on('connection', (socket) => {
-    console.log(`🔌 Új kliens csatlakozott: ${socket.id}`);
+    const username = socket.data.username;
+    console.log(`🔌 Új kliens csatlakozott: ${socket.id} (${username})`);
+
+    // Egy fiókhoz egyszerre egy munkamenet tartozhat: az újabb kapcsolat kidobja a régit.
+    // A játékos a csatlakozás pillanatától online, így minden válasz és státuszfrissítés eljut hozzá;
+    // a pozíció (lat/lng) az első update_position után töltődik ki.
+    const now = Date.now();
+    const previous = activePlayers[username];
+    activePlayers[username] = {
+        socketId: socket.id,
+        username,
+        avatar: socket.data.avatar,
+        lat: null,
+        lng: null,
+        anchor: null,          // az utolsó "valódi" mozgás helye (GPS-szórás szűréséhez)
+        lastMovedAt: now,      // pihenéshez: mikor mozdult utoljára
+        lastTickAt: now,
+        xpMeters: 0            // a még XP-re nem váltott megtett méterek
+    };
+    if (previous && previous.socketId !== socket.id) {
+        const oldSocket = io.sockets.sockets.get(previous.socketId);
+        if (oldSocket) {
+            oldSocket.emit('session_replaced');
+            oldSocket.disconnect(true);
+        }
+    }
+
+    // Offline pihenés jóváírása, majd a friss állapot elküldése
+    withPlayer(username, (p) => {
+        if (p.lastSeen !== null) restFatigue(p, now - p.lastSeen);
+        p.lastSeen = now;
+    }).then(r => { if (r) sendPlayerState(username, r.p); })
+      .catch(err => console.error("Hiba a játékos betöltésekor:", err));
+
+    // Egységes válasz: hiba esetén csak üzenet, siker esetén előbb a teljes állapot, aztán az üzenet
+    const reply = (evt) => (r) => {
+        if (!r) return;
+        const { p, result } = r;
+        if (result.error) {
+            io.to(socket.id).emit(evt, { success: false, message: result.error });
+            return;
+        }
+        sendPlayerState(username, p, { leveledUp: !!result.leveledUp });
+        io.to(socket.id).emit(evt, { success: true, message: result.message, ...(result.payload || {}) });
+    };
+    const logError = (label) => (err) => console.error(label, err);
 
     // --- BIZTONSÁGOS TÁRGY HASZNÁLAT ---
-    socket.on('use_item', async (data) => {
-        if (!data || !data.username || !data.itemKey) return;
+    // (A tárgyak hatásait a 4. csoportban kötjük az items.js adataihoz.)
+    socket.on('use_item', (data) => {
+        if (!data || typeof data.itemKey !== 'string') return;
 
-        try {
-            const user = await PlayerModel.findOne({ username: data.username });
-            if (!user || !user.playerData) return;
-
-            let p = user.playerData;
-            if (!Array.isArray(p.inventory)) p.inventory = [];
-
-            let invSlot = p.inventory.find(slot => slot.key === data.itemKey);
-            if (!invSlot || invSlot.count <= 0) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('item_use_result', { success: false, message: 'Nincs ilyen tárgy a leltáradban!' });
-                return;
-            }
-
+        withPlayer(username, freeOnly((p) => {
             const itemConfig = itemDatabase[data.itemKey];
-            if (!itemConfig) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('item_use_result', { success: false, message: 'Ismeretlen tárgy!' });
-                return;
-            }
+            if (!itemConfig) return { save: false, error: 'Ismeretlen tárgy!' };
+            if (countItem(p, data.itemKey) < 1) return { save: false, error: 'Nincs ilyen tárgy a leltáradban!' };
+            if (!SurvivalStats.isConsumable(itemConfig)) return { save: false, error: 'Ezt a tárgyat nem lehet így használni!' };
 
-            let message = '';
-            let used = false;
+            // A hatások az items.js "effects" mezőjéből jönnek (éhség, szomjúság, élet, fáradtság)
+            const changes = SurvivalStats.applyEffects(p, itemConfig.effects, playerStats(p).maxHp);
+            if (Object.keys(changes).length === 0) return { save: false, error: 'Most nincs rá szükséged.' };
 
-            if (itemConfig.type === 'food') {
-                p.hunger = Math.min(100, (p.hunger || 100) + 35);
-                message = `Megetted ezt: ${itemConfig.name}.`;
-                used = true;
-            } else if (itemConfig.type === 'drink' || itemConfig.type === 'water') {
-                p.thirst = Math.min(100, (p.thirst || 100) + 40);
-                message = `Megitrad ezt: ${itemConfig.name}.`;
-                used = true;
-            } else if (itemConfig.type === 'medicine' || itemConfig.type === 'medical') {
-                p.hp = Math.min(p.maxHp || 100, (p.hp || 100) + (itemConfig.value || 35));
-                message = `Használtad ezt: ${itemConfig.name}.`;
-                used = true;
-            }
-
-            if (!used) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('item_use_result', { success: false, message: 'Ezt a tárgyat nem lehet így használni!' });
-                return;
-            }
-
-            invSlot.count -= 1;
-            if (invSlot.count <= 0) {
-                p.inventory = p.inventory.filter(slot => slot.key !== data.itemKey);
-            }
-
-            await PlayerModel.findOneAndUpdate({ username: data.username }, { playerData: p });
-
-            const socketId = activePlayers[data.username]?.socketId;
-            if (socketId) {
-                io.to(socketId).emit('item_use_result', {
-                    success: true,
-                    inventory: p.inventory,
-                    player: p,
-                    message: message
-                });
-            }
-        } catch (err) {
-            console.error("Hiba tárgy használat során:", err);
-        }
+            removeItem(p, data.itemKey, 1);
+            const verb = itemConfig.type === 'food' ? 'Megetted' : itemConfig.type === 'drink' ? 'Megittad' : 'Használtad';
+            return { message: `${verb}: ${itemConfig.name} (${describeChanges(changes)})` };
+        })).then(reply('item_use_result')).catch(logError("Hiba tárgy használat során:"));
     });
 
     // --- BIZTONSÁGOS FELSZERELÉS (EQUIP) ---
-    socket.on('equip_item', async (data) => {
-        if (!data || !data.username || !data.itemKey || !data.slotType) return;
+    // A tárgy típusa adja a slotot (sisak csak a sisak helyére, fegyver csak a fegyver helyére).
+    socket.on('equip_item', (data) => {
+        if (!data || typeof data.itemKey !== 'string') return;
+        if (data.slotType !== undefined && typeof data.slotType !== 'string') return;
 
-        try {
-            const user = await PlayerModel.findOne({ username: data.username });
-            if (!user || !user.playerData) return;
+        withPlayer(username, freeOnly((p) => {
+            const item = itemDatabase[data.itemKey];
+            if (!SurvivalStats.isEquippable(item)) return { save: false, error: 'Ezt a tárgyat nem lehet felvenni.' };
+            const slot = SurvivalStats.equipSlot(item);
+            if (data.slotType !== undefined && data.slotType !== slot) return { save: false, error: 'Ez a tárgy nem erre a helyre való.' };
+            if (!removeItem(p, data.itemKey, 1)) return { save: false, error: 'A tárgy nincs a leltáradban!' };
 
-            let p = user.playerData;
-            if (!Array.isArray(p.inventory)) p.inventory = [];
-            if (!p.equipment) p.equipment = {};
+            const currentEquipped = p.equipment[slot];
+            if (currentEquipped) pushItem(p, currentEquipped, 1);
+            p.equipment[slot] = data.itemKey;
 
-            let invSlot = p.inventory.find(slot => slot.key === data.itemKey);
-            if (!invSlot || invSlot.count <= 0) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('equip_result', { success: false, message: 'A tárgy nincs a leltáradban!' });
-                return;
-            }
-
-            let currentEquipped = p.equipment[data.slotType];
-            if (currentEquipped) {
-                let existingInv = p.inventory.find(slot => slot.key === currentEquipped);
-                if (existingInv) {
-                    existingInv.count += 1;
-                } else {
-                    p.inventory.push({ key: currentEquipped, count: 1 });
-                }
-            }
-
-            invSlot.count -= 1;
-            if (invSlot.count <= 0) {
-                p.inventory = p.inventory.filter(slot => slot.key !== data.itemKey);
-            }
-
-            p.equipment[data.slotType] = data.itemKey;
-
-            await PlayerModel.findOneAndUpdate({ username: data.username }, { playerData: p });
-
-            const socketId = activePlayers[data.username]?.socketId;
-            if (socketId) {
-                io.to(socketId).emit('equip_result', {
-                    success: true,
-                    inventory: p.inventory,
-                    equipment: p.equipment,
-                    message: `Sikeresen felszerelve!`
-                });
-            }
-        } catch (err) {
-            console.error("Hiba felszerelés során:", err);
-        }
+            // Csere után is bele kell férnie (pl. kisebb hátizsákra cserélve)
+            const problem = capacityProblem(p);
+            if (problem === 'slots') return { save: false, error: 'A csere után nem férne el minden a hátizsákodban!' };
+            if (problem === 'weight') return { save: false, error: 'A csere után túl nehéz lenne a csomagod!' };
+            return { message: `Felszerelve: ${item.name}` };
+        })).then(reply('equip_result')).catch(logError("Hiba felszerelés során:"));
     });
 
-    // --- HARC LEVEZÉNYLÉSE ---
-    socket.on('resolve_combat', async (data) => {
-        if (!data || !data.username) return;
+    // --- FELSZERELÉS LEVÉTELE ---
+    socket.on('unequip_item', (data) => {
+        if (!data || typeof data.slotType !== 'string') return;
+        if (!SurvivalStats.EQUIPMENT_SLOTS.includes(data.slotType)) return;
 
-        try {
-            const user = await PlayerModel.findOne({ username: data.username });
-            if (!user || !user.playerData) return;
+        withPlayer(username, freeOnly((p) => {
+            const key = p.equipment[data.slotType];
+            if (!key) return { save: false, error: 'Ezen a helyen nincs semmi.' };
 
-            let p = user.playerData;
-            if (!Array.isArray(p.inventory)) p.inventory = [];
+            p.equipment[data.slotType] = null;
+            pushItem(p, key, 1);
 
-            let weaponBonus = 5;
-            if (p.equipment && p.equipment.weapon) {
-                if (p.equipment.weapon === 'ak47') weaponBonus = 35;
-                else if (p.equipment.weapon === 'makarov') weaponBonus = 18;
-                else if (p.equipment.weapon === 'crowbar' || p.equipment.weapon === 'machete') weaponBonus = 12;
+            // A levétel után is bele kell férnie (pl. a hátizsák levétele csökkenti a helyet és a teherbírást)
+            const stats = playerStats(p);
+            if (p.inventory.length > stats.slots) {
+                return { save: false, error: `Nem veheted le! Túl sok tárgy van nálad (${p.inventory.length}/${stats.slots}), pakolj ki előbb!` };
             }
-
-            let armorBonus = 0;
-            if (p.equipment && p.equipment.armor) {
-                if (p.equipment.armor === 'kevlar_vest') armorBonus = 25;
-                else if (p.equipment.armor === 'leather_jacket') armorBonus = 10;
+            if (stats.weight > stats.weightHardCap + 1e-9) {
+                return { save: false, error: 'Nem veheted le! Utána túl nehéz lenne a csomagod, pakolj ki előbb!' };
             }
-
-            let enemyHp = 40 + (p.level * 5);
-            let enemyDamage = 15;
-            let playerHp = p.hp || 100;
-            let rounds = 0;
-
-            while (enemyHp > 0 && playerHp > 0 && rounds < 10) {
-                rounds++;
-                let pHit = Math.floor(Math.random() * 10) + weaponBonus;
-                enemyHp -= pHit;
-
-                if (enemyHp <= 0) break;
-
-                let eHit = Math.max(2, (Math.floor(Math.random() * 10) + enemyDamage) - armorBonus);
-                playerHp -= eHit;
-            }
-
-            if (playerHp <= 0) {
-                p.hp = 0;
-                await PlayerModel.findOneAndUpdate({ username: data.username }, { playerData: p });
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('combat_result', { success: false, hp: 0, message: 'Vereséget szenvedtél a harcban!' });
-                return;
-            }
-
-            p.hp = playerHp;
-            p.money = (p.money || 100) + 25;
-            p.xp = (p.xp || 0) + 30;
-
-            let nextLevelXp = (p.level || 1) * 100;
-            let leveledUp = false;
-            if (p.xp >= nextLevelXp) {
-                p.level = (p.level || 1) + 1;
-                p.xp -= nextLevelXp;
-                leveledUp = true;
-                p.maxHp = (p.maxHp || 100) + 10;
-                p.hp = p.maxHp;
-            }
-
-            let rewardItem = null;
-            if (Math.random() < 0.4) {
-                const possibleRewards = ['rag', 'canned_food', 'ammo_9mm', 'bandage'];
-                rewardItem = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
-                let existing = p.inventory.find(slot => slot.key === rewardItem);
-                if (existing) existing.count += 1;
-                else p.inventory.push({ key: rewardItem, count: 1 });
-            }
-
-            await PlayerModel.findOneAndUpdate({ username: data.username }, { playerData: p });
-
-            const socketId = activePlayers[data.username]?.socketId;
-            if (socketId) {
-                io.to(socketId).emit('combat_result', {
-                    success: true,
-                    player: p,
-                    rewardItem: rewardItem,
-                    leveledUp: leveledUp,
-                    message: `Győzelem! Nyertél 30 XP-t, 25 pénzt${rewardItem ? ' és találtál egy tárgyat' : ''}!`
-                });
-            }
-        } catch (err) {
-            console.error("Hiba a szerver oldali harc során:", err);
-        }
+            return { message: 'Tárgy levéve a slotról.' };
+        })).then(reply('equip_result')).catch(logError("Hiba a levétel során:"));
     });
 
-    // --- POZÍCIÓ SZINKRON ---
+    // --- TÁRGY ELDOBÁSA (az eldobott tárgy eltűnik) ---
+    socket.on('drop_item', (data) => {
+        if (!data || typeof data.itemKey !== 'string') return;
+        const count = data.count === undefined ? 1 : Math.floor(Number(data.count));
+        if (!Number.isFinite(count) || count < 1) return;
+
+        withPlayer(username, freeOnly((p) => {
+            if (!removeItem(p, data.itemKey, count)) return { save: false, error: 'Nincs ennyi ebből a tárgyból!' };
+            const item = itemDatabase[data.itemKey];
+            return { message: `Eldobtál ${count} db-ot: ${item ? item.name : data.itemKey}` };
+        })).then(reply('drop_result')).catch(logError("Hiba eldobás során:"));
+    });
+
+    // --- POZÍCIÓ SZINKRON + MOZGÁS (fáradtság, XP) ---
     socket.on('update_position', (data) => {
-        if (data && data.username && data.lat && data.lng) {
-            activePlayers[data.username] = {
-                socketId: socket.id,
-                username: data.username,
-                lat: data.lat,
-                lng: data.lng,
-                avatar: data.avatar || 'avatar1.png'
-            };
-            socket.broadcast.emit('players_update', activePlayers);
+        if (!data || typeof data.lat !== 'number' || typeof data.lng !== 'number') return;
+        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lng)) return;
+        if (Math.abs(data.lat) > 90 || Math.abs(data.lng) > 180) return;
+
+        const entry = activePlayers[username];
+        if (!entry || entry.socketId !== socket.id) return; // csak az aktív munkamenet mozgathatja a játékost
+
+        const now = Date.now();
+        const previousPosition = entry.lat === null ? null : { lat: entry.lat, lng: entry.lng };
+        const previousAt = entry.positionAt;
+
+        // GPS-ugrás (pl. hamisítás): pár száz méter szinte azonnal. Nem számít, és egy ideig nem lehet lootolni.
+        let jumped = false;
+        if (previousPosition && previousAt) {
+            const jump = distanceMeters(previousPosition, data);
+            const seconds = Math.max(1, (now - previousAt) / 1000);
+            if (jump >= config.JUMP_MIN_METERS && (jump / seconds) * 3.6 >= config.JUMP_MIN_SPEED_KMH) {
+                jumped = true;
+                entry.lootBlockedUntil = now + config.JUMP_LOOT_BLOCK_SECONDS * 1000;
+                entry.anchor = null; // a mozgás az új helytől számít tovább
+                io.to(socket.id).emit('player_notice', {
+                    message: `⚠️ A GPS-pozíciód hirtelen nagyot ugrott. ${Math.round(config.JUMP_LOOT_BLOCK_SECONDS / 60)} percig nem kutathatsz át épületet.`
+                });
+            }
         }
+
+        entry.lat = data.lat;
+        entry.lng = data.lng;
+        entry.positionAt = now;
+        // Csak a közelben lévők kapnak értesítést (a régi és az új hely körül), és a mozgó játékos is a saját listáját
+        sendNearby(username);
+        notifyAround([previousPosition, { lat: data.lat, lng: data.lng }], username);
+
+        // Mozgásnak csak a pontos GPS jel számít
+        const accuracy = typeof data.accuracy === 'number' && Number.isFinite(data.accuracy) ? data.accuracy : Infinity;
+        if (accuracy > config.MOVE_MAX_ACCURACY_METERS) return;
+
+        if (jumped) return;
+        const here = { lat: data.lat, lng: data.lng };
+        if (!entry.anchor) { entry.anchor = here; entry.anchorAt = now; return; }
+
+        const moved = distanceMeters(entry.anchor, here);
+        if (moved < config.MOVE_JITTER_METERS) return; // GPS-szórás, nem valódi mozgás
+
+        const speedKmh = (moved / Math.max(1, (now - entry.anchorAt) / 1000)) * 3.6;
+        entry.anchor = here;
+        entry.anchorAt = now;
+        entry.lastMovedAt = now;
+        if (speedKmh > config.MOVE_MAX_SPEED_KMH) return; // járművel: nem jár érte XP és nem fáraszt
+
+        entry.xpMeters += moved;
+        const xp = Math.floor(entry.xpMeters / config.MOVE_XP_METERS);
+        entry.xpMeters -= xp * config.MOVE_XP_METERS;
+
+        withPlayer(username, aliveOnly((p) => {
+            addFatigue(p, moved * config.FATIGUE_PER_METER);
+            const levels = xp > 0 ? grantXp(p, xp) : 0;
+            return { leveledUp: levels > 0 };
+        })).then(r => {
+            if (r) sendPlayerState(username, r.p, { leveledUp: !!r.result.leveledUp });
+        }).catch(logError("Hiba a mozgás feldolgozásakor:"));
     });
 
     // --- CRAFTOLÁS ---
-    socket.on('craft_item', async (data) => {
-        if (!data || !data.username || !data.recipeKey) return;
+    socket.on('craft_item', (data) => {
+        if (!data || typeof data.recipeKey !== 'string') return;
 
-        try {
-            const user = await PlayerModel.findOne({ username: data.username });
-            if (!user || !user.playerData) return;
-
-            let p = user.playerData;
-            if (!Array.isArray(p.inventory)) p.inventory = [];
-
+        withPlayer(username, freeOnly((p) => {
             const recipe = craftingRecipes.find(r => r.key === data.recipeKey);
-            if (!recipe) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('craft_result', { success: false, message: 'Ismeretlen recept!' });
-                return;
-            }
+            if (!recipe) return { save: false, error: 'Ismeretlen recept!' };
+            if (recipe.station === 'workshop') return { save: false, error: 'Ezt csak műhelyben lehet elkészíteni (a műhelyek hamarosan jönnek).' };
+            const itemName = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
 
-            for (let [matKey, reqQty] of Object.entries(recipe.req)) {
-                let invSlot = p.inventory.find(slot => slot.key === matKey);
-                let totalHave = invSlot ? invSlot.count : 0;
-                if (totalHave < reqQty) {
-                    const socketId = activePlayers[data.username]?.socketId;
-                    if (socketId) io.to(socketId).emit('craft_result', { success: false, message: `Nincs elég alapanyag: ${matKey} (Kellene: ${reqQty})` });
-                    return;
+            for (const [matKey, reqQty] of Object.entries(recipe.req)) {
+                if (countItem(p, matKey) < reqQty) {
+                    return { save: false, error: `Nincs elég alapanyag: ${itemName(matKey)} (Kellene: ${reqQty})` };
                 }
             }
 
-            let hasExistingSlot = p.inventory.some(slot => slot.key === recipe.key);
-            let maxSlots = p.maxInv || 10;
-            if (!hasExistingSlot && p.inventory.length >= maxSlots) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('craft_result', { success: false, message: 'A hátizsákod tele van!' });
-                return;
-            }
-
-            for (let [matKey, reqQty] of Object.entries(recipe.req)) {
-                let invSlot = p.inventory.find(slot => slot.key === matKey);
-                if (invSlot) {
-                    invSlot.count -= reqQty;
-                    if (invSlot.count <= 0) {
-                        p.inventory = p.inventory.filter(slot => slot.key !== matKey);
-                    }
+            // Szerszámok: nem fogynak el, de kopnak. Több lehetőségnél a legkopottabbat használjuk el előbb.
+            const usedTools = [];
+            for (const entry of recipe.tools || []) {
+                const options = Array.isArray(entry) ? entry : [entry];
+                const candidates = p.inventory.filter(s => options.includes(s.key) && s.count > 0 && !usedTools.includes(s));
+                if (candidates.length === 0) {
+                    return { save: false, error: `Hiányzó szerszám: ${options.map(itemName).join(' vagy ')}` };
                 }
+                candidates.sort((a, b) => (a.dur ?? Infinity) - (b.dur ?? Infinity));
+                usedTools.push(candidates[0]);
             }
 
-            let targetSlot = p.inventory.find(slot => slot.key === recipe.key);
-            let craftCount = recipe.count || 1;
-            if (targetSlot) {
-                targetSlot.count += craftCount;
-            } else {
-                p.inventory.push({ key: recipe.key, count: craftCount });
-            }
+            // Előbb elvesszük az alapanyagokat (ez helyet szabadíthat fel), aztán megnézzük, elfér-e a termék.
+            // Ha nem fér el, semmi nem mentődik (save: false), így az alapanyagok sem vesznek el.
+            for (const [matKey, reqQty] of Object.entries(recipe.req)) removeItem(p, matKey, reqQty);
+            const result = recipe.result || recipe.key;
+            const count = recipe.count || 1;
+            const added = addItem(p, result, count);
+            if (!added.ok) return { save: false, error: CAPACITY_MESSAGES[added.reason] };
 
-            await PlayerModel.findOneAndUpdate({ username: data.username }, { playerData: p });
-
-            const socketId = activePlayers[data.username]?.socketId;
-            if (socketId) {
-                io.to(socketId).emit('craft_result', {
-                    success: true,
-                    inventory: p.inventory,
-                    message: `Sikeresen megbarkácsoltad: ${recipe.name}!`
-                });
-            }
-        } catch (err) {
-            console.error("Hiba a szerver oldali craftolás során:", err);
-        }
-    });
-
-    // --- XP JÓVÁÍRÁS ---
-    socket.on('gain_xp', async (data) => {
-        if (!data || !data.username || !data.amount) return;
-
-        try {
-            const user = await PlayerModel.findOne({ username: data.username });
-            if (!user || !user.playerData) return;
-
-            let p = user.playerData;
-            p.xp = (p.xp || 0) + Number(data.amount);
-            let nextLevelXp = (p.level || 1) * 100;
-
-            let leveledUp = false;
-            if (p.xp >= nextLevelXp) {
-                p.level = (p.level || 1) + 1;
-                p.xp -= nextLevelXp;
-                leveledUp = true;
-            }
-
-            await PlayerModel.findOneAndUpdate({ username: data.username }, { playerData: p });
-
-            const socketId = activePlayers[data.username]?.socketId;
-            if (socketId) {
-                io.to(socketId).emit('xp_updated', {
-                    xp: p.xp,
-                    level: p.level,
-                    leveledUp: leveledUp
-                });
-            }
-        } catch (err) {
-            console.error("Hiba az XP növelésekor:", err);
-        }
-    });
-
-    // --- LOOTOLÁS ---
-    socket.on('loot_building', async (data) => {
-        if (!data || !data.username || !data.buildingId) return;
-
-        try {
-            const user = await PlayerModel.findOne({ username: data.username });
-            if (!user || !user.playerData) return;
-
-            let p = user.playerData;
-            if (!Array.isArray(p.inventory)) p.inventory = [];
-
-            let maxSlots = p.maxInv || 10;
-            if (p.inventory.length >= maxSlots) {
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) io.to(socketId).emit('loot_result', { success: false, message: 'A hátizsákod tele van!' });
-                return;
-            }
-
-            const foundItems = rollServerLoot(data.buildingName || 'Romos ház');
-            const lockDuration = 4 * 60 * 60 * 1000;
-            const lockedUntilTime = Date.now() + lockDuration;
-
-            if (foundItems.length === 0) {
-                await PlayerModel.findOneAndUpdate(
-                    { username: data.username },
-                    { $addToSet: { buildings: { id: data.buildingId, lockedUntil: lockedUntilTime } } }
-                );
-
-                const socketId = activePlayers[data.username]?.socketId;
-                if (socketId) {
-                    io.to(socketId).emit('loot_result', { 
-                        success: true, items: [], message: `Ez a(z) ${data.buildingName} üres volt.`,
-                        buildingId: data.buildingId, lockedUntil: lockedUntilTime
-                    });
+            // Kopás: minden kopó szerszámból 1 tartósság; 0-nál eltörik
+            const broken = [];
+            usedTools.forEach(slot => {
+                if (slot.dur === undefined) return;
+                slot.dur -= 1;
+                if (slot.dur <= 0) {
+                    p.inventory = p.inventory.filter(s => s !== slot);
+                    broken.push(itemName(slot.key));
                 }
-                io.emit('building_looted_update', { id: data.buildingId, looted: true, lockedUntil: lockedUntilTime });
-                return;
-            }
-
-            foundItems.forEach(itemKey => {
-                let existing = p.inventory.find(slot => slot.key === itemKey);
-                if (existing) existing.count += 1;
-                else p.inventory.push({ key: itemKey, count: 1 });
             });
 
-            await PlayerModel.findOneAndUpdate(
-                { username: data.username },
-                { playerData: p, $addToSet: { buildings: { id: data.buildingId, lockedUntil: lockedUntilTime } } }
-            );
-
-            const socketId = activePlayers[data.username]?.socketId;
-            if (socketId) {
-                io.to(socketId).emit('loot_result', {
-                    success: true, items: foundItems, inventory: p.inventory,
-                    buildingId: data.buildingId, lockedUntil: lockedUntilTime
-                });
-            }
-
-            io.emit('building_looted_update', { id: data.buildingId, looted: true, lockedUntil: lockedUntilTime });
-        } catch (err) {
-            console.error("Hiba a szerver oldali lootolás során:", err);
-        }
+            let message = `Sikeresen megbarkácsoltad: ${recipe.name}${count > 1 ? ` (${count} db)` : ''}!`;
+            if (broken.length > 0) message += ` Eltört: ${broken.join(', ')}.`;
+            return { message, payload: { broken } };
+        })).then(reply('craft_result')).catch(logError("Hiba a szerver oldali craftolás során:"));
     });
 
-    socket.on('building_looted', async (data) => {
-        if (data && data.id && data.username) {
-            const lockDuration = 4 * 60 * 60 * 1000;
-            const lockedUntilTime = Date.now() + lockDuration;
+    // --- LOOTOLÁS (csalásbiztos) ---
+    // A kliens csak az épület azonosítóját küldi. A szerver:
+    //  1. ellenőrzi a fáradtságot, a helyet és a friss GPS pozíciót,
+    //  2. maga kérdezi le az épületet az OSM-ből (típus, hely), és megnézi a távolságot,
+    //  3. atomi művelettel lezárja az épületet mindenki számára (ha már zárva van, elutasít),
+    //  4. sorsol: találkozás (az épülettípus veszélyessége szerint), majd a loot-tábla alapján 1-3 tárgy.
+    let lastLootRequestAt = 0;
+    socket.on('loot_building', (data) => {
+        if (!data || !SurvivalBuildings.parseBuildingId(data.buildingId)) return;
+        const buildingId = data.buildingId;
+        const requestedAt = Date.now();
+        if (requestedAt - lastLootRequestAt < config.LOOT_COOLDOWN_MS) {
+            io.to(socket.id).emit('loot_result', { success: false, message: 'Lassabban! Egyszerre csak egy épületet kutathatsz át.' });
+            return;
+        }
+        lastLootRequestAt = requestedAt;
+
+        withPlayer(username, freeOnly(async (p) => {
+            if (p.fatigue >= 100) return { save: false, error: 'Teljesen kimerültél! Pihenned kell.' };
+            if (p.inventory.length >= playerStats(p).slots) return { save: false, error: CAPACITY_MESSAGES.slots };
+
+            const entry = activePlayers[username];
+            const now = Date.now();
+            if (entry && entry.lootBlockedUntil > now) {
+                const seconds = Math.ceil((entry.lootBlockedUntil - now) / 1000);
+                return { save: false, error: `A GPS-pozíciód nemrég hirtelen ugrott. Várj még ${seconds} másodpercet!` };
+            }
+            const dangerUntil = p.dangerUntil[buildingId];
+            if (dangerUntil && dangerUntil > now) {
+                const minutes = Math.max(1, Math.ceil((dangerUntil - now) / 60000));
+                return { save: false, error: `Az ellenség még bent van, ahonnan elmenekültél. Gyere vissza később! (kb. ${minutes} perc)` };
+            }
+
+            if (!entry || entry.lat === null || !entry.positionAt || now - entry.positionAt > config.POSITION_MAX_AGE_SECONDS * 1000) {
+                return { save: false, error: 'Várd meg a friss GPS pozíciót!' };
+            }
+
+            let building;
             try {
-                await PlayerModel.findOneAndUpdate(
-                    { username: data.username },
-                    { $addToSet: { buildings: { id: data.id, lockedUntil: lockedUntilTime } } }
-                );
+                building = await getBuilding(buildingId);
             } catch (err) {
-                console.error("Hiba a kifosztott épület mentésekor:", err);
+                if (err.code === 'NOT_FOUND') return { save: false, error: 'Ez az épület nem található.' };
+                return { save: false, error: 'Nem sikerült azonosítani az épületet. Próbáld újra egy kicsit később!' };
             }
-            io.emit('building_looted_update', { id: data.id, looted: true, lockedUntil: lockedUntilTime });
+
+            const distance = SurvivalBuildings.distanceToBuilding(entry, building); // nagy létesítménynél a szélétől
+            if (distance > config.LOOT_RANGE_METERS + config.LOOT_RANGE_TOLERANCE_METERS) {
+                return { save: false, error: `Túl messze vagy az épülettől! (${Math.round(distance)} m - menj ${config.LOOT_RANGE_METERS} méteren belülre)` };
+            }
+
+            const lockedUntil = now + config.LOOT_LOCK_HOURS * 60 * 60 * 1000;
+            if (!(await lockBuilding(buildingId, username, now, lockedUntil))) {
+                const until = await currentLock(buildingId);
+                const minutes = Math.max(1, Math.ceil((until - now) / 60000));
+                return { save: false, error: `Ezt az épületet nemrég kifosztották. Gyere vissza később! (kb. ${minutes} perc)`, lockInfo: { [buildingId]: until } };
+            }
+
+            const info = SurvivalBuildings.typeInfo(building.type);
+            if (Math.random() < info.encounter) {
+                // Körös harc indul: a lootot csak győzelem után kapja meg (menekülésnél semmit)
+                p.combat = Combat.createCombat(p, { id: buildingId, name: building.name, type: building.type }, info);
+                p.combat.lockedUntil = lockedUntil;
+                return {
+                    lockedUntil,
+                    message: `Veszély! ${p.combat.enemy.avatar} ${p.combat.enemy.name} támadt rád az épületben!`,
+                    payload: { items: [], skipped: [], buildingId, lockedUntil, buildingName: building.name, encounter: { started: true } }
+                };
+            }
+
+            const { found, added, skipped } = lootBuilding(p, building, 1);
+            addFatigue(p, config.FATIGUE_LOOT);
+
+            const messages = [];
+            if (found.length === 0) messages.push(`Ez a(z) ${building.name} üres volt.`);
+            else if (skipped.length > 0) messages.push('Néhány talált tárgy már nem fért el.');
+
+            return {
+                lockedUntil,
+                message: messages.join(' ') || undefined,
+                payload: { items: added, skipped, buildingId, lockedUntil, buildingName: building.name, encounter: null }
+            };
+        })).then(r => {
+            reply('loot_result')(r);
+            if (!r) return;
+            if (r.result.lockInfo) socket.emit('building_status', { locks: r.result.lockInfo });
+            if (r.result.lockedUntil) {
+                io.emit('building_looted_update', { id: buildingId, looted: true, lockedUntil: r.result.lockedUntil });
+            }
+        }).catch(logError("Hiba a szerver oldali lootolás során:"));
+    });
+
+    // --- ÉPÜLETEK ZÁRÁLLAPOTA ---
+    // A kliens a betöltött épületek azonosítóit küldi, a szerver visszaadja, melyik van épp zárva.
+    let statusWindowStart = 0;
+    let statusCalls = 0;
+    socket.on('building_status', async (data) => {
+        if (!data || !Array.isArray(data.ids)) return;
+        const now = Date.now();
+        if (now - statusWindowStart > 10000) { statusWindowStart = now; statusCalls = 0; }
+        if (++statusCalls > 10) return; // legfeljebb 10 kérés / 10 mp
+
+        const ids = data.ids.filter(id => SurvivalBuildings.parseBuildingId(id)).slice(0, 500);
+        if (ids.length === 0) return;
+        try {
+            const docs = await BuildingModel.find({ _id: { $in: ids }, lockedUntil: { $gt: now } }, '_id lockedUntil');
+            const locks = {};
+            docs.forEach(d => { locks[d._id] = d.lockedUntil; });
+            socket.emit('building_status', { locks });
+        } catch (err) {
+            console.error("Hiba az épületek állapotának lekérdezésekor:", err);
         }
     });
 
-    // --- BIZTONSÁGOS MENTÉS ---
-    socket.on('save_player', async (data) => {
-        if (!data || !data.username) return;
-        try {
-            await PlayerModel.findOneAndUpdate(
-                { username: data.username },
-                { playerData: data.player, buildings: data.buildings },
-                { upsert: true }
-            );
-            socket.emit('save_success');
-        } catch (e) {
-            console.error("Hiba mentéskor:", e);
-        }
+    // --- KÖRÖS HARC ---
+    // A kliens csak a választott lépést küldi (támadás / gyógyítás / menekülés), mindent a szerver számol.
+    // A válasz eseménylistája (events) a harcnapló és később az animációk alapja.
+    socket.on('combat_action', (data) => {
+        if (!data || !['attack', 'heal', 'flee'].includes(data.action)) return;
+        if (data.action === 'heal' && typeof data.itemKey !== 'string') return;
+        if (data.action === 'attack' && data.slot !== undefined && !Combat.WEAPON_SLOTS.includes(data.slot)) return;
+        let release = null;
+
+        withPlayer(username, aliveOnly((p) => {
+            const combat = p.combat;
+            if (!combat) return { save: false, error: 'Nem harcolsz.' };
+
+            let step;
+            if (data.action === 'attack') step = Combat.attack(p, combat, itemDatabase, Math.random, data.slot || 'weapon');
+            else if (data.action === 'heal') step = Combat.heal(p, combat, itemDatabase, data.itemKey);
+            else step = Combat.flee(p, combat, itemDatabase);
+            if (step.error) return { save: false, error: step.error };
+
+            // Üres hüvely a lövés után (ha elfér)
+            if (step.casing && addItem(p, 'empty_casing', 1).ok) step.events[0].casing = true;
+
+            const payload = { events: step.events, outcome: step.outcome || null, enemy: combat.enemy };
+            const building = { id: combat.buildingId, name: combat.buildingName, type: combat.buildingType };
+
+            if (step.outcome === 'won') {
+                p.combat = null;
+                addFatigue(p, config.FATIGUE_COMBAT + config.FATIGUE_LOOT);
+                const reward = Combat.rewards(combat);
+                p.money += reward.money;
+                const levels = grantXp(p, reward.xp);
+                const messages = [`Legyőzted: ${combat.enemy.name}! +${reward.xp} XP, +${reward.money} pénz.`];
+                if (reward.drop) {
+                    messages.push(addItem(p, reward.drop, 1).ok
+                        ? `Nála volt: ${itemDatabase[reward.drop].name}.`
+                        : 'A nála lévő tárgy már nem fért el.');
+                }
+                // Győzelem után átkutatod az épületet (kisebb eséllyel üres)
+                const loot = lootBuilding(p, building, config.COMBAT_WIN_EMPTY_FACTOR);
+                if (loot.found.length === 0) messages.push('Az épületben nem találtál semmit.');
+                else if (loot.skipped.length > 0) messages.push('Néhány talált tárgy már nem fért el.');
+                Object.assign(payload, { items: loot.added, skipped: loot.skipped, xp: reward.xp, money: reward.money });
+                return { leveledUp: levels > 0, message: messages.join(' '), payload };
+            }
+
+            if (step.outcome === 'fled') {
+                // Nincs loot; az épület csak NEKED zárul FLEE_LOCK_MINUTES percre, másoknak feloldjuk
+                p.combat = null;
+                addFatigue(p, config.FATIGUE_COMBAT);
+                p.dangerUntil[combat.buildingId] = Date.now() + config.FLEE_LOCK_MINUTES * 60000;
+                release = { id: combat.buildingId, lockedUntil: combat.lockedUntil };
+                return { message: `Sikerült elmenekülnöd! Ide ${config.FLEE_LOCK_MINUTES} percig nem érdemes visszamenni.`, payload };
+            }
+
+            if (step.outcome === 'lost') {
+                // A finalizePlayer halottnak jelöli a karaktert és lezárja a harcot
+                return { message: `${combat.enemy.name} legyőzött. Meghaltál a Zónában.`, payload };
+            }
+            return { payload };
+        })).then(async (r) => {
+            reply('combat_result')(r);
+            if (release && await releaseBuildingLock(release.id, username, release.lockedUntil)) {
+                io.emit('building_looted_update', { id: release.id, looted: false, lockedUntil: 0 });
+            }
+        }).catch(logError("Hiba a harc során:"));
+    });
+
+    // --- ÚJ TÚLÉLŐ INDÍTÁSA (csak halott karakterrel) ---
+    // Minden elvész: szint, XP, pénz, leltár, felszerelés. A fiók (név, jelszó, avatar) megmarad.
+    socket.on('respawn', () => {
+        withPlayer(username, (p) => {
+            if (!p.dead) return { save: false, error: 'A karaktered még él.' };
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now() });
+            const entry = activePlayers[username];
+            if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
+            return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };
+        }).then(reply('respawn_result')).catch(logError("Hiba az újrakezdés során:"));
     });
 
     socket.on('disconnect', () => {
         console.log(`🔌 Kliens levált: ${socket.id}`);
-        for (let username in activePlayers) {
-            if (activePlayers[username].socketId === socket.id) {
-                delete activePlayers[username];
-                break;
-            }
+        // Csak akkor töröljük, ha a bejegyzés még ehhez a kapcsolathoz tartozik
+        // (a kidobott régi munkamenet ne törölje az újat).
+        const leaving = activePlayers[username];
+        if (leaving && leaving.socketId === socket.id) {
+            delete activePlayers[username];
+            // a közelben lévőknél eltűnik a jelölője
+            if (leaving.lat !== null) notifyAround([{ lat: leaving.lat, lng: leaving.lng }], username);
+            // az offline pihenés ettől az időponttól számít
+            withPlayer(username, (p) => { p.lastSeen = Date.now(); })
+                .catch(logError("Hiba a kilépés mentésekor:"));
         }
-        io.emit('players_update', activePlayers);
     });
 });
 

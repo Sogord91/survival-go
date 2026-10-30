@@ -1,0 +1,1102 @@
+[
+ {
+  "img": "SURV-0017_carrot",
+  "folder": "01_raw_food_and_wild_ingredients",
+  "file": "SURV-0017_carrot.png"
+ },
+ {
+  "img": "SURV-0024_potato",
+  "folder": "01_raw_food_and_wild_ingredients",
+  "file": "SURV-0024_potato.png"
+ },
+ {
+  "img": "SURV-0028_tomato",
+  "folder": "01_raw_food_and_wild_ingredients",
+  "file": "SURV-0028_tomato.png"
+ },
+ {
+  "img": "SURV-0119_pan_seared_steak",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0119_pan_seared_steak.png"
+ },
+ {
+  "img": "SURV-0120_barbecue_sausages",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0120_barbecue_sausages.png"
+ },
+ {
+  "img": "SURV-0137_fish_and_chips_box",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0137_fish_and_chips_box.png"
+ },
+ {
+  "img": "SURV-0158_tortilla",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0158_tortilla.png"
+ },
+ {
+  "img": "SURV-0159_whole_wheat_bread",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0159_whole_wheat_bread.png"
+ },
+ {
+  "img": "SURV-0164_canned_beans",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0164_canned_beans.png"
+ },
+ {
+  "img": "SURV-0169_cured_ham_slices",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0169_cured_ham_slices.png"
+ },
+ {
+  "img": "SURV-0172_salted_pork_belly",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0172_salted_pork_belly.png"
+ },
+ {
+  "img": "SURV-0173_canned_peaches",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0173_canned_peaches.png"
+ },
+ {
+  "img": "SURV-0177_dried_fruit_mix",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0177_dried_fruit_mix.png"
+ },
+ {
+  "img": "SURV-0178_canned_beans_and_rice",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0178_canned_beans_and_rice.png"
+ },
+ {
+  "img": "SURV-0179_pemmican",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0179_pemmican.png"
+ },
+ {
+  "img": "SURV-0180_trail_mix_with_nuts",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0180_trail_mix_with_nuts.png"
+ },
+ {
+  "img": "SURV-0181_dehydrated_soup_packets",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0181_dehydrated_soup_packets.png"
+ },
+ {
+  "img": "SURV-0182_smoked_salmon_jerky",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0182_smoked_salmon_jerky.png"
+ },
+ {
+  "img": "SURV-0183_cured_meat_rations",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0183_cured_meat_rations.png"
+ },
+ {
+  "img": "SURV-0184_instant_oatmeal_with_dried_fruits",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0184_instant_oatmeal_with_dried_fruits.png"
+ },
+ {
+  "img": "SURV-0185_survival_granola_bars",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0185_survival_granola_bars.png"
+ },
+ {
+  "img": "SURV-0195_campfire_chili",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0195_campfire_chili.png"
+ },
+ {
+  "img": "SURV-0197_peanut_butter_cookies",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0197_peanut_butter_cookies.png"
+ },
+ {
+  "img": "SURV-0198_chocolate_chip_muffins",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0198_chocolate_chip_muffins.png"
+ },
+ {
+  "img": "SURV-0200_graham_crackers",
+  "folder": "02_cooked_meals_and_preserved_food",
+  "file": "SURV-0200_graham_crackers.png"
+ },
+ {
+  "img": "SURV-0205_insulated_thermos_canteen",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0205_insulated_thermos_canteen.png"
+ },
+ {
+  "img": "SURV-0207_ceramic_stopper_bottle",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0207_ceramic_stopper_bottle.png"
+ },
+ {
+  "img": "SURV-0208_glass_swing_top_bottle",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0208_glass_swing_top_bottle.png"
+ },
+ {
+  "img": "SURV-0216_corked_clay_bottle",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0216_corked_clay_bottle.png"
+ },
+ {
+  "img": "SURV-0242_murky_water_bottle",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0242_murky_water_bottle.png"
+ },
+ {
+  "img": "SURV-0244_mineral_water_flask",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0244_mineral_water_flask.png"
+ },
+ {
+  "img": "SURV-0248_spring_water_bottle",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0248_spring_water_bottle.png"
+ },
+ {
+  "img": "SURV-0250_distilled_water_flask",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0250_distilled_water_flask.png"
+ },
+ {
+  "img": "SURV-0255_straw_water_filter",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0255_straw_water_filter.png"
+ },
+ {
+  "img": "SURV-0277_mint_herbal_tea",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0277_mint_herbal_tea.png"
+ },
+ {
+  "img": "SURV-0278_roasted_chicory_coffee",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0278_roasted_chicory_coffee.png"
+ },
+ {
+  "img": "SURV-0280_hot_cocoa_mug",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0280_hot_cocoa_mug.png"
+ },
+ {
+  "img": "SURV-0285_warm_honey_water",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0285_warm_honey_water.png"
+ },
+ {
+  "img": "SURV-0290_cranberry_juice",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0290_cranberry_juice.png"
+ },
+ {
+  "img": "SURV-0291_pineapple_juice",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0291_pineapple_juice.png"
+ },
+ {
+  "img": "SURV-0292_coconut_water",
+  "folder": "03_water_drinks_and_purification",
+  "file": "SURV-0292_coconut_water.png"
+ },
+ {
+  "img": "SURV-0301_rolled_gauze_bandage",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0301_rolled_gauze_bandage.png"
+ },
+ {
+  "img": "SURV-0302_sterile_gauze_pad",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0302_sterile_gauze_pad.png"
+ },
+ {
+  "img": "SURV-0303_adhesive_bandage_strip",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0303_adhesive_bandage_strip.png"
+ },
+ {
+  "img": "SURV-0304_compression_bandage",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0304_compression_bandage.png"
+ },
+ {
+  "img": "SURV-0306_triangular_bandage",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0306_triangular_bandage.png"
+ },
+ {
+  "img": "SURV-0307_hemostatic_gauze",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0307_hemostatic_gauze.png"
+ },
+ {
+  "img": "SURV-0321_antiseptic_wipes",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0321_antiseptic_wipes.png"
+ },
+ {
+  "img": "SURV-0322_iodine_dropper_bottle",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0322_iodine_dropper_bottle.png"
+ },
+ {
+  "img": "SURV-0338_oral_syringe",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0338_oral_syringe.png"
+ },
+ {
+  "img": "SURV-0346_windlass_tourniquet",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0346_windlass_tourniquet.png"
+ },
+ {
+  "img": "SURV-0347_chest_seal_pack",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0347_chest_seal_pack.png"
+ },
+ {
+  "img": "SURV-0352_suture_kit",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0352_suture_kit.png"
+ },
+ {
+  "img": "SURV-0381_compact_first_aid_pouch",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0381_compact_first_aid_pouch.png"
+ },
+ {
+  "img": "SURV-0382_hiker_medical_kit",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0382_hiker_medical_kit.png"
+ },
+ {
+  "img": "SURV-0383_trauma_response_bag",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0383_trauma_response_bag.png"
+ },
+ {
+  "img": "SURV-0391_willow_bark_tonic",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0391_willow_bark_tonic.png"
+ },
+ {
+  "img": "SURV-0400_honey_throat_syrup",
+  "folder": "04_first_aid_and_medical_supplies",
+  "file": "SURV-0400_honey_throat_syrup.png"
+ },
+ {
+  "img": "SURV-0546_hemp_rope_coil",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0546_hemp_rope_coil.png"
+ },
+ {
+  "img": "SURV-0558_cotton_cord",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0558_cotton_cord.png"
+ },
+ {
+  "img": "SURV-0571_tanned_leather_roll",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0571_tanned_leather_roll.png"
+ },
+ {
+  "img": "SURV-0572_leather_scrap_bundle",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0572_leather_scrap_bundle.png"
+ },
+ {
+  "img": "SURV-0586_canvas_roll",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0586_canvas_roll.png"
+ },
+ {
+  "img": "SURV-0590_cotton_cloth_bundle",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0590_cotton_cloth_bundle.png"
+ },
+ {
+  "img": "SURV-0591_burlap_sackcloth",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0591_burlap_sackcloth.png"
+ },
+ {
+  "img": "SURV-0701_iron_ore",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0701_iron_ore.png"
+ },
+ {
+  "img": "SURV-0702_copper_ore",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0702_copper_ore.png"
+ },
+ {
+  "img": "SURV-0725_steel_ingot",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0725_steel_ingot.png"
+ },
+ {
+  "img": "SURV-0737_steel_rebar",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0737_steel_rebar.png"
+ },
+ {
+  "img": "SURV-0744_lead_rod",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0744_lead_rod.png"
+ },
+ {
+  "img": "SURV-0751_iron_sheet",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0751_iron_sheet.png"
+ },
+ {
+  "img": "SURV-0752_steel_plate",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0752_steel_plate.png"
+ },
+ {
+  "img": "SURV-0761_common_nail_bundle",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0761_common_nail_bundle.png"
+ },
+ {
+  "img": "SURV-0763_finishing_nail_bundle",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0763_finishing_nail_bundle.png"
+ },
+ {
+  "img": "SURV-0769_hex_bolt_bundle",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0769_hex_bolt_bundle.png"
+ },
+ {
+  "img": "SURV-0776_copper_wire_coil",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0776_copper_wire_coil.png"
+ },
+ {
+  "img": "SURV-0777_steel_wire_coil",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0777_steel_wire_coil.png"
+ },
+ {
+  "img": "SURV-0780_barbed_wire_coil",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0780_barbed_wire_coil.png"
+ },
+ {
+  "img": "SURV-0782_braided_steel_cable",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0782_braided_steel_cable.png"
+ },
+ {
+  "img": "SURV-0788_iron_chain",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0788_iron_chain.png"
+ },
+ {
+  "img": "SURV-0794_heavy_duty_hinge",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0794_heavy_duty_hinge.png"
+ },
+ {
+  "img": "SURV-0821_spur_gear",
+  "folder": "09_crafting_components",
+  "file": "SURV-0821_spur_gear.png"
+ },
+ {
+  "img": "SURV-0825_coil_spring",
+  "folder": "09_crafting_components",
+  "file": "SURV-0825_coil_spring.png"
+ },
+ {
+  "img": "SURV-0827_ball_bearing",
+  "folder": "09_crafting_components",
+  "file": "SURV-0827_ball_bearing.png"
+ },
+ {
+  "img": "SURV-0841_pipe_elbow",
+  "folder": "09_crafting_components",
+  "file": "SURV-0841_pipe_elbow.png"
+ },
+ {
+  "img": "SURV-0853_insulated_electrical_wire_spool",
+  "folder": "09_crafting_components",
+  "file": "SURV-0853_insulated_electrical_wire_spool.png"
+ },
+ {
+  "img": "SURV-0854_electrical_switch",
+  "folder": "09_crafting_components",
+  "file": "SURV-0854_electrical_switch.png"
+ },
+ {
+  "img": "SURV-0858_resistor_pack",
+  "folder": "09_crafting_components",
+  "file": "SURV-0858_resistor_pack.png"
+ },
+ {
+  "img": "SURV-0876_empty_tin_can",
+  "folder": "09_crafting_components",
+  "file": "SURV-0876_empty_tin_can.png"
+ },
+ {
+  "img": "SURV-0877_empty_glass_jar",
+  "folder": "09_crafting_components",
+  "file": "SURV-0877_empty_glass_jar.png"
+ },
+ {
+  "img": "SURV-0879_empty_plastic_bottle",
+  "folder": "09_crafting_components",
+  "file": "SURV-0879_empty_plastic_bottle.png"
+ },
+ {
+  "img": "SURV-0893_riveted_metal_strap",
+  "folder": "09_crafting_components",
+  "file": "SURV-0893_riveted_metal_strap.png"
+ },
+ {
+  "img": "SURV-0918_strike_anywhere_matchbox",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0918_strike_anywhere_matchbox.png"
+ },
+ {
+  "img": "SURV-0920_ferrocerium_rod",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0920_ferrocerium_rod.png"
+ },
+ {
+  "img": "SURV-0937_lamp_oil_bottle",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0937_lamp_oil_bottle.png"
+ },
+ {
+  "img": "SURV-0944_denatured_alcohol_flask",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0944_denatured_alcohol_flask.png"
+ },
+ {
+  "img": "SURV-0948_gasoline_jerrycan",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0948_gasoline_jerrycan.png"
+ },
+ {
+  "img": "SURV-0961_machine_oil_bottle",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0961_machine_oil_bottle.png"
+ },
+ {
+  "img": "SURV-0987_isopropyl_alcohol_flask",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0987_isopropyl_alcohol_flask.png"
+ },
+ {
+  "img": "SURV-0991_aa_battery_pair",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0991_aa_battery_pair.png"
+ },
+ {
+  "img": "SURV-0995_nine_volt_battery",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0995_nine_volt_battery.png"
+ },
+ {
+  "img": "SURV-0998_lead_acid_battery",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0998_lead_acid_battery.png"
+ },
+ {
+  "img": "SURV-0999_solar_charged_power_bank",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0999_solar_charged_power_bank.png"
+ },
+ {
+  "img": "SURV-1001_felling_axe",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1001_felling_axe.png"
+ },
+ {
+  "img": "SURV-1003_bow_saw",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1003_bow_saw.png"
+ },
+ {
+  "img": "SURV-1007_machete",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1007_machete.png"
+ },
+ {
+  "img": "SURV-1011_tin_snips",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1011_tin_snips.png"
+ },
+ {
+  "img": "SURV-1012_bolt_cutters",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1012_bolt_cutters.png"
+ },
+ {
+  "img": "SURV-1016_claw_hammer",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1016_claw_hammer.png"
+ },
+ {
+  "img": "SURV-1020_sledgehammer",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1020_sledgehammer.png"
+ },
+ {
+  "img": "SURV-1031_round_point_shovel",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1031_round_point_shovel.png"
+ },
+ {
+  "img": "SURV-1033_compact_folding_shovel",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1033_compact_folding_shovel.png"
+ },
+ {
+  "img": "SURV-1037_pickaxe",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1037_pickaxe.png"
+ },
+ {
+  "img": "SURV-1056_adjustable_wrench",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1056_adjustable_wrench.png"
+ },
+ {
+  "img": "SURV-1057_combination_pliers",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1057_combination_pliers.png"
+ },
+ {
+  "img": "SURV-1060_screwdriver_set",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1060_screwdriver_set.png"
+ },
+ {
+  "img": "SURV-1061_socket_wrench",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1061_socket_wrench.png"
+ },
+ {
+  "img": "SURV-1062_pipe_wrench",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1062_pipe_wrench.png"
+ },
+ {
+  "img": "SURV-1063_hand_riveter",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1063_hand_riveter.png"
+ },
+ {
+  "img": "SURV-1089_grappling_hook",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1089_grappling_hook.png"
+ },
+ {
+  "img": "SURV-1096_pocket_multi_tool",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1096_pocket_multi_tool.png"
+ },
+ {
+  "img": "SURV-1100_crowbar",
+  "folder": "11_hand_tools_and_repair_equipment",
+  "file": "SURV-1100_crowbar.png"
+ },
+ {
+  "img": "SURV-1101_canvas_work_shirt",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1101_canvas_work_shirt.png"
+ },
+ {
+  "img": "SURV-1104_fleece_jacket",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1104_fleece_jacket.png"
+ },
+ {
+  "img": "SURV-1105_waxed_canvas_jacket",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1105_waxed_canvas_jacket.png"
+ },
+ {
+  "img": "SURV-1106_leather_field_jacket",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1106_leather_field_jacket.png"
+ },
+ {
+  "img": "SURV-1107_windbreaker_jacket",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1107_windbreaker_jacket.png"
+ },
+ {
+  "img": "SURV-1108_insulated_parka",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1108_insulated_parka.png"
+ },
+ {
+  "img": "SURV-1110_hooded_rain_shell",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1110_hooded_rain_shell.png"
+ },
+ {
+  "img": "SURV-1116_canvas_work_trousers",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1116_canvas_work_trousers.png"
+ },
+ {
+  "img": "SURV-1117_cargo_pants",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1117_cargo_pants.png"
+ },
+ {
+  "img": "SURV-1121_reinforced_knee_trousers",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1121_reinforced_knee_trousers.png"
+ },
+ {
+  "img": "SURV-1122_lightweight_trail_shorts",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1122_lightweight_trail_shorts.png"
+ },
+ {
+  "img": "SURV-1123_wool_field_trousers",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1123_wool_field_trousers.png"
+ },
+ {
+  "img": "SURV-1124_leather_work_pants",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1124_leather_work_pants.png"
+ },
+ {
+  "img": "SURV-1126_leather_hiking_boots",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1126_leather_hiking_boots.png"
+ },
+ {
+  "img": "SURV-1127_rubber_rain_boots",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1127_rubber_rain_boots.png"
+ },
+ {
+  "img": "SURV-1129_steel_toe_work_boots",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1129_steel_toe_work_boots.png"
+ },
+ {
+  "img": "SURV-1130_trail_running_shoes",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1130_trail_running_shoes.png"
+ },
+ {
+  "img": "SURV-1131_canvas_camp_shoes",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1131_canvas_camp_shoes.png"
+ },
+ {
+  "img": "SURV-1133_climbing_approach_shoes",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1133_climbing_approach_shoes.png"
+ },
+ {
+  "img": "SURV-1135_desert_walking_boots",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1135_desert_walking_boots.png"
+ },
+ {
+  "img": "SURV-1137_lightweight_camp_sandals",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1137_lightweight_camp_sandals.png"
+ },
+ {
+  "img": "SURV-1138_protective_gaiter_boots",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1138_protective_gaiter_boots.png"
+ },
+ {
+  "img": "SURV-1152_wool_beanie",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1152_wool_beanie.png"
+ },
+ {
+  "img": "SURV-1153_fur_trapper_hat",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1153_fur_trapper_hat.png"
+ },
+ {
+  "img": "SURV-1154_canvas_field_cap",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1154_canvas_field_cap.png"
+ },
+ {
+  "img": "SURV-1159_ear_flap_winter_cap",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1159_ear_flap_winter_cap.png"
+ },
+ {
+  "img": "SURV-1200_clothing_repair_patch_set",
+  "folder": "12_clothing_and_weather_gear",
+  "file": "SURV-1200_clothing_repair_patch_set.png"
+ },
+ {
+  "img": "SURV-1201_construction_hard_hat",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1201_construction_hard_hat.png"
+ },
+ {
+  "img": "SURV-1205_wildland_fire_helmet",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1205_wildland_fire_helmet.png"
+ },
+ {
+  "img": "SURV-1206_rescue_helmet",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1206_rescue_helmet.png"
+ },
+ {
+  "img": "SURV-1212_face_shield_work_helmet",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1212_face_shield_work_helmet.png"
+ },
+ {
+  "img": "SURV-1217_half_face_respirator",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1217_half_face_respirator.png"
+ },
+ {
+  "img": "SURV-1218_full_face_respirator",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1218_full_face_respirator.png"
+ },
+ {
+  "img": "SURV-1229_silicone_respirator_mask",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1229_silicone_respirator_mask.png"
+ },
+ {
+  "img": "SURV-1241_high_visibility_safety_vest",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1241_high_visibility_safety_vest.png"
+ },
+ {
+  "img": "SURV-1244_padded_logging_vest",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1244_padded_logging_vest.png"
+ },
+ {
+  "img": "SURV-1251_reinforced_hunting_vest",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1251_reinforced_hunting_vest.png"
+ },
+ {
+  "img": "SURV-1262_chest_protector",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1262_chest_protector.png"
+ },
+ {
+  "img": "SURV-1271_chemical_splash_suit",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1271_chemical_splash_suit.png"
+ },
+ {
+  "img": "SURV-1274_wildland_firefighting_suit",
+  "folder": "13_protective_equipment_and_survival_ppe",
+  "file": "SURV-1274_wildland_firefighting_suit.png"
+ },
+ {
+  "img": "SURV-1301_day_hiking_backpack",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1301_day_hiking_backpack.png"
+ },
+ {
+  "img": "SURV-1302_expedition_frame_backpack",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1302_expedition_frame_backpack.png"
+ },
+ {
+  "img": "SURV-1304_canvas_rucksack",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1304_canvas_rucksack.png"
+ },
+ {
+  "img": "SURV-1305_leather_trail_backpack",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1305_leather_trail_backpack.png"
+ },
+ {
+  "img": "SURV-1314_heavy_load_carrying_pack",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1314_heavy_load_carrying_pack.png"
+ },
+ {
+  "img": "SURV-1320_modular_utility_backpack",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1320_modular_utility_backpack.png"
+ },
+ {
+  "img": "SURV-1321_belt_utility_pouch",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1321_belt_utility_pouch.png"
+ },
+ {
+  "img": "SURV-1336_canvas_field_satchel",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1336_canvas_field_satchel.png"
+ },
+ {
+  "img": "SURV-1338_medical_shoulder_bag",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1338_medical_shoulder_bag.png"
+ },
+ {
+  "img": "SURV-1343_foldable_market_tote",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1343_foldable_market_tote.png"
+ },
+ {
+  "img": "SURV-1511_kerosene_hurricane_lantern",
+  "folder": "16_fire_lighting_heating_and_cooking_gear",
+  "file": "SURV-1511_kerosene_hurricane_lantern.png"
+ },
+ {
+  "img": "SURV-1519_rechargeable_led_lantern",
+  "folder": "16_fire_lighting_heating_and_cooking_gear",
+  "file": "SURV-1519_rechargeable_led_lantern.png"
+ },
+ {
+  "img": "SURV-1526_aluminum_hand_flashlight",
+  "folder": "16_fire_lighting_heating_and_cooking_gear",
+  "file": "SURV-1526_aluminum_hand_flashlight.png"
+ },
+ {
+  "img": "SURV-1533_headlamp",
+  "folder": "16_fire_lighting_heating_and_cooking_gear",
+  "file": "SURV-1533_headlamp.png"
+ },
+ {
+  "img": "SURV-1542_oil_soaked_rag_torch",
+  "folder": "16_fire_lighting_heating_and_cooking_gear",
+  "file": "SURV-1542_oil_soaked_rag_torch.png"
+ },
+ {
+  "img": "SURV-1546_beeswax_taper_candle",
+  "folder": "16_fire_lighting_heating_and_cooking_gear",
+  "file": "SURV-1546_beeswax_taper_candle.png"
+ },
+ {
+  "img": "SURV-2101_brass_lensatic_compass",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2101_brass_lensatic_compass.png"
+ },
+ {
+  "img": "SURV-2102_pocket_compass",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2102_pocket_compass.png"
+ },
+ {
+  "img": "SURV-2116_field_binoculars",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2116_field_binoculars.png"
+ },
+ {
+  "img": "SURV-2123_magnifying_lens",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2123_magnifying_lens.png"
+ },
+ {
+  "img": "SURV-2126_topographic_map",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2126_topographic_map.png"
+ },
+ {
+  "img": "SURV-2152_rescue_whistle",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2152_rescue_whistle.png"
+ },
+ {
+  "img": "SURV-2156_distress_flare",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2156_distress_flare.png"
+ },
+ {
+  "img": "SURV-2158_rescue_strobe",
+  "folder": "22_navigation_exploration_and_signaling",
+  "file": "SURV-2158_rescue_strobe.png"
+ },
+ {
+  "img": "SURV-2264_lock_pick_set",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2264_lock_pick_set.png"
+ },
+ {
+  "img": "SURV-2266_copper_coin_stack",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2266_copper_coin_stack.png"
+ },
+ {
+  "img": "SURV-2267_silver_trade_coin",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2267_silver_trade_coin.png"
+ },
+ {
+  "img": "SURV-2278_uncut_gemstone",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2278_uncut_gemstone.png"
+ },
+ {
+  "img": "SURV-2279_pearl_strand",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2279_pearl_strand.png"
+ },
+ {
+  "img": "SURV-2280_amber_chunk",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2280_amber_chunk.png"
+ },
+ {
+  "img": "SURV-2281_carved_jade_pendant",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2281_carved_jade_pendant.png"
+ },
+ {
+  "img": "SURV-2282_gold_ring",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2282_gold_ring.png"
+ },
+ {
+  "img": "SURV-2283_silver_brooch",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2283_silver_brooch.png"
+ },
+ {
+  "img": "SURV-2284_crystal_geode",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2284_crystal_geode.png"
+ },
+ {
+  "img": "SURV-2285_ornate_pocket_watch",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2285_ornate_pocket_watch.png"
+ },
+ {
+  "img": "SURV-2287_fossil_ammonite",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2287_fossil_ammonite.png"
+ },
+ {
+  "img": "SURV-2289_meteorite_fragment",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2289_meteorite_fragment.png"
+ },
+ {
+  "img": "SURV-2290_handcrafted_brass_orrery",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2290_handcrafted_brass_orrery.png"
+ },
+ {
+  "img": "SURV-2294_mechanical_music_box",
+  "folder": "23_loot_containers_supplies_and_valuables",
+  "file": "SURV-2294_mechanical_music_box.png"
+ },
+ {
+  "img": "SURV-1608_horn_composite_bow",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1608_horn_composite_bow.png"
+ },
+ {
+  "img": "SURV-1635_leaf_blade_spear",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1635_leaf_blade_spear.png"
+ },
+ {
+  "img": "weapon_knife",
+  "pack": "weapons",
+  "file": "WEAPON (12).png"
+ },
+ {
+  "img": "weapon_baseball_bat",
+  "pack": "weapons",
+  "file": "WEAPON (25).png"
+ },
+ {
+  "img": "weapon_pipe_pistol",
+  "pack": "weapons",
+  "file": "WEAPON (78).png"
+ },
+ {
+  "img": "weapon_revolver_nagant",
+  "pack": "weapons",
+  "file": "WEAPON (55).png"
+ },
+ {
+  "img": "weapon_double_barrel",
+  "pack": "weapons",
+  "file": "WEAPON (36).png"
+ },
+ {
+  "img": "weapon_makarov",
+  "pack": "weapons",
+  "file": "WEAPON (59).png"
+ },
+ {
+  "img": "weapon_shotgun",
+  "pack": "weapons",
+  "file": "WEAPON (75).png"
+ },
+ {
+  "img": "weapon_sks_rifle",
+  "pack": "weapons",
+  "file": "WEAPON (74).png"
+ },
+ {
+  "img": "weapon_submachine_ppsh",
+  "pack": "weapons",
+  "file": "WEAPON (70).png"
+ },
+ {
+  "img": "weapon_hunting_rifle",
+  "pack": "weapons",
+  "file": "WEAPON (81).png"
+ },
+ {
+  "img": "weapon_ak47",
+  "pack": "weapons",
+  "file": "WEAPON (14).png"
+ },
+ {
+  "img": "weapon_m4a1_carbine",
+  "pack": "weapons",
+  "file": "WEAPON (15).png"
+ },
+ {
+  "img": "weapon_combat_shotgun",
+  "pack": "weapons",
+  "file": "WEAPON (76).png"
+ },
+ {
+  "img": "weapon_val_rifle",
+  "pack": "weapons",
+  "file": "WEAPON (31).png"
+ },
+ {
+  "img": "weapon_vintorez_sniper",
+  "pack": "weapons",
+  "file": "WEAPON (82).png"
+ },
+ {
+  "img": "weapon_rpk_machinegun",
+  "pack": "weapons",
+  "file": "WEAPON (80).png"
+ },
+ {
+  "img": "weapon_gauss_gun",
+  "pack": "weapons",
+  "file": "WEAPON (10).png"
+ }
+]

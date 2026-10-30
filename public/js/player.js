@@ -1,4 +1,6 @@
 // player.js
+// A kliens oldali játékos-objektum CSAK megjelenítésre szolgál: az igazi állapot a szerveren van,
+// és minden változás után a player_state üzenettel érkezik (lásd main.js).
 
 
 let player = {
@@ -14,112 +16,37 @@ let player = {
     defense: 0,
     maxInv: 10,
     maxWeight: 30,
+    weight: 0,
     inventory: [],
-    equipment: { helmet: null, torso: null, armor: null, legs: null, shoes: null, backpack: null, weapon: null }
+    combat: null,       // folyamatban lévő harc (a szervertől)
+    dangerUntil: {},    // menekülés utáni személyes zárak (a szervertől)
+    equipment: { helmet: null, torso: null, armor: null, legs: null, shoes: null, backpack: null, weapon: null, secondary: null, melee: null }
 };
 
-function calculateInventoryWeight() {
-    let totalWeight = 0;
+// A származtatott értékek (max HP, védelem, slotok, teherbírás, súly) átvétele a közös stats.js eredményéből
+function applyStats(stats) {
+    player.maxHp = stats.maxHp;
+    player.defense = stats.defense;
+    player.maxInv = stats.slots;
+    player.maxWeight = stats.maxWeight;
+    player.weight = stats.weight;
+    player.weightHardCap = stats.weightHardCap;
+}
+
+// Ugyanaz a számítás, mint a szerveren (stats.js). Csak megjelenítésre: a HP-hoz nem nyúl.
+function calculateStats() {
+    if (!player.equipment) player.equipment = { helmet: null, torso: null, armor: null, legs: null, shoes: null, backpack: null, weapon: null, secondary: null, melee: null };
     if (!Array.isArray(player.inventory)) player.inventory = [];
-    player.inventory.forEach(slot => {
-        const item = itemDatabase[slot.key];
-        if (item && item.weight) {
-            totalWeight += item.weight * (slot.count || 1);
-        }
-    });
-    const slots = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon'];
-    slots.forEach(slotName => {
-        if (!player.equipment) player.equipment = {};
-        const eqKey = player.equipment[slotName];
-        if (eqKey && itemDatabase[eqKey] && itemDatabase[eqKey].weight) {
-            totalWeight += itemDatabase[eqKey].weight;
-        }
-    });
-    return Math.round(totalWeight * 10) / 10;
+    applyStats(SurvivalStats.computeStats(player, itemDatabase));
 }
 
 // Biztonságos, szerver oldali craftolás indítása
 function craftItem(recipe) {
-    if (!currentUsername && typeof player !== 'undefined') {
-        currentUsername = player.username;
-    }
-    if (!currentUsername) return;
-
-    if (typeof socket !== 'undefined' && socket) {
+    if (typeof socket !== 'undefined' && socket && socket.connected) {
         socket.emit('craft_item', {
-            username: currentUsername,
             recipeKey: recipe.key
         });
     }
-}
-
-function calculateStats() {
-    if (!player.equipment) player.equipment = { helmet: null, torso: null, armor: null, legs: null, shoes: null, backpack: null, weapon: null };
-    let totalDef = 0;
-    let totalHpBonus = 0;
-    let totalSlots = 10;
-    let maxWeightBonus = 0;
-
-    const slots = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'];
-    slots.forEach(slot => {
-        const itemKey = player.equipment[slot];
-        if (itemKey && itemDatabase[itemKey]) {
-            const item = itemDatabase[itemKey];
-            if (item.def) totalDef += item.def;
-            if (item.hpBonus) totalHpBonus += item.hpBonus;
-            if (slot === 'backpack') {
-                if (item.bonusSlots) totalSlots += item.bonusSlots;
-                if (item.maxWeightBonus) maxWeightBonus += item.maxWeightBonus;
-            }
-        }
-    });
-
-    player.defense = totalDef;
-    player.maxInv = totalSlots;
-    player.maxWeight = 30 + maxWeightBonus;
-
-    let prevMaxHp = player.maxHp || 100;
-    player.maxHp = 100 + totalHpBonus;
-    if (player.maxHp > prevMaxHp) {
-        player.hp = (player.hp || 100) + (player.maxHp - prevMaxHp);
-    }
-    player.hp = Math.min(player.hp || 100, player.maxHp);
-}
-
-function addItemToInventory(itemKey, amount = 1) {
-    const itemConfig = itemDatabase[itemKey];
-    if (!itemConfig) return false;
-
-    calculateStats();
-    let currentWeight = calculateInventoryWeight();
-    let addedWeight = (itemConfig.weight || 0) * amount;
-
-    if (currentWeight + addedWeight > player.maxWeight) {
-        logMessage(`Túlsúly! Nincs elég kapacitás (${currentWeight}/${player.maxWeight} kg)!`);
-        playSound('hit');
-        return false;
-    }
-
-    if (itemConfig.stackable) {
-        let existing = player.inventory.find(slot => slot.key === itemKey);
-        if (existing) {
-            existing.count += amount;
-            saveGame();
-            updateUI();
-            return true;
-        }
-    }
-
-    if (player.inventory.length >= (player.maxInv || 10)) {
-        logMessage("A hátizsákodban nincsenek szabad slotok!");
-        playSound('hit');
-        return false;
-    }
-
-    player.inventory.push({ key: itemKey, count: amount });
-    saveGame();
-    updateUI();
-    return true;
 }
 
 if (typeof socket !== 'undefined' && socket) {
@@ -129,16 +56,8 @@ if (typeof socket !== 'undefined' && socket) {
             playSound('hit');
             return;
         }
-        if (data.inventory) player.inventory = data.inventory;
-        if (data.player) {
-            player.hp = data.player.hp;
-            player.hunger = data.player.hunger;
-            player.thirst = data.player.thirst;
-        }
         logMessage(data.message);
         playSound('loot');
-        saveGame();
-        updateUI();
     });
 
     socket.on('equip_result', (data) => {
@@ -147,34 +66,36 @@ if (typeof socket !== 'undefined' && socket) {
             playSound('hit');
             return;
         }
-        if (data.inventory) player.inventory = data.inventory;
-        if (data.equipment) player.equipment = data.equipment;
         logMessage(data.message);
         playSound('win');
-        saveGame();
-        updateUI();
+    });
+
+    socket.on('drop_result', (data) => {
+        if (!data.success) {
+            logMessage(data.message || "Nem sikerült eldobni a tárgyat.");
+            playSound('hit');
+            return;
+        }
+        logMessage(data.message);
     });
 }
 
+// Tárgy eldobása (szerver oldali kérés; az eldobott tárgy eltűnik)
 function dropItem(index) {
     const slot = player.inventory[index];
     if (!slot) return;
-    const item = itemDatabase[slot.key];
-    
-    slot.count--;
-    if (slot.count <= 0) {
-        player.inventory.splice(index, 1);
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('drop_item', {
+            itemKey: slot.key,
+            count: 1
+        });
     }
-    logMessage(`Eldobtál 1 db-ot: ${item.name}`);
-    saveGame();
-    updateUI();
 }
 
 // Tárgy használata (szerver oldali kérés)
 function useItem(itemKey) {
     if (typeof socket !== 'undefined' && socket) {
         socket.emit('use_item', {
-            username: player.username,
             itemKey: itemKey
         });
     }
@@ -184,30 +105,18 @@ function useItem(itemKey) {
 function equipItem(itemKey, slotType) {
     if (typeof socket !== 'undefined' && socket) {
         socket.emit('equip_item', {
-            username: player.username,
             itemKey: itemKey,
             slotType: slotType
         });
     }
 }
 
+// Felszerelés levétele (szerver oldali kérés; a szerver ellenőrzi, hogy elfér-e)
 function unequip(slot) {
     if (!player.equipment[slot]) return;
-    
-    if (slot === 'backpack') {
-        let futureSlots = 10;
-        if (player.inventory.length > futureSlots) {
-            logMessage(`Nem veheted le a táskát! Túl sok tárgy van nálad (${player.inventory.length}/${futureSlots}), pakolj ki előbb!`);
-            playSound('hit');
-            return;
-        }
-    }
-
-    if (addItemToInventory(player.equipment[slot], 1)) {
-        player.equipment[slot] = null;
-        calculateStats();
-        logMessage("Tárgy levéve a slotról.");
-        saveGame();
-        updateUI();
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('unequip_item', {
+            slotType: slot
+        });
     }
 }

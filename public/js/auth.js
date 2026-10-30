@@ -36,19 +36,78 @@ function selectAvatar(avatarName, imgElement) {
     imgElement.classList.add('border-amber-400', 'scale-110');
 }
 
+// Üzenet a belépő ablakban (ok = true: zöld siker-üzenet, különben piros hiba)
+function setAuthMessage(text, ok) {
+    const msg = document.getElementById('auth-message');
+    if (!msg) return;
+    msg.className = ok
+        ? 'mb-4 text-sm text-center text-emerald-400'
+        : 'mb-4 text-xs text-center text-red-400 font-bold';
+    msg.textContent = text;
+}
+
+// A belépő képernyő újra megjelenítése (lejárt vagy kidobott munkamenet után)
+function showAuthScreen(message) {
+    const modal = document.getElementById('auth-modal');
+    if (modal) modal.classList.remove('hidden');
+    setAuthMessage(message || '', false);
+}
+
+// A játék indítása a szerver által küldött adatokkal. Ide fut a kézi belépés és az automatikus belépés is.
+function enterGame(data) {
+    if (data.token) setAuthToken(data.token);
+
+    Object.assign(player, data.player);
+    player.username = data.username;
+    player.avatar = data.avatar;
+
+    // Az épületeket a térkép tölti be az OSM-ből, a zárakat (globális, mindenkire érvényes)
+    // a szervertől kérdezi le a betöltött épületekre (building_status)
+    buildingLocks = {};
+
+    // A teljes játék HUD feloldása és a belépő ablak elrejtése
+    const hudContainer = document.getElementById('game-hud-container');
+    if (hudContainer) hudContainer.classList.remove('hud-hidden');
+
+    const hudName = document.getElementById('hud-name');
+    if (hudName) hudName.textContent = data.username;
+
+    document.getElementById('auth-modal').classList.add('hidden');
+
+    updateUI();
+    if (typeof refreshMapMarkers === 'function') refreshMapMarkers(); // ha a térkép már él (újrabelépés)
+
+    // A szerver kapcsolat csak most épül fel, a mentett tokennel
+    connectSocket();
+
+    // GPS alapú térkép és játék indítása
+    initMapAndGame();
+}
+
 async function handleAuthSubmit() {
     const username = document.getElementById('auth-username').value.trim();
     const password = document.getElementById('auth-password').value.trim();
     const email = document.getElementById('auth-email').value.trim();
-    const msg = document.getElementById('auth-message');
 
     if (!username || !password || (isRegisterMode && !email)) {
-        msg.textContent = 'Kérlek tölts ki minden mezőt!';
+        setAuthMessage('Kérlek tölts ki minden mezőt!', false);
         return;
     }
 
+    // Regisztrációnál előre jelezzük a szabályokat (a szerver ugyanezt ellenőrzi)
+    if (isRegisterMode) {
+        if (!/^[\p{L}\p{N}]{3,16}$/u.test(username)) {
+            setAuthMessage('A felhasználónév 3-16 karakter lehet, csak betűkből és számokból.', false);
+            return;
+        }
+        if (password.length < 4) {
+            setAuthMessage('A jelszó legalább 4 karakter legyen.', false);
+            return;
+        }
+    }
+
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
-    const payload = isRegisterMode 
+    const payload = isRegisterMode
         ? { username, email, password, avatar: selectedAvatar }
         : { username, password };
 
@@ -62,77 +121,66 @@ async function handleAuthSubmit() {
         const data = await response.json();
 
         if (!data.success) {
-            msg.textContent = data.message || 'Hiba történt!';
+            setAuthMessage(data.message || 'Hiba történt!', false);
             return;
         }
 
         if (isRegisterMode) {
             // Siker regisztráció után átváltunk sima bejelentkezésre
-            msg.className = 'mb-4 text-sm text-center text-emerald-400';
-            msg.textContent = 'Sikeres regisztráció! Most már bejelentkezhetsz.';
-            toggleAuthMode();
+            toggleAuthMode(); // ez törli az üzenetet, ezért utána írjuk ki a sikert
+            setAuthMessage('Sikeres regisztráció! Most már bejelentkezhetsz.', true);
         } else {
             // Sikeres bejelentkezés!
-            msg.className = 'mb-4 text-sm text-center text-emerald-400';
-            msg.textContent = 'Sikeres belépés! Játék betöltése...';
+            setAuthMessage('Sikeres belépés! Játék betöltése...', true);
+            if (data.token) setAuthToken(data.token);
 
-
-            if (typeof socket !== 'undefined' && socket && data.player && data.player._id) {
-                socket.emit('authenticate', { userId: data.player._id });
-            }
-
-            // FELOLDJUK A TELJES JÁTÉK HUD KONTÉNER REJTÉSÉT:
-            const hudContainer = document.getElementById('game-hud-container');
-            if (hudContainer) {
-                hudContainer.classList.remove('hud-hidden');
-            }
-            
-            // KÖZVETLENÜL FRISSÍTJÜK A MEGLÉVŐ PLAYER OBJEKTUMOT A HELHELYETT, HOGY ÚJAT HOZNÁNK LÉTRE:
-            if (typeof player !== 'undefined') {
-                Object.assign(player, data.player);
-                player.username = data.username;
-                player.avatar = data.avatar;
-            } else {
-                window.player = data.player;
-                window.player.username = data.username;
-                window.player.avatar = data.avatar;
-            }
-            
-            // Frissítjük a nevet a HUD-ban a valós regisztrációs névre!
-            const hudName = document.getElementById('hud-name');
-            if (hudName) {
-                hudName.textContent = data.username;
-            }
-
-            // Frissítjük a HUD-ot és a többi UI elemet is
-            if (typeof updateUI === 'function') {
-                updateUI();
-            }
-
-            // Ha vannak mentett épületek, átadjuk a map.js-nek
-            if (data.buildings && typeof savedBuildings !== 'undefined') {
-                savedBuildings = data.buildings;
-            }
-
-            // Ha vannak mentett épületek, átadjuk és kirajzoljuk a térképen
-            if (data.buildings) {
-                savedBuildings = data.buildings;
-                if (typeof refreshMapMarkers === 'function') {
-                    refreshMapMarkers();
-                }
-            }
-
-            // Eltüntetjük a modális ablakot
-            setTimeout(() => {
-                document.getElementById('auth-modal').classList.add('hidden');
-                // Ha van térkép inicializáló függvényünk, itt indíthatjuk el
-                if (typeof initMapAndGame === 'function') {
-                    initMapAndGame();
-                }
-            }, 1000);
+            setTimeout(() => enterGame(data), 1000);
         }
     } catch (err) {
         console.error("Hiba a hálózati kérés során:", err);
-        msg.textContent = 'Szerverhiba vagy hálózati hiba.';
+        setAuthMessage('Szerverhiba vagy hálózati hiba.', false);
     }
+}
+
+// Automatikus belépés oldalfrissítés után a mentett tokennel
+async function tryAutoLogin() {
+    const token = getAuthToken();
+    if (!token) return;
+
+    setAuthMessage('Munkamenet visszaállítása...', true);
+    try {
+        const response = await fetch('/api/session', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (response.status === 401) {
+            // lejárt vagy érvénytelen token: marad a belépő ablak
+            clearAuthToken();
+            setAuthMessage('', false);
+            return;
+        }
+
+        const data = await response.json();
+        if (data && data.success) {
+            enterGame(data);
+        } else {
+            setAuthMessage((data && data.message) || '', false);
+        }
+    } catch (err) {
+        // hálózati hiba: a token megmarad, a következő frissítés újra megpróbálja
+        console.error("Hiba a munkamenet visszaállításakor:", err);
+        setAuthMessage('Nem sikerült visszaállítani a munkamenetet, jelentkezz be.', false);
+    }
+}
+
+function logout() {
+    clearAuthToken();
+    disconnectSocket();
+    location.reload();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryAutoLogin);
+} else {
+    tryAutoLogin();
 }
