@@ -53,7 +53,7 @@ module.exports = {
     FATIGUE_PER_METER: 0.01,        // séta: 100% / 10 km
     FATIGUE_LOOT: 2,                // épület átkutatása
     FATIGUE_COMBAT: 5,              // harc (győzelem vagy menekülés)
-    FATIGUE_FULL_REST_MINUTES: 90,  // ennyi idő alatt pihen ki 100%-ról 0-ra (offline vagy egy helyben állva)
+    FATIGUE_FULL_REST_MINUTES: 30,  // ennyi idő alatt pihen ki 100%-ról 0-ra (offline vagy egy helyben állva)
     REST_IDLE_MINUTES: 5,           // ennyi mozdulatlanság után kezd pihenni online is
 
     // --- LOOT ÉS ÉPÜLETEK ---

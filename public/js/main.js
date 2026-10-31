@@ -498,6 +498,8 @@ document.addEventListener('DOMContentLoaded', () => {
         mapStyleSelect.addEventListener('change', () => applyMapStyle(mapStyleSelect.value));
     }
 
+    safeAddEvent('btn-install', 'click', installApp);
+    updateInstallButton();
     safeAddEvent('btn-logout', 'click', () => {
         if (typeof logout === 'function') logout();
     });
