@@ -152,6 +152,14 @@ function initMap(lat, lng, realPosition) {
     setInterval(refreshMapMarkers, 60000);
 }
 
+// Ugrás a karakterre: ha elhúztad a térképet, egy koppintással visszaáll rád (legalább a játék alapnagyításával)
+function recenterOnPlayer() {
+    if (!map || !playerMarker) return;
+    const pos = playerMarker.getLatLng();
+    const zoom = typeof map.getZoom === 'function' ? Math.max(map.getZoom(), 17) : 17;
+    map.setView([pos.lat, pos.lng], zoom, { animate: true });
+}
+
 function startTracking() {
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(position => {

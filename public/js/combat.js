@@ -38,7 +38,7 @@ function syncCombatUI() {
     modal.classList.remove('hidden');
 
     const enemy = combat.enemy;
-    document.getElementById('enemy-avatar').textContent = enemy.avatar;
+    renderEnemyPortrait(enemy);
     document.getElementById('enemy-name').textContent = enemy.name;
     document.getElementById('enemy-level').textContent = enemy.lvl;
     document.getElementById('enemy-hp-text').textContent = `${Math.max(0, Math.round(enemy.hp))} / ${enemy.maxHp}`;
@@ -140,4 +140,22 @@ if (typeof socket !== 'undefined' && socket) {
         }
         // A harcablak és a játékos állapota a player_state üzenettel frissül
     });
+}
+
+
+// Az ellenség képe (public/images/enemies/<kulcs>.webp); ha nincs vagy nem töltődik be, az emoji látszik
+const ENEMY_KEY_PATTERN = /^[a-z_]{1,32}$/;
+function renderEnemyPortrait(enemy) {
+    const el = document.getElementById('enemy-avatar');
+    if (!el) return;
+    const emoji = String(enemy.avatar || '👹');
+    if (el.dataset.key === enemy.key) return; // ugyanaz az ellenség: a kép marad (ne villogjon körönként)
+    el.dataset.key = enemy.key || '';
+    el.textContent = emoji;
+    if (!ENEMY_KEY_PATTERN.test(enemy.key || '')) return;
+    const img = new Image();
+    img.alt = enemy.name || '';
+    img.className = 'w-full h-full object-cover';
+    img.onload = () => { if (el.dataset.key === enemy.key) { el.textContent = ''; el.appendChild(img); } };
+    img.src = `/images/enemies/${enemy.key}.webp`;
 }

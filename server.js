@@ -1300,7 +1300,8 @@ io.on('connection', (socket) => {
             const info = SurvivalBuildings.typeInfo(building.type);
             if (Math.random() < info.encounter) {
                 // Körös harc indul: a lootot csak győzelem után kapja meg (menekülésnél semmit)
-                p.combat = Combat.createCombat(p, { id: buildingId, name: building.name, type: building.type }, info);
+                const night = SurvivalSun.isNight(building.lat, building.lng, new Date(Date.now())); // éjjel Árnyék is jöhet
+                p.combat = Combat.createCombat(p, { id: buildingId, name: building.name, type: building.type }, info, undefined, { night });
                 p.combat.lockedUntil = lockedUntil;
                 return {
                     lockedUntil,
