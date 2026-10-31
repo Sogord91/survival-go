@@ -214,7 +214,7 @@ function fetchRealPOIs(lat, lng) {
             way(around:${radius},${lat},${lng})[shop];
             way(around:${radius},${lat},${lng})[amenity];
         );
-        out center bb;
+        out bb;
     `;
 
     // Itt vannak a tárcsifüleink (tartalék szerverek sorban)
@@ -258,9 +258,11 @@ function fetchRealPOIs(lat, lng) {
 
                 const newIds = [];
                 data.elements.forEach((element) => {
-                    const elLat = element.lat || (element.center ? element.center.lat : null);
-                    const elLon = element.lon || (element.center ? element.center.lon : null);
-                    if (!elLat || !elLon) return;
+                    // Pontnál a saját koordináta, épületnél (way) a befoglaló téglalap közepe
+                    const pos = SurvivalBuildings.elementPosition(element);
+                    if (!pos) return;
+                    const elLat = pos.lat;
+                    const elLon = pos.lng;
 
                     // Egyértelmű azonosító (node / way) és a szerverrel KÖZÖS besorolás (buildings.js)
                     const uniqueId = SurvivalBuildings.buildingId(element);
@@ -435,11 +437,23 @@ if (b.lockedUntil && Date.now() < b.lockedUntil) {
 
     // A döntés a szerveré: ő kérdezi le az épületet, ellenőrzi a távolságot és a zárat,
     // és ő sorsolja a találkozást és a lootot. A kliens csak az azonosítót küldi.
+    // Amíg a szerver válaszára várunk, ne lehessen újra rákoppintani (első alkalommal 1-2 mp is lehet)
+    if (lootPending && Date.now() - lootPending.at < LOOT_PENDING_TIMEOUT_MS) {
+        logMessage(`Már átkutatod: ${lootPending.name}...`);
+        return;
+    }
+
     if (typeof socket !== 'undefined' && socket) {
+        lootPending = { id: b.id, name: b.name, at: Date.now() };
         logMessage(`Átkutatod: ${b.name}...`);
         socket.emit('loot_building', { buildingId: b.id });
     }
 }
+
+// A folyamatban lévő átkutatás (a szerver válaszáig). Ha válasz nem jön (pl. megszakadt a kapcsolat),
+// a megadott idő után újra lehet próbálkozni.
+let lootPending = null;
+const LOOT_PENDING_TIMEOUT_MS = 15000;
 
 
 
@@ -535,6 +549,7 @@ function showOtherPlayer(pData) {
 // --- BIZTONSÁGOS LOOT EREDMÉNY FOGADÁSA A SZERVERTŐL ---
 if (typeof socket !== 'undefined' && socket) {
     socket.on('loot_result', (data) => {
+        lootPending = null;
         if (!data.success) {
             logMessage(data.message || "Hiba a lootolás során.");
             playSound('hit');

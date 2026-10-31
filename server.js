@@ -667,7 +667,7 @@ function osmError(code) {
 async function fetchBuildingFromOsm(id) {
     const parsed = SurvivalBuildings.parseBuildingId(id);
     if (!parsed) throw osmError('NOT_FOUND');
-    const query = `[out:json][timeout:10];${parsed.osmType}(${parsed.osmId});out center bb tags;`;
+    const query = `[out:json][timeout:10];${parsed.osmType}(${parsed.osmId});out tags bb;`;
 
     for (const url of config.OVERPASS_URLS) {
         const controller = new AbortController();
@@ -683,9 +683,9 @@ async function fetchBuildingFromOsm(id) {
             const json = await res.json();
             const el = json && Array.isArray(json.elements) ? json.elements[0] : null;
             if (!el) throw osmError('NOT_FOUND');
-            const lat = typeof el.lat === 'number' ? el.lat : (el.center && el.center.lat);
-            const lng = typeof el.lon === 'number' ? el.lon : (el.center && el.center.lon);
-            if (typeof lat !== 'number' || typeof lng !== 'number') throw osmError('NOT_FOUND');
+            const pos = SurvivalBuildings.elementPosition(el); // pont: saját koordináta, épület: a téglalap közepe
+            if (!pos) throw osmError('NOT_FOUND');
+            const { lat, lng } = pos;
             const type = SurvivalBuildings.classifyBuilding(el.tags);
             return { id, type, name: SurvivalBuildings.displayName(type, el.tags), lat, lng, bounds: SurvivalBuildings.cleanBounds(el.bounds) };
         } catch (err) {

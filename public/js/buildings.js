@@ -139,6 +139,22 @@
         return { minlat: b.minlat, minlon: b.minlon, maxlat: b.maxlat, maxlon: b.maxlon };
     }
 
+    // Egy Overpass elem helye. A pontoknak (node) saját koordinátájuk van; a vonalas elemeknél (way)
+    // a lekérdezés "out bb" módban csak a befoglaló téglalapot adja, ilyenkor annak a közepét vesszük.
+    // (Az Overpass "out" parancsában a center és a bb egymást kizárja: a kettő közül csak az utolsó érvényes.)
+    function elementPosition(el) {
+        if (!el) return null;
+        if (typeof el.lat === 'number' && typeof el.lon === 'number') return { lat: el.lat, lng: el.lon };
+        if (el.center && typeof el.center.lat === 'number' && typeof el.center.lon === 'number') {
+            return { lat: el.center.lat, lng: el.center.lon };
+        }
+        const b = el.bounds;
+        if (b && [b.minlat, b.minlon, b.maxlat, b.maxlon].every(v => typeof v === 'number' && Number.isFinite(v))) {
+            return { lat: (b.minlat + b.maxlat) / 2, lng: (b.minlon + b.maxlon) / 2 };
+        }
+        return null;
+    }
+
     // Távolság az épülettől: nagy létesítménynél (repülőtér, gyár) a SZÉLÉTŐL, egyébként a középpontjától.
     // Ha a játékos a területen belül van, 0.
     function distanceToBuilding(point, building) {
@@ -204,7 +220,7 @@
 
     const api = {
         BUILDING_TYPES, DEFAULT_TYPE, LOOT_COUNT_WEIGHTS,
-        buildingId, parseBuildingId, classifyBuilding, displayName, typeInfo, haversine, cleanBounds, distanceToBuilding,
+        buildingId, parseBuildingId, classifyBuilding, displayName, typeInfo, haversine, cleanBounds, elementPosition, distanceToBuilding,
         weightedPick, lootTable, rollLoot
     };
 
