@@ -218,10 +218,54 @@
         return found;
     }
 
+    // ===================== TÉRKÉPRÁCS (épületek betöltése négyzetenként) =====================
+    // A világot kb. 200 x 200 méteres négyzetekre (cellákra) osztjuk. A kliens mindig a körülötte lévő
+    // cellákat kéri, a szerver pedig cellánként tárolja az OSM-ből lekérdezett épületeket (gyorsítótár).
+    // A cella azonosítója "sor_oszlop", pl. "26222_7054". Magyarország szélességén ~200 m x ~205 m.
+    const CELL_LAT = 0.0018;
+    const CELL_LNG = 0.0027;
+    const CELL_ID_PATTERN = /^(-?\d{1,6})_(-?\d{1,6})$/;
+
+    function cellOf(lat, lng) {
+        return Math.floor(lat / CELL_LAT) + '_' + Math.floor(lng / CELL_LNG);
+    }
+
+    function parseCellId(id) {
+        const m = typeof id === 'string' ? CELL_ID_PATTERN.exec(id) : null;
+        if (!m) return null;
+        const row = parseInt(m[1], 10), col = parseInt(m[2], 10);
+        const south = row * CELL_LAT, west = col * CELL_LNG;
+        if (south < -90 || south + CELL_LAT > 90 || west < -180 || west + CELL_LNG > 180) return null;
+        return { row, col, south, west, north: south + CELL_LAT, east: west + CELL_LNG };
+    }
+
+    function cellCenter(id) {
+        const c = parseCellId(id);
+        return c ? { lat: (c.south + c.north) / 2, lng: (c.west + c.east) / 2 } : null;
+    }
+
+    // A cellák a ponttól legfeljebb "ring" távolságra (1 = a saját cella és a 8 szomszédja)
+    function cellsAround(lat, lng, ring) {
+        const row = Math.floor(lat / CELL_LAT), col = Math.floor(lng / CELL_LNG);
+        const out = [];
+        for (let dr = -ring; dr <= ring; dr++) {
+            for (let dc = -ring; dc <= ring; dc++) out.push((row + dr) + '_' + (col + dc));
+        }
+        return out;
+    }
+
+    // Két cella távolsága cellában mérve (a szomszéd 1, az átlós szomszéd is 1)
+    function cellDistance(a, b) {
+        const ca = parseCellId(a), cb = parseCellId(b);
+        if (!ca || !cb) return Infinity;
+        return Math.max(Math.abs(ca.row - cb.row), Math.abs(ca.col - cb.col));
+    }
+
     const api = {
         BUILDING_TYPES, DEFAULT_TYPE, LOOT_COUNT_WEIGHTS,
         buildingId, parseBuildingId, classifyBuilding, displayName, typeInfo, haversine, cleanBounds, elementPosition, distanceToBuilding,
-        weightedPick, lootTable, rollLoot
+        weightedPick, lootTable, rollLoot,
+        CELL_LAT, CELL_LNG, cellOf, parseCellId, cellCenter, cellsAround, cellDistance
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api; // szerver (Node.js)

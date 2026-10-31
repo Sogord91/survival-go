@@ -2,9 +2,7 @@
 let map = null;
 let playerMarker = null;
 let isMapInitialized = false;
-let lastFetchLat = null;
-let lastFetchLng = null;
-let savedBuildings = [];   // a környék épületei (OSM), csak a böngészőben élnek
+let savedBuildings = [];   // a környék épületei (a szervertől, cellánként), csak a böngészőben élnek
 let buildingLocks = {};    // épület-azonosító -> zár lejárata (a szervertől); a később betöltött épületekre is ráhúzzuk
 let buildings = [];
 
@@ -118,7 +116,7 @@ function isBuildingVisible(bData) {
 
 applyMapStyle(loadMapStyle());
 
-function initMap(lat, lng) {
+function initMap(lat, lng, realPosition) {
     if (map) return;
     map = L.map('map').setView([lat, lng], 17);
     L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
@@ -140,9 +138,11 @@ function initMap(lat, lng) {
     });
     playerMarker = L.marker([lat, lng], {icon: icon}).addTo(map);
 
-    fetchRealPOIs(lat, lng);
-    lastFetchLat = lat;
-    lastFetchLng = lng;
+    // Valódi GPS-helyzetnél rögtön betöltjük a környéket (az alapértelmezett, tartalék helynél nem)
+    if (realPosition) {
+        sendMyPosition(lat, lng, null);
+        updateArea(lat, lng);
+    }
     startTracking();
 
     initOtherPlayersListener();
@@ -158,15 +158,11 @@ function startTracking() {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
-            const currentLatLng = L.latLng(lat, lng);
 
             if (playerMarker) {
-                // Ha ez az első valódi GPS jel, vagy még nem töltöttünk le POI-t a valós helyre:
+                // Ha ez az első valódi GPS jel, oda ugrik a térkép
                 if (!hasFetchedRealGPS) {
                     map.setView([lat, lng], 17);
-                    fetchRealPOIs(lat, lng);
-                    lastFetchLat = lat;
-                    lastFetchLng = lng;
                     hasFetchedRealGPS = true;
                     logMessage("[GPS] Valódi pozíció rögzítve, épületek betöltése...");
                 }
@@ -176,14 +172,8 @@ function startTracking() {
                 playerMarker.setLatLng([lat, lng]);
 
                 sendMyPosition(lat, lng, accuracy);
-                refreshMapMarkers(); // éjszaka a látható kör a játékossal együtt mozog
-
-                // Távolság-alapú frissítés, ha odébb sétálsz (pl. 150 méter)
-                if (lastFetchLat === null || lastFetchLng === null || L.latLng(lastFetchLat, lastFetchLng).distanceTo(currentLatLng) > 150) {
-                    fetchRealPOIs(lat, lng);
-                    lastFetchLat = lat;
-                    lastFetchLng = lng;
-                }
+                updateArea(lat, lng);  // folyamatos betöltés: előtted megjelennek, mögötted eltűnnek az épületek
+                refreshMapMarkers();   // éjszaka a látható kör a játékossal együtt mozog
             }
 
             if (!isMapInitialized && map && hasFetchedRealGPS) {
@@ -200,110 +190,149 @@ function startTracking() {
     }
 }
 
-function fetchRealPOIs(lat, lng) {
-    const radius = 300;
-    const query = `
-        [out:json];
-        (
-            node(around:${radius},${lat},${lng})[shop];
-            node(around:${radius},${lat},${lng})[amenity];
-            node(around:${radius},${lat},${lng})[tourism];
-            node(around:${radius},${lat},${lng})[leisure];
-            node(around:${radius},${lat},${lng})[building];
-            way(around:${radius},${lat},${lng})[building];
-            way(around:${radius},${lat},${lng})[shop];
-            way(around:${radius},${lat},${lng})[amenity];
-        );
-        out bb;
-    `;
+// ===================== ÉPÜLETEK BETÖLTÉSE: TÉRKÉPRÁCS =====================
+// A térkép kb. 200 x 200 méteres cellákra van osztva (buildings.js). Mindig be van töltve a cella,
+// amelyben állsz, és a 8 szomszédja (~300 m körülötted), a haladási irányodban pedig előre is töltünk.
+// Ami 2 cellánál messzebb került, az lekerül a térképről. Az épületeket a SZERVER adja (ő tárolja
+// és kérdezi le az OSM-ből), így egy már bejárt környék azonnal betöltődik.
+const AREA_RING = 1;                  // 3 x 3 cella körülötted
+const AREA_KEEP_RING = 2;             // ennél messzebbi cellák épületei eltűnnek
+const AREA_LOOKAHEAD_METERS = 200;    // ennyivel előrébb is töltünk a haladási irányban
+const AREA_HEADING_MIN_METERS = 25;   // ekkora elmozdulás után számolunk új haladási irányt
+const AREA_PENDING_TIMEOUT_MS = 40000;
+const AREA_RETRY_MS = 15000;          // sikertelen cellát ennyi idő múlva kérünk újra
 
-    // Itt vannak a tárcsifüleink (tartalék szerverek sorban)
-    const overpassUrls = [
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://overpass.openstreetmap.fr/api/interpreter',
-        'https://overpass-api.de/api/interpreter' // Hátul végvárként a hivatalos
-    ];
+const areaCells = new Map();          // cellaazonosító -> { state: 'pending' | 'loaded' | 'failed', at }
+let areaPosition = null;              // az utolsó ismert hely
+let areaHeadingFrom = null;           // a haladási irány számításának kiindulópontja
+let areaHeading = null;               // egységvektor méterben { north, east }
+let areaRetryTimer = null;
 
-    // Rekurzív vagy ciklikus próbálkozó függvény a szerverekre
-    let tryFetchUrl = (index) => {
-        if (index >= overpassUrls.length) {
-            console.warn("Az összes Overpass szerver hibát jelzett vagy elérhetetlen.");
-            logMessage("[Zóna] Most nem sikerült betölteni a környék épületeit. Kicsit odébb sétálva újra próbálkozik.");
-            lastFetchLat = null; // a következő GPS-frissítésnél újrapróbálja
-            return;
+// A ponttól adott irányban adott távolságra lévő pont
+function areaProject(lat, lng, heading, meters) {
+    return {
+        lat: lat + (heading.north * meters) / 111320,
+        lng: lng + (heading.east * meters) / (111320 * Math.cos(lat * Math.PI / 180))
+    };
+}
+
+function updateAreaHeading(lat, lng) {
+    if (!areaHeadingFrom) { areaHeadingFrom = { lat, lng }; return; }
+    const north = (lat - areaHeadingFrom.lat) * 111320;
+    const east = (lng - areaHeadingFrom.lng) * 111320 * Math.cos(lat * Math.PI / 180);
+    const dist = Math.hypot(north, east);
+    if (dist < AREA_HEADING_MIN_METERS) return;
+    areaHeading = { north: north / dist, east: east / dist };
+    areaHeadingFrom = { lat, lng };
+}
+
+function updateAreaIndicator() {
+    const el = document.getElementById('area-loading');
+    if (!el) return;
+    let pending = false;
+    areaCells.forEach(st => { if (st.state === 'pending') pending = true; });
+    el.classList.toggle('hidden', !pending);
+}
+
+function updateArea(lat, lng) {
+    if (typeof lat !== 'number' || typeof lng !== 'number') return;
+    areaPosition = { lat, lng };
+    updateAreaHeading(lat, lng);
+    const now = Date.now();
+    const current = SurvivalBuildings.cellOf(lat, lng);
+
+    const wanted = new Set(SurvivalBuildings.cellsAround(lat, lng, AREA_RING));
+    if (areaHeading) {
+        const ahead = areaProject(lat, lng, areaHeading, AREA_LOOKAHEAD_METERS);
+        SurvivalBuildings.cellsAround(ahead.lat, ahead.lng, 1).forEach(id => wanted.add(id));
+    }
+
+    // A messze került cellák épületei lekerülnek a térképről
+    const dropped = new Set();
+    areaCells.forEach((st, id) => {
+        if (!wanted.has(id) && SurvivalBuildings.cellDistance(id, current) > AREA_KEEP_RING) dropped.add(id);
+    });
+    if (dropped.size > 0) {
+        dropped.forEach(id => areaCells.delete(id));
+        savedBuildings = savedBuildings.filter(b => !dropped.has(b.cell));
+        refreshMapMarkers();
+    }
+
+    // A hiányzó (vagy újrapróbálandó) cellák kérése
+    const need = [...wanted].filter(id => {
+        const st = areaCells.get(id);
+        if (!st) return true;
+        if (st.state === 'pending') return now - st.at > AREA_PENDING_TIMEOUT_MS;
+        if (st.state === 'failed') return now - st.at > AREA_RETRY_MS;
+        return false;
+    });
+    if (need.length > 0 && typeof socket !== 'undefined' && socket && socket.connected) {
+        need.forEach(id => areaCells.set(id, { state: 'pending', at: now }));
+        socket.emit('area_request', { cells: need });
+    }
+    updateAreaIndicator();
+}
+
+function scheduleAreaRetry(ms) {
+    if (areaRetryTimer) return;
+    areaRetryTimer = setTimeout(() => {
+        areaRetryTimer = null;
+        if (areaPosition) updateArea(areaPosition.lat, areaPosition.lng);
+    }, ms);
+}
+
+if (typeof socket !== 'undefined' && socket) {
+    socket.on('area_data', (data) => {
+        if (!data || typeof data !== 'object') return;
+        const now = Date.now();
+        const locks = data.locks && typeof data.locks === 'object' ? data.locks : {};
+        Object.keys(locks).forEach(id => { buildingLocks[id] = locks[id]; });
+
+        const known = new Set(savedBuildings.map(b => b.id));
+        let added = 0;
+        const cells = data.cells && typeof data.cells === 'object' ? data.cells : {};
+        Object.keys(cells).forEach(cellId => {
+            const st = areaCells.get(cellId);
+            if (!st) return; // közben messze kerültünk tőle
+            areaCells.set(cellId, { state: 'loaded', at: now });
+            (Array.isArray(cells[cellId]) ? cells[cellId] : []).forEach(b => {
+                if (!b || typeof b.id !== 'string' || known.has(b.id)) return;
+                if (typeof b.lat !== 'number' || typeof b.lng !== 'number' || typeof b.name !== 'string') return;
+                known.add(b.id);
+                savedBuildings.push({
+                    id: b.id, cell: cellId, lat: b.lat, lng: b.lng, bounds: SurvivalBuildings.cleanBounds(b.bounds),
+                    type: b.type, name: b.name, lockedUntil: buildingLocks[b.id] || null
+                });
+                added++;
+            });
+        });
+
+        (Array.isArray(data.failed) ? data.failed : []).forEach(id => {
+            if (areaCells.has(id)) areaCells.set(id, { state: 'failed', at: now });
+        });
+        if (Array.isArray(data.failed) && data.failed.length > 0) {
+            logMessage("[Zóna] A környék egy részét most nem sikerült betölteni, kicsit később újra próbálkozik.");
+            scheduleAreaRetry(AREA_RETRY_MS + 500);
         }
 
-        const url = overpassUrls[index] + '?data=' + encodeURIComponent(query);
+        // Még nincs pozíciója a szervernek / túl sok kérés: rövidesen újra
+        if (Array.isArray(data.retry) && data.retry.length > 0) {
+            data.retry.forEach(id => { if (areaCells.has(id)) areaCells.delete(id); });
+            scheduleAreaRetry(2000);
+        }
 
-        fetch(url)
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP hiba! Státusz: ${response.status}`);
-                return response.text();
-            })
-            .then(text => {
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    // Ha nem JSON jött vissza, próbáljuk a következőt
-                    tryFetchUrl(index + 1);
-                    return;
-                }
+        if (added > 0 || Object.keys(locks).length > 0) refreshMapMarkers();
+        updateAreaIndicator();
+    });
 
-                if (!data || !Array.isArray(data.elements)) {
-                    // hibás / túlterhelt válasz (pl. "rate limited"): jöhet a következő szerver
-                    tryFetchUrl(index + 1);
-                    return;
-                }
-
-                const newIds = [];
-                data.elements.forEach((element) => {
-                    // Pontnál a saját koordináta, épületnél (way) a befoglaló téglalap közepe
-                    const pos = SurvivalBuildings.elementPosition(element);
-                    if (!pos) return;
-                    const elLat = pos.lat;
-                    const elLon = pos.lng;
-
-                    // Egyértelmű azonosító (node / way) és a szerverrel KÖZÖS besorolás (buildings.js)
-                    const uniqueId = SurvivalBuildings.buildingId(element);
-                    const exists = savedBuildings.some(sb => sb.id === uniqueId);
-                    if (exists) return;
-
-                    const tags = element.tags || {};
-                    const buildingType = SurvivalBuildings.classifyBuilding(tags);
-
-                    // (A műhelyek – olvasztás, javítás – egy későbbi frissítésben jönnek; addig minden épület sima, lootolható épület.)
-
-                    const knownLock = buildingLocks[uniqueId] || null;
-                    savedBuildings.push({
-                        id: uniqueId,
-                        lat: elLat,
-                        lng: elLon,
-                        bounds: SurvivalBuildings.cleanBounds(element.bounds),
-                        type: buildingType,
-                        name: SurvivalBuildings.displayName(buildingType, tags),
-                        lockedUntil: knownLock
-                    });
-                    newIds.push(uniqueId);
-                });
-
-            // A messze hagyott épületeket elfelejtjük, így séta közben sem nő a végtelenségig a jelölők száma
-            pruneFarBuildings(lat, lng);
-
-            if (newIds.length > 0) {
-                refreshMapMarkers();
-                requestBuildingStatus(newIds);
-                logMessage("[Zóna] Térkép sikeresen feltöltve a környék épületeivel!");
-            }
-        })
-        .catch(error => {
-            console.warn(`Szerver hiba a(z) ${index}. címnél, próbáljuk a következőt...`, error);
-            tryFetchUrl(index + 1); // Ez léptet át a következő szerverre, ha hiba történik!
-        });
-    };
-
-    // Itt indul el az első szerver hívása
-    tryFetchUrl(0);
+    // (Újra)csatlakozáskor a félbemaradt kéréseket újraküldjük
+    socket.on('connect', () => {
+        areaCells.forEach((st, id) => { if (st.state === 'pending') areaCells.delete(id); });
+        if (areaPosition) {
+            sendMyPosition(areaPosition.lat, areaPosition.lng, null);
+            updateArea(areaPosition.lat, areaPosition.lng);
+        }
+    });
 }
 
 // Menekülés utáni SZEMÉLYES zár (csak neked): az ellenség még bent van
@@ -374,13 +403,6 @@ function refreshMapMarkers() {
         markerById.delete(id);
     });
     buildings = Array.from(markerById.values());
-}
-
-// A játékostól BUILDING_KEEP_RADIUS_METERS-nél messzebb lévő épületek törlése a listából
-const BUILDING_KEEP_RADIUS_METERS = 1500;
-function pruneFarBuildings(lat, lng) {
-    const here = L.latLng(lat, lng);
-    savedBuildings = savedBuildings.filter(b => here.distanceTo([b.lat, b.lng]) <= BUILDING_KEEP_RADIUS_METERS);
 }
 
 function closeWorkshopModal() {
@@ -476,7 +498,7 @@ function initMapAndGame() {
             const lng = position.coords.longitude;
             
             // Térkép indítása a valós GPS pozícióval
-            initMap(lat, lng);
+            initMap(lat, lng, true);
             logMessage(`[GPS] Pozíció rögzítve: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         }, error => {
             console.warn("GPS hiba, alapértelmezett koordináta használata.");
@@ -499,8 +521,11 @@ function otherPlayerIcon(pData) {
     return L.divIcon({
         className: 'other-player-icon',
         html: `
-            <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #940e0e; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
-                <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
+            <div style="position: relative; width: 36px; height: 36px;">
+                <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #940e0e; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
+                    <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
+                </div>
+                ${pData.early === true ? '<span class="early-badge" style="position: absolute; right: -6px; bottom: -4px; font-size: 13px; line-height: 1; filter: drop-shadow(0 0 2px #000);">🎖️</span>' : ''}
             </div>
         `,
         iconSize: [36, 36],
@@ -543,7 +568,7 @@ function initOtherPlayersListener() {
 }
 
 function showOtherPlayer(pData) {
-    logMessage(`👤 ${pData.username} – ${pData.level || 1}. szintű túlélő`);
+    logMessage(`👤 ${pData.username} – ${pData.level || 1}. szintű túlélő${pData.early === true ? ' · 🎖️ Korai túlélő' : ''}`);
 }
 
 // --- BIZTONSÁGOS LOOT EREDMÉNY FOGADÁSA A SZERVERTŐL ---

@@ -60,6 +60,7 @@ function enterGame(data) {
     Object.assign(player, data.player);
     player.username = data.username;
     player.avatar = data.avatar;
+    player.earlySurvivor = !!data.earlySurvivor; // "Korai túlélő" jelvény
 
     // Az épületeket a térkép tölti be az OSM-ből, a zárakat (globális, mindenkire érvényes)
     // a szervertől kérdezi le a betöltött épületekre (building_status)

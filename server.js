@@ -21,6 +21,20 @@ const io = new Server(server);
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// A főoldal a szkriptek címéhez verziószámot fűz (pl. js/map.js?v=ab12cd34). Minden új telepítésnél
+// más a szám, így a böngészők biztosan az új fájlokat töltik le, nem a régit veszik elő a gyorsítótárból.
+const fs = require('fs');
+const ASSET_VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 8) || Date.now().toString(36);
+let indexHtmlCache = null;
+function sendIndex(req, res) {
+    if (!indexHtmlCache) {
+        const raw = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+        indexHtmlCache = raw.replace(/(<script src="\/?js\/[^"?]+\.js)(")/g, `$1?v=${ASSET_VERSION}$2`);
+    }
+    res.set('Cache-Control', 'no-cache');
+    res.type('html').send(indexHtmlCache);
+}
+app.get(['/', '/index.html'], sendIndex);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // A Render (és a legtöbb tárhely) proxy mögött fut: a valódi IP-cím az X-Forwarded-For fejlécben van
@@ -41,6 +55,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true },
     password: { type: String, required: true },
     avatar: { type: String, default: 'avatar1.png' },
+    earlySurvivor: { type: Boolean, default: false }, // "Korai túlélő" jelvény (végleges, a halál után is megmarad)
     playerData: {
         hp: { type: Number, default: 100 },
         maxHp: { type: Number, default: 100 },
@@ -72,12 +87,15 @@ const userSchema = new mongoose.Schema({
 const PlayerModel = mongoose.model('SurvivalUser', userSchema);
 
 // Egy friss túlélő adatai (regisztrációkor és a halál utáni újrakezdéskor), kezdőcsomaggal
-function newPlayerData() {
+// earlyKit: a korai túlélők első csomagja (dupla készlet, elemlámpa, felszerelt válltáska)
+function newPlayerData(earlyKit) {
+    const kit = earlyKit ? config.EARLY_SURVIVOR_KIT : config.STARTER_KIT;
     return {
         hp: 100, maxHp: 100, money: 100, level: 1, xp: 0,
         fatigue: 0, hunger: 100, thirst: 100,
-        inventory: config.STARTER_KIT.map(s => ({ key: s.key, count: s.count })),
-        equipment: { weapon: null, armor: null, shoes: null, helmet: null, torso: null, legs: null, backpack: null, secondary: null, melee: null },
+        inventory: kit.map(s => ({ key: s.key, count: s.count })),
+        equipment: { weapon: null, armor: null, shoes: null, helmet: null, torso: null, legs: null,
+            backpack: earlyKit ? config.EARLY_SURVIVOR_BACKPACK : null, secondary: null, melee: null },
         lastSeen: null,
         dead: false,
         combat: null,
@@ -130,17 +148,19 @@ app.post('/api/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        const early = config.EARLY_SURVIVOR_OPEN;
         const newUser = new PlayerModel({
             username,
             usernameLower,
             email,
             password: hashedPassword,
             avatar: safeAvatar(avatar),
-            playerData: newPlayerData()
+            earlySurvivor: early,
+            playerData: newPlayerData(early)
         });
 
         await newUser.save();
-        res.json({ success: true, message: 'Sikeres regisztráció!' });
+        res.json({ success: true, message: early ? 'Sikeres regisztráció! 🎖️ Korai túlélő vagy: extra felszereléssel indulsz.' : 'Sikeres regisztráció!' });
     } catch (e) {
         console.error("Hiba regisztrációnál:", e);
         res.status(500).json({ success: false, message: 'Szerverhiba történt a regisztráció során.' });
@@ -158,6 +178,7 @@ function buildSessionPayload(user, token) {
         success: true,
         username: user.username,
         avatar: safeAvatar(user.avatar),
+        earlySurvivor: !!user.earlySurvivor,
         player: user.playerData,
         token
     };
@@ -252,7 +273,7 @@ function nearbyPlayers(viewerName) {
         const p = activePlayers[name];
         if (p.lat === null) continue;
         if (SurvivalBuildings.haversine(viewer.lat, viewer.lng, p.lat, p.lng) > radius) continue;
-        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, lat: p.lat, lng: p.lng };
+        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, early: !!p.earlySurvivor, lat: p.lat, lng: p.lng };
     }
     return result;
 }
@@ -652,10 +673,10 @@ const buildingSchema = new mongoose.Schema({
 });
 const BuildingModel = mongoose.model('SurvivalBuilding', buildingSchema);
 
-const buildingCache = new Map();    // memória-gyorsítótár: id -> { id, type, name, lat, lng }
+const buildingCache = new Map();    // memória-gyorsítótár: id -> { id, type, name, lat, lng, bounds }
 const missingBuildings = new Map(); // nem létező OSM azonosítók -> lejárat (ne kérdezzük le újra és újra)
 const buildingFetches = new Map();  // folyamatban lévő lekérdezések (két játékos ne kérdezze le kétszer)
-const BUILDING_CACHE_LIMIT = 5000;
+const BUILDING_CACHE_LIMIT = 30000;
 
 function osmError(code) {
     const err = new Error(code);
@@ -663,39 +684,203 @@ function osmError(code) {
     return err;
 }
 
-// Egy épület lekérdezése az OSM-ből (Overpass), a tartalék szerverekkel
-async function fetchBuildingFromOsm(id) {
-    const parsed = SurvivalBuildings.parseBuildingId(id);
-    if (!parsed) throw osmError('NOT_FOUND');
-    const query = `[out:json][timeout:10];${parsed.osmType}(${parsed.osmId});out tags bb;`;
+function rememberBuilding(building) {
+    if (buildingCache.size >= BUILDING_CACHE_LIMIT) buildingCache.delete(buildingCache.keys().next().value);
+    buildingCache.set(building.id, building);
+}
 
+// Egy Overpass lekérdezés a tartalék szerverekkel. Ha egy szerver nem válaszol OVERPASS_TIMEOUT_MS alatt,
+// hibát ad, vagy félbeszakadt választ küld ("remark": időtúllépés, memória), a következőt kérdezzük.
+async function overpassQuery(query, timeoutMs) {
     for (const url of config.OVERPASS_URLS) {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), config.OVERPASS_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), timeoutMs || config.OVERPASS_TIMEOUT_MS);
         try {
             const res = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'SurvivalGO/1.0' },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'SurvivalGO/1.0 (survivalgo.hu)' },
                 body: 'data=' + encodeURIComponent(query),
                 signal: controller.signal
             });
             if (!res.ok) continue;
             const json = await res.json();
-            const el = json && Array.isArray(json.elements) ? json.elements[0] : null;
-            if (!el) throw osmError('NOT_FOUND');
-            const pos = SurvivalBuildings.elementPosition(el); // pont: saját koordináta, épület: a téglalap közepe
-            if (!pos) throw osmError('NOT_FOUND');
-            const { lat, lng } = pos;
-            const type = SurvivalBuildings.classifyBuilding(el.tags);
-            return { id, type, name: SurvivalBuildings.displayName(type, el.tags), lat, lng, bounds: SurvivalBuildings.cleanBounds(el.bounds) };
+            if (!json || !Array.isArray(json.elements)) continue;
+            if (typeof json.remark === 'string' && /error|timed out|out of memory/i.test(json.remark)) continue;
+            return json;
         } catch (err) {
-            if (err.code === 'NOT_FOUND') throw err;
             // hálózati hiba / időtúllépés / hibás válasz: jöhet a következő szerver
         } finally {
             clearTimeout(timer);
         }
     }
     throw osmError('OSM_UNAVAILABLE');
+}
+
+// Egy OSM elemből a játék épülete (vagy null, ha nincs helye)
+function buildingFromElement(el) {
+    if (!el || (el.type !== 'node' && el.type !== 'way') || typeof el.id !== 'number') return null;
+    const pos = SurvivalBuildings.elementPosition(el); // pont: saját koordináta, épület: a téglalap közepe
+    if (!pos) return null;
+    const type = SurvivalBuildings.classifyBuilding(el.tags);
+    return {
+        id: SurvivalBuildings.buildingId(el), type, name: SurvivalBuildings.displayName(type, el.tags),
+        lat: pos.lat, lng: pos.lng, bounds: SurvivalBuildings.cleanBounds(el.bounds)
+    };
+}
+
+// Egy épület lekérdezése az OSM-ből (csak ha a környék még nem töltődött be a térképrácsból).
+// A pontoknak (node) a "body" kimenet adja a koordinátát, az épületeknek (way) a "bb" a befoglaló téglalapot.
+async function fetchBuildingFromOsm(id) {
+    const parsed = SurvivalBuildings.parseBuildingId(id);
+    if (!parsed) throw osmError('NOT_FOUND');
+    const out = parsed.osmType === 'node' ? 'out body;' : 'out tags bb;';
+    const json = await overpassQuery(`[out:json][timeout:10];${parsed.osmType}(${parsed.osmId});${out}`);
+    const building = buildingFromElement(json.elements[0]);
+    if (!building || building.id !== id) throw osmError('NOT_FOUND');
+    return building;
+}
+
+// ===================== TÉRKÉPRÁCS: ÉPÜLETEK CELLÁNKÉNT =====================
+// A kliens a körülötte lévő cellákat kéri (area_request). A szerver cellánként tárolja az épületeket
+// (memóriában és az adatbázisban), így egy környéket csak egyszer kell az OSM-től lekérdezni,
+// utána mindenki azonnal megkapja. AREA_CELL_TTL_DAYS után újra lekérdezzük (változhat a térkép).
+const cellSchema = new mongoose.Schema({
+    _id: { type: String },     // cellaazonosító, pl. '26166_7333'
+    ids: { type: [String], default: [] },
+    fetchedAt: { type: Number }
+});
+const CellModel = mongoose.model('SurvivalCell', cellSchema);
+
+const cellCache = new Map();   // cellaazonosító -> { buildings: [...], fetchedAt }
+const cellFetches = new Map(); // folyamatban lévő OSM-lekérdezések cellánként
+const CELL_CACHE_LIMIT = 3000;
+const CELL_FETCH_CHUNK = 9;    // egy Overpass lekérdezésben legfeljebb ennyi cella (kb. 600 x 600 m)
+
+function cellIsFresh(fetchedAt, now) {
+    return typeof fetchedAt === 'number' && now - fetchedAt < config.AREA_CELL_TTL_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function rememberCell(cellId, buildings, fetchedAt) {
+    if (cellCache.size >= CELL_CACHE_LIMIT) cellCache.delete(cellCache.keys().next().value);
+    cellCache.set(cellId, { buildings, fetchedAt });
+    buildings.forEach(rememberBuilding);
+}
+
+// Néhány (szomszédos) cella lekérdezése egyetlen Overpass hívással, a cellák közös befoglaló téglalapjában.
+// Minden épület abba a cellába kerül, amelyikbe a középpontja esik.
+async function fetchCellsFromOsm(cellIds) {
+    const parsed = cellIds.map(id => SurvivalBuildings.parseCellId(id));
+    const s = Math.min(...parsed.map(c => c.south)), w = Math.min(...parsed.map(c => c.west));
+    const n = Math.max(...parsed.map(c => c.north)), e = Math.max(...parsed.map(c => c.east));
+    const bbox = [s, w, n, e].map(v => v.toFixed(6)).join(',');
+    const query = `[out:json][timeout:25][bbox:${bbox}];` +
+        '(node[shop];node[amenity];node[tourism];node[leisure];node[building];)->.n;' +
+        '(way[building];way[shop];way[amenity];)->.w;' +
+        '.n out body;.w out tags bb;';
+    const json = await overpassQuery(query, config.AREA_OVERPASS_TIMEOUT_MS);
+
+    const result = new Map(cellIds.map(id => [id, []]));
+    const seen = new Set();
+    json.elements.forEach(el => {
+        const b = buildingFromElement(el);
+        if (!b || seen.has(b.id)) return;
+        const list = result.get(SurvivalBuildings.cellOf(b.lat, b.lng));
+        if (!list) return; // a közös téglalap szélén, de nem a kért cellákban
+        seen.add(b.id);
+        list.push(b);
+    });
+
+    // Mentés: az épületek (a záruk megmarad) és a cellák épületlistája
+    const now = Date.now();
+    const all = [].concat(...result.values());
+    if (all.length > 0) {
+        await BuildingModel.bulkWrite(all.map(b => ({
+            updateOne: {
+                filter: { _id: b.id },
+                update: { $set: { type: b.type, name: b.name, lat: b.lat, lng: b.lng, bounds: b.bounds, fetchedAt: now },
+                          $setOnInsert: { lockedUntil: 0 } },
+                upsert: true
+            }
+        })), { ordered: false });
+    }
+    await CellModel.bulkWrite([...result.entries()].map(([id, list]) => ({
+        updateOne: { filter: { _id: id }, update: { $set: { ids: list.map(b => b.id), fetchedAt: now } }, upsert: true }
+    })), { ordered: false });
+    result.forEach((list, id) => rememberCell(id, list, now));
+    return result;
+}
+
+// A kért cellák épületei: memóriából, adatbázisból, vagy (ha nincs, vagy elavult) az OSM-ből.
+// Visszaad: { cells: Map(cellId -> épületek), failed: [cellId] }. Ha az OSM nem elérhető, de van
+// régebbi tárolt változat, azt adjuk vissza (jobb, mint a semmi).
+async function getCells(cellIds) {
+    const now = Date.now();
+    const cells = new Map();
+    const stale = new Map();
+    let missing = [];
+
+    cellIds.forEach(id => {
+        const c = cellCache.get(id);
+        if (c && cellIsFresh(c.fetchedAt, now)) cells.set(id, c.buildings);
+        else { if (c) stale.set(id, c.buildings); missing.push(id); }
+    });
+
+    if (missing.length > 0) {
+        const docs = await CellModel.find({ _id: { $in: missing } });
+        if (docs.length > 0) {
+            const ids = [].concat(...docs.map(d => d.ids || []));
+            const stored = ids.length > 0 ? await BuildingModel.find({ _id: { $in: ids } }, '_id type name lat lng bounds') : [];
+            const byId = new Map(stored.map(d => [d._id, {
+                id: d._id, type: d.type, name: d.name, lat: d.lat, lng: d.lng, bounds: SurvivalBuildings.cleanBounds(d.bounds)
+            }]));
+            docs.forEach(d => {
+                const list = (d.ids || []).map(id => byId.get(id)).filter(b => b && typeof b.lat === 'number' && typeof b.name === 'string');
+                if (cellIsFresh(d.fetchedAt, now)) {
+                    rememberCell(d._id, list, d.fetchedAt);
+                    cells.set(d._id, list);
+                } else {
+                    stale.set(d._id, list);
+                }
+            });
+            missing = missing.filter(id => !cells.has(id));
+        }
+    }
+
+    // Ami még hiányzik: OSM. A más kérés által már lekérdezés alatt álló cellákat megvárjuk.
+    const waits = [];
+    const toFetch = [];
+    missing.forEach(id => (cellFetches.has(id) ? waits.push(id) : toFetch.push(id)));
+    toFetch.sort();
+    for (let i = 0; i < toFetch.length; i += CELL_FETCH_CHUNK) {
+        const chunk = toFetch.slice(i, i + CELL_FETCH_CHUNK);
+        const job = fetchCellsFromOsm(chunk);
+        chunk.forEach(id => cellFetches.set(id, job));
+        job.catch(() => {}).finally(() => chunk.forEach(id => { if (cellFetches.get(id) === job) cellFetches.delete(id); }));
+        waits.push(...chunk);
+    }
+
+    const failed = [];
+    await Promise.all(waits.map(async id => {
+        try {
+            const res = await cellFetches.get(id);
+            if (res && res.has(id)) { cells.set(id, res.get(id)); return; }
+        } catch (err) { /* OSM nem elérhető */ }
+        const c = cellCache.get(id);
+        if (c && cellIsFresh(c.fetchedAt, Date.now())) cells.set(id, c.buildings);
+        else if (stale.has(id)) cells.set(id, stale.get(id));
+        else failed.push(id);
+    }));
+    return { cells, failed };
+}
+
+// Az épületek közül az éppen zárva lévők (épület-azonosító -> lejárat)
+async function activeLocks(ids, now) {
+    const locks = {};
+    for (let i = 0; i < ids.length; i += 1000) {
+        const docs = await BuildingModel.find({ _id: { $in: ids.slice(i, i + 1000) }, lockedUntil: { $gt: now } }, '_id lockedUntil');
+        docs.forEach(d => { locks[d._id] = d.lockedUntil; });
+    }
+    return locks;
 }
 
 // Az épület adatai: memóriából, adatbázisból, vagy (első alkalommal) az OSM-ből
@@ -726,8 +911,7 @@ async function getBuilding(id) {
                 { upsert: true }
             );
         }
-        if (buildingCache.size >= BUILDING_CACHE_LIMIT) buildingCache.delete(buildingCache.keys().next().value);
-        buildingCache.set(id, building);
+        rememberBuilding(building);
         return building;
     })();
 
@@ -794,10 +978,11 @@ io.use(async (socket, next) => {
     if (typeof payload.username !== 'string') return next(new Error('AUTH_INVALID'));
 
     try {
-        const user = await PlayerModel.findOne({ username: payload.username }, 'username avatar');
+        const user = await PlayerModel.findOne({ username: payload.username }, 'username avatar earlySurvivor');
         if (!user) return next(new Error('AUTH_INVALID'));
         socket.data.username = user.username;
         socket.data.avatar = safeAvatar(user.avatar);
+        socket.data.earlySurvivor = !!user.earlySurvivor;
         next();
     } catch (err) {
         console.error("Hiba a socket hitelesítés közben:", err);
@@ -818,6 +1003,7 @@ io.on('connection', (socket) => {
         socketId: socket.id,
         username,
         avatar: socket.data.avatar,
+        earlySurvivor: !!socket.data.earlySurvivor,
         lat: null,
         lng: null,
         anchor: null,          // az utolsó "valódi" mozgás helye (GPS-szórás szűréséhez)
@@ -1164,6 +1350,51 @@ io.on('connection', (socket) => {
             socket.emit('building_status', { locks });
         } catch (err) {
             console.error("Hiba az épületek állapotának lekérdezésekor:", err);
+        }
+    });
+
+    // --- ÉPÜLETEK BETÖLTÉSE (térképrács) ---
+    // A kliens a körülötte lévő cellákat kéri; a szerver a tárolt (vagy most lekérdezett) épületeket
+    // és azok zárállapotát küldi vissza. Csak a játékos közelében lévő cellákat adjuk ki.
+    let areaWindowStart = 0;
+    let areaCellsInWindow = 0;
+    socket.on('area_request', async (data) => {
+        if (!data || !Array.isArray(data.cells)) return;
+        const requested = [...new Set(data.cells.filter(id => SurvivalBuildings.parseCellId(id)))]
+            .slice(0, config.AREA_MAX_CELLS_PER_REQUEST);
+        if (requested.length === 0) return;
+
+        const entry = activePlayers[username];
+        if (!entry || entry.socketId !== socket.id) return;
+        // A pozíció nélküli kérést (pl. közvetlenül csatlakozás után) a kliens kicsit később megismétli
+        if (entry.lat === null) { socket.emit('area_data', { cells: {}, locks: {}, failed: [], retry: requested }); return; }
+
+        const here = { lat: entry.lat, lng: entry.lng };
+        const near = requested.filter(id => distanceMeters(here, SurvivalBuildings.cellCenter(id)) <= config.AREA_MAX_DISTANCE_METERS);
+        const far = requested.filter(id => !near.includes(id));
+        if (near.length === 0) { socket.emit('area_data', { cells: {}, locks: {}, failed: far }); return; }
+
+        const now = Date.now();
+        if (now - areaWindowStart > 10000) { areaWindowStart = now; areaCellsInWindow = 0; }
+        if (areaCellsInWindow + near.length > config.AREA_MAX_CELLS_PER_10S) {
+            socket.emit('area_data', { cells: {}, locks: {}, failed: [], retry: near });
+            return;
+        }
+        areaCellsInWindow += near.length;
+
+        try {
+            const { cells, failed } = await getCells(near);
+            const out = {};
+            const ids = [];
+            cells.forEach((list, id) => {
+                out[id] = list.map(b => ({ id: b.id, type: b.type, name: b.name, lat: b.lat, lng: b.lng, bounds: b.bounds }));
+                list.forEach(b => ids.push(b.id));
+            });
+            const locks = await activeLocks(ids, Date.now());
+            socket.emit('area_data', { cells: out, locks, failed: failed.concat(far) });
+        } catch (err) {
+            console.error("Hiba a környék épületeinek betöltésekor:", err);
+            socket.emit('area_data', { cells: {}, locks: {}, failed: near.concat(far) });
         }
     });
 

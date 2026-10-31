@@ -35,6 +35,20 @@ module.exports = {
         { key: 'canned_food', count: 1 }
     ],
 
+    // --- KORAI TÚLÉLŐ (a megjelenés előtt regisztrálók jutalma) ---
+    // Amíg a Renderen az EARLY_SURVIVOR környezeti változó értéke "on", minden új regisztráló
+    // végleges "Korai túlélő" jelvényt és egyszeri, bővebb kezdőcsomagot kap. Lezárás: a változó törlése.
+    EARLY_SURVIVOR_OPEN: process.env.EARLY_SURVIVOR === 'on',
+    EARLY_SURVIVOR_KIT: [               // csak az ELSŐ indulásnál (halál után a sima kezdőcsomag jár)
+        { key: 'knife', count: 1 },
+        { key: 'bandage', count: 2 },
+        { key: 'water_bottle', count: 2 },
+        { key: 'canned_food', count: 2 },
+        { key: 'flashlight', count: 1 },
+        { key: 'aa_batteries', count: 1 }
+    ],
+    EARLY_SURVIVOR_BACKPACK: 'field_satchel', // rögtön felszerelve
+
     // --- FÁRADTSÁG (0 = kipihent, 100 = teljesen kimerült, nem lehet lootolni) ---
     FATIGUE_PER_METER: 0.01,        // séta: 100% / 10 km
     FATIGUE_LOOT: 2,                // épület átkutatása
@@ -47,13 +61,20 @@ module.exports = {
     LOOT_RANGE_METERS: 30,              // ennyire kell megközelíteni az épületet
     LOOT_RANGE_TOLERANCE_METERS: 15,    // + GPS-pontatlanság tűrése (a szerver 45 m-ig fogadja el)
     POSITION_MAX_AGE_SECONDS: 120,      // ennél régebbi GPS pozícióval nem lehet lootolni
-    OVERPASS_URLS: [                    // OSM lekérdezés: az épület típusát a szerver maga kérdezi le (csalásbiztos)
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://overpass.openstreetmap.fr/api/interpreter',
-        'https://overpass-api.de/api/interpreter'
-    ],
-    OVERPASS_TIMEOUT_MS: 10000,
     LOOT_COOLDOWN_MS: 1500,             // két lootolási kérés között legalább ennyi idő (az OSM-lekérdezések védelme)
+    OVERPASS_URLS: [                    // OSM (Overpass) szerverek sorrendben; ha az egyik nem válaszol időben, jön a következő
+        'https://overpass.private.coffee/api/interpreter',          // korábban overpass.kumi.systems, nincs kérés-korlát
+        'https://overpass-api.de/api/interpreter',                   // a hivatalos (gyakran túlterhelt)
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter'    // tartalék
+    ],
+    OVERPASS_TIMEOUT_MS: 12000,         // ennyi ideig várunk egy Overpass szerverre, utána a következő jön
+
+    // --- ÉPÜLETEK BETÖLTÉSE (térképrács, lásd buildings.js) ---
+    AREA_OVERPASS_TIMEOUT_MS: 25000,    // egy környék (max. 9 cella) lekérdezése tovább tarthat, mint egy épületé
+    AREA_CELL_TTL_DAYS: 7,              // ennyi ideig használjuk a tárolt cellát, utána újra lekérdezzük az OSM-ből
+    AREA_MAX_CELLS_PER_REQUEST: 25,     // egy kérésben legfeljebb ennyi cella
+    AREA_MAX_DISTANCE_METERS: 1500,     // csak a játékos közelében lévő cellákat adjuk ki (ne lehessen az egész országot letölteni)
+    AREA_MAX_CELLS_PER_10S: 60,         // kéréskorlát játékosonként
 
     // --- HARC (a részletes harcszabályok a combat-engine.js-ben) ---
     FLEE_LOCK_MINUTES: 10,              // menekülés után ennyi percig NEKED zárva az épület (másoknak nem)

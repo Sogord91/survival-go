@@ -153,6 +153,8 @@ function updateHUD() {
     const avatarFile = player.avatar;
     document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; border-radius: 12px; object-fit: cover;">`;
     document.getElementById('hud-name').textContent = player.username || player.name || "Túlélő";
+    const badge = document.getElementById('hud-badge');
+    if (badge) badge.classList.toggle('hidden', !player.earlySurvivor);
     document.getElementById('hud-level').textContent = player.level || 1;
     document.getElementById('hud-xp').textContent = player.xp || 0;
     document.getElementById('hud-defense').textContent = player.defense || 0;
@@ -197,16 +199,93 @@ function itemIconHtml(item, sizeClass) {
     return `<span class="text-xl">${emoji}</span>`;
 }
 
-// A tárgy típusától függő gomb: fogyasztható -> "Használ", felszerelés -> "Felvesz", egyéb -> nincs gomb
-function itemActionButton(slot, index) {
-    const item = itemDatabase[slot.key];
-    if (SurvivalStats.isConsumable(item)) {
-        return `<button onclick="inventoryAction(${index})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold">Használ</button>`;
+function escapeAttr(text) {
+    return String(text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// Ikon a rácsba: kép az ikoncsomagból, ha nincs (vagy nem töltődik be), az emoji
+function tileIconHtml(item) {
+    const emoji = (item && item.icon) || '📦';
+    if (item && item.img) {
+        return `<img src="/images/items/${item.img}.webp" alt="${escapeAttr(item.name)}" onerror="this.outerHTML='<span class=&quot;tile-emoji&quot;>${emoji}</span>'">`;
     }
-    if (SurvivalStats.isEquippable(item)) {
-        return `<button onclick="inventoryAction(${index})" class="bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">Felvesz</button>`;
+    return `<span class="tile-emoji">${emoji}</span>`;
+}
+
+// Kopáscsík a rács mezőjének alján (szerszám, lámpa)
+function tileDurabilityHtml(slot, item) {
+    if (!item || !item.durability || slot.dur === undefined) return '';
+    const pct = Math.max(0, Math.min(100, (slot.dur / item.durability) * 100));
+    const color = pct > 50 ? '#10b981' : pct > 20 ? '#f59e0b' : '#ef4444';
+    return `<div class="tile-dur"><div style="width:${pct}%;background:${color}"></div></div>`;
+}
+
+// ===== TÁRGY LAP (alulról felcsúszó részletek és gombok) =====
+let itemSheetRef = null; // { source: 'inv', index, key } vagy { source: 'eq', slot, key }
+
+function openItemSheet(source, ref) {
+    if (source === 'inv') {
+        const slot = player.inventory[ref];
+        if (!slot) return;
+        itemSheetRef = { source, index: ref, key: slot.key };
+    } else {
+        const key = player.equipment && player.equipment[ref];
+        if (!key) return; // üres felszerelési hely
+        itemSheetRef = { source, slot: ref, key };
     }
-    return '';
+    renderItemSheet();
+    document.getElementById('item-sheet').classList.remove('hidden');
+}
+
+function closeItemSheet() {
+    itemSheetRef = null;
+    const sheet = document.getElementById('item-sheet');
+    if (sheet) sheet.classList.add('hidden');
+}
+
+// Állapotváltozás után: ha a tárgy még ott van, frissül; ha elfogyott / levették, a lap bezárul
+function refreshItemSheet() {
+    if (!itemSheetRef) return;
+    const current = itemSheetRef.source === 'inv'
+        ? (player.inventory[itemSheetRef.index] || {}).key
+        : (player.equipment || {})[itemSheetRef.slot];
+    if (current !== itemSheetRef.key) { closeItemSheet(); return; }
+    renderItemSheet();
+}
+
+function renderItemSheet() {
+    const ref = itemSheetRef;
+    if (!ref) return;
+    const item = itemDatabase[ref.key] || { name: ref.key, icon: '📦', desc: '', weight: 0 };
+    const slot = ref.source === 'inv' ? player.inventory[ref.index] : { key: ref.key, count: 1 };
+    const count = (slot && slot.count) || 1;
+    document.getElementById('item-sheet-icon').innerHTML = tileIconHtml(item);
+    document.getElementById('item-sheet-name').textContent = item.name + (count > 1 ? `  ×${count}` : '');
+    document.getElementById('item-sheet-desc').textContent = item.desc || '';
+    const weight = Math.round((item.weight || 0) * count * 100) / 100;
+    document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '');
+    document.getElementById('item-sheet-dur').innerHTML = ref.source === 'inv' ? durabilityHtml(slot, item) : '';
+
+    const btn = (label, cls, action) => `<button onclick="${action}" class="flex-1 ${cls} text-white py-2.5 rounded-lg text-xs font-bold">${label}</button>`;
+    let actions = '';
+    if (ref.source === 'inv') {
+        if (SurvivalStats.isConsumable(item)) actions += btn('Használ', 'bg-amber-600 hover:bg-amber-500', `itemSheetAction('use')`);
+        else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
+        actions += btn(count > 1 ? 'Eldob 1 db' : 'Eldob', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('drop')`);
+    } else {
+        actions += btn('Levesz', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('unequip')`);
+    }
+    document.getElementById('item-sheet-actions').innerHTML = actions;
+}
+
+function itemSheetAction(action) {
+    const ref = itemSheetRef;
+    if (!ref) return;
+    if (action === 'use' || action === 'equip') inventoryAction(ref.index);
+    else if (action === 'drop') dropItem(ref.index);
+    else if (action === 'unequip') unequip(ref.slot);
+    // Fogyasztás / felvétel / levétel után a lap bezárul; eldobásnál nyitva marad (több darab egymás után)
+    if (action !== 'drop') closeItemSheet();
 }
 
 // A leltár gombja: a tárgy KULCSÁT küldjük a szervernek (nem a sorszámát)
@@ -224,31 +303,19 @@ function updateUI() {
     document.getElementById('inv-count').textContent = player.inventory.length;
     document.getElementById('inv-max').textContent = player.maxInv || 10;
 
+    // Készlet: ikonrács (soronként 5), az üres helyek is látszanak. Koppintásra alul felcsúszik a tárgy lapja.
     const invGrid = document.getElementById('inventory-grid');
-    invGrid.innerHTML = '';
-    player.inventory.forEach((slot, index) => {
+    const capacity = Math.max(player.maxInv || 10, player.inventory.length);
+    let invHtml = '';
+    for (let index = 0; index < capacity; index++) {
+        const slot = player.inventory[index];
+        if (!slot) { invHtml += '<div class="inv-tile empty"></div>'; continue; }
         const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦', desc: '', weight: 0 };
-        const countBadge = slot.count > 1 ? `<span class="bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">x${slot.count}</span>` : '';
-        
-        const iconHtml = itemIconHtml(item, 'w-8 h-8');
-
-        invGrid.innerHTML += `
-            <div class="bg-gray-800 border border-gray-700 p-2 rounded-xl flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <div class="w-9 h-9 flex items-center justify-center bg-gray-900 rounded-lg border border-gray-700">${iconHtml}</div>
-                    <div>
-                        <div class="text-xs font-bold text-white flex items-center">${item.name} ${countBadge}</div>
-                        <div class="text-[10px] text-gray-400">${item.desc} | Súly: ${Math.round((item.weight || 0) * slot.count * 100) / 100} kg</div>
-                        ${durabilityHtml(slot, item)}
-                    </div>
-                </div>
-                <div class="flex gap-1">
-                    ${itemActionButton(slot, index)}
-                    <button onclick="dropItem(${index})" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded text-[10px] font-bold">Eldob</button>
-                </div>
-            </div>
-        `;
-    });
+        const count = slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : '';
+        invHtml += `<button class="inv-tile" onclick="openItemSheet('inv', ${index})" title="${escapeAttr(item.name)}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}</button>`;
+    }
+    invGrid.innerHTML = invHtml;
+    refreshItemSheet();
 
     const combatHealList = document.getElementById('combat-heal-list');
     if (combatHealList) {
@@ -275,19 +342,24 @@ function updateUI() {
         }
     }
 
-    const slots = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon', 'secondary', 'melee'];
-    const slotLabels = { helmet: 'eq-helmet', torso: 'eq-torso', armor: 'eq-armor', legs: 'eq-legs', shoes: 'eq-shoes', backpack: 'eq-backpack', weapon: 'eq-weapon', secondary: 'eq-secondary', melee: 'eq-melee' };
-    slots.forEach(slot => {
-        const itemKey = player.equipment[slot];
-        const el = document.getElementById(slotLabels[slot]);
-        if (itemKey && itemDatabase[itemKey]) {
-            el.textContent = itemDatabase[itemKey].name;
-            el.className = "text-xs font-bold text-amber-400";
+    // Felszerelés: csak ikon (a név és a "Levesz" gomb a tárgy lapján)
+    SurvivalStats.EQUIPMENT_SLOTS.forEach(slot => {
+        const el = document.getElementById('eq-' + slot);
+        if (!el) return;
+        const itemKey = player.equipment && player.equipment[slot];
+        const item = itemKey ? itemDatabase[itemKey] : null;
+        if (item) {
+            el.classList.remove('empty');
+            el.innerHTML = tileIconHtml(item);
+            el.title = item.name;
         } else {
-            el.textContent = (slot === 'backpack') ? `Alap (${player.maxInv || 10} hely)` : 'Nincs felszerelve';
-            el.className = "text-xs font-bold text-gray-500";
+            el.classList.add('empty');
+            el.innerHTML = `<span class="tile-emoji">${el.dataset.empty || '▫️'}</span>`;
+            el.title = slot === 'backpack' ? `Alap hátizsák (${player.maxInv || 10} hely)` : 'Üres';
         }
     });
+    const summary = document.getElementById('eq-summary');
+    if (summary) summary.innerHTML = `<span>🛡️ ${player.defense || 0}</span><span>🎒 ${player.maxInv || 10}</span>`;
 
     renderCraftList();
 }
