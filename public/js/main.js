@@ -212,16 +212,35 @@ function updateHUD() {
     let hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
     // Felfelé kerekítünk, hogy élő karakter ne mutasson 0 HP-t
     document.getElementById('stat-hp').textContent = Math.max(0, Math.ceil(hp)) + '/' + maxHp;
-    document.getElementById('bar-hp').style.width = hpPercent + '%';
+    renderStatSegments('hp', hpPercent, hpPercent < 20);
 
     document.getElementById('stat-hunger').textContent = Math.max(0, Math.round(hunger)) + '%';
-    document.getElementById('bar-hunger').style.width = Math.max(0, Math.min(100, hunger)) + '%';
+    renderStatSegments('hunger', hunger, hunger < 20);
 
     document.getElementById('stat-thirst').textContent = Math.max(0, Math.round(thirst)) + '%';
-    document.getElementById('bar-thirst').style.width = Math.max(0, Math.min(100, thirst)) + '%';
+    renderStatSegments('thirst', thirst, thirst < 20);
 
     document.getElementById('stat-fatigue').textContent = Math.max(0, Math.round(fatigue)) + '%';
-    document.getElementById('bar-fatigue').style.width = Math.max(0, Math.min(100, fatigue)) + '%';
+    // A fáradtság színe a büntetési fokozatokat követi: zöld, 60%-tól narancs, 85%-tól piros
+    const fatigueRow = document.getElementById('stat-row-fatigue');
+    if (fatigueRow) fatigueRow.style.setProperty('--c', fatigue >= 85 ? '#ef4444' : fatigue >= 60 ? '#f97316' : '#84cc16');
+    renderStatSegments('fatigue', fatigue, fatigue >= 85);
+}
+
+// 10 szegmenses csík: minden szegmens 10%; a félig telt szegmens részben színes (--f)
+function renderStatSegments(key, percent, critical) {
+    const bar = document.getElementById('bar-' + key);
+    if (!bar) return;
+    const value = Math.max(0, Math.min(100, Number(percent) || 0));
+    if (bar.children.length !== 10) bar.innerHTML = '<i></i>'.repeat(10);
+    [...bar.children].forEach((seg, i) => {
+        const fill = Math.max(0, Math.min(1, value / 10 - i));
+        seg.style.setProperty('--f', Math.round(fill * 100) + '%');
+        seg.classList.toggle('on', fill > 0);
+    });
+    bar.dataset.value = String(Math.round(value));
+    const row = document.getElementById('stat-row-' + key);
+    if (row) row.classList.toggle('crit', !!critical);
 }
 
 // A tárgy ikonja: ha van képe az ikoncsomagból (img), azt mutatjuk; ha a kép még nincs feltöltve
@@ -511,32 +530,40 @@ function durabilityHtml(slot, item) {
     return `<div class="flex items-center gap-1 mt-0.5"><div class="w-16 h-1.5 bg-gray-900 rounded overflow-hidden"><div class="${color} h-full" style="width:${pct}%"></div></div><span class="text-[9px] text-gray-400">${label}</span></div>`;
 }
 
-// Barkácsreceptek: alapanyag és szerszám (✓ / ✗), a műhelyes receptek zárolva
+// Barkácsreceptek csoportonként: alapanyag és szerszám (zöld: megvan, piros: hiányzik).
+// A műhelyes / olvasztós receptek (station) itt nem jelennek meg: azok majd az épület ablakában lesznek.
 function renderCraftList() {
     const craftList = document.getElementById('crafting-list');
     if (!craftList) return;
     const have = (key) => player.inventory.filter(s => s.key === key).reduce((sum, s) => sum + s.count, 0);
     const name = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
+    const hasTools = (recipe) => (recipe.tools || []).every(entry => (Array.isArray(entry) ? entry : [entry]).some(k => have(k) > 0));
+    const hasMaterials = (recipe) => Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty);
+
+    const recipes = craftingRecipes.filter(recipe => !recipe.station);
+    const categories = (window.CRAFT_CATEGORIES || []).slice();
+    recipes.forEach(r => { const c = r.cat || 'Egyéb'; if (!categories.includes(c)) categories.push(c); });
+
     let html = '';
-    craftingRecipes.forEach(recipe => {
-        const result = itemDatabase[recipe.result || recipe.key] || {};
-        const reqText = Object.entries(recipe.req).map(([mat, qty]) => {
-            const ok = have(mat) >= qty;
-            return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${qty}× ${name(mat)}</span>`;
-        }).join(', ');
-        const toolText = (recipe.tools || []).map(entry => {
-            const options = Array.isArray(entry) ? entry : [entry];
-            const ok = options.some(k => have(k) > 0);
-            return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${options.map(name).join(' / ')}</span>`;
-        }).join(', ');
-        const canCraft = !recipe.station
-            && Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty)
-            && (recipe.tools || []).every(entry => (Array.isArray(entry) ? entry : [entry]).some(k => have(k) > 0));
-        const button = recipe.station === 'workshop'
-            ? `<span class="text-[10px] text-amber-400/80 text-right">🏭 Műhely kell<br>(hamarosan)</span>`
-            : `<button onclick="craftItem({ key: '${recipe.key}' })" class="${canCraft ? '' : 'opacity-50 '}bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 py-1.5 clipped-badge text-xs font-bold text-emerald-200 transition shadow">Barkács</button>`;
-        html += `
-            <div class="hud-panel border border-emerald-600/40 p-3 rounded-xl flex items-center justify-between bg-emerald-950/40 ${recipe.station ? 'opacity-60' : ''}">
+    categories.forEach(cat => {
+        const group = recipes.filter(r => (r.cat || 'Egyéb') === cat);
+        if (!group.length) return;
+        const ready = group.filter(r => hasMaterials(r) && hasTools(r)).length;
+        html += `<div class="text-[10px] font-bold tracking-wider text-emerald-500 uppercase mt-2 mb-1 flex justify-between"><span>${escapeAttr(cat)}</span>${ready ? `<span class="text-emerald-300">${ready} elkészíthető</span>` : ''}</div>`;
+        group.forEach(recipe => {
+            const result = itemDatabase[recipe.result || recipe.key] || {};
+            const reqText = Object.entries(recipe.req).map(([mat, qty]) => {
+                const ok = have(mat) >= qty;
+                return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${qty}× ${name(mat)}</span>`;
+            }).join(', ');
+            const toolText = (recipe.tools || []).map(entry => {
+                const options = Array.isArray(entry) ? entry : [entry];
+                const ok = options.some(k => have(k) > 0);
+                return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${options.map(name).join(' / ')}</span>`;
+            }).join(', ');
+            const canCraft = hasMaterials(recipe) && hasTools(recipe);
+            html += `
+            <div class="hud-panel border border-emerald-600/40 p-3 rounded-xl flex items-center justify-between bg-emerald-950/40 ${canCraft ? '' : 'opacity-75'}">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 flex items-center justify-center">${itemIconHtml(result, 'w-8 h-8')}</div>
                     <div>
@@ -546,9 +573,9 @@ function renderCraftList() {
                         ${toolText ? `<div class="text-[9px] text-sky-300/80">Szerszám (kopik): ${toolText}</div>` : ''}
                     </div>
                 </div>
-                ${button}
-            </div>
-        `;
+                <button onclick="craftItem({ key: '${recipe.key}' })" class="${canCraft ? '' : 'opacity-50 '}bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 py-1.5 clipped-badge text-xs font-bold text-emerald-200 transition shadow">Barkács</button>
+            </div>`;
+        });
     });
     craftList.innerHTML = html;
 }

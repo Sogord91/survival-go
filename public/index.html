@@ -77,6 +77,18 @@
         .hud-xpbar-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; letter-spacing: 0.03em; }
         .hud-chips { display: flex; gap: 4px; flex-wrap: nowrap; }
         .hud-chips > span { flex: 0 1 auto; white-space: nowrap; font-size: 10px; color: rgba(167, 243, 208, 0.85); background: rgba(2, 44, 34, 0.6); border: 1px solid rgba(6, 95, 70, 0.7); border-radius: 4px; padding: 0 5px; line-height: 16px; }
+        /* Állapotjelzők: 10 ferde szegmens; az üres rész a szín halvány "szellemképe", így látszik, mennyi hiányzik */
+        .stat-row { --c: #10b981; display: flex; align-items: center; gap: 3px; min-width: 0; }
+        .stat-row > img { width: 22px; height: 22px; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)); }
+        .stat-body { flex: 1; min-width: 0; }
+        .stat-segs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 1.5px; height: 10px; }
+        .stat-segs > i { display: block; transform: skewX(-15deg); border-radius: 1px;
+            background: linear-gradient(90deg, var(--c) var(--f, 0%), color-mix(in srgb, var(--c) 14%, #030806) var(--f, 0%));
+            border: 1px solid color-mix(in srgb, var(--c) 38%, transparent); transition: background 0.3s; }
+        .stat-segs > i.on { box-shadow: 0 0 4px color-mix(in srgb, var(--c) 70%, transparent); border-color: color-mix(in srgb, var(--c) 80%, #000); }
+        .stat-val { font-size: 10px; font-weight: 800; text-align: right; line-height: 1.2; margin-top: 1px; color: var(--c); text-shadow: 0 1px 2px #000; white-space: nowrap; }
+        .stat-row.crit { animation: stat-crit 1s infinite; }
+        @keyframes stat-crit { 50% { filter: brightness(1.6) drop-shadow(0 0 5px #ef4444); } }
         /* Alsó menüsor */
         .nav-bar { position: absolute; left: 50%; transform: translateX(-50%); width: calc(100% - 1rem); max-width: 30rem;
             display: grid; grid-template-columns: repeat(6, 1fr); padding: 6px 4px 5px;
@@ -325,42 +337,34 @@
                 </div>
             </div>
 
-            <!-- 2. Sor: 4 Státuszcsík egymás mellett, ikonnal és százalékkal -->
+            <!-- 2. Sor: 4 állapotjelző, rajzolt ikon + 10 szegmenses csík (main.js: renderStatSegments) -->
             <div class="grid grid-cols-4 gap-1.5">
-                <!-- Élet -->
-                <div class="bg-emerald-950/60 p-1 border border-emerald-800/60 clipped-badge flex flex-col justify-between">
-                    <div class="flex justify-between items-center text-[10px] font-bold text-emerald-300 mb-1">
-                        <span>❤️</span><span id="stat-hp" class="text-red-400 text-[9px]">100</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
-                        <div id="bar-hp" class="bg-red-600 h-full w-full transition-all duration-300 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></div>
+                <div id="stat-row-hp" class="stat-row" style="--c:#ef4444" title="Élet">
+                    <img src="/images/ui/stat-hp.svg" alt="">
+                    <div class="stat-body">
+                        <div id="bar-hp" class="stat-segs" data-value="100"></div>
+                        <div id="stat-hp" class="stat-val">100</div>
                     </div>
                 </div>
-                <!-- Éhség -->
-                <div class="bg-emerald-950/60 p-1 border border-emerald-800/60 clipped-badge flex flex-col justify-between">
-                    <div class="flex justify-between items-center text-[10px] font-bold text-emerald-300 mb-1">
-                        <span>🍗</span><span id="stat-hunger" class="text-amber-400 text-[9px]">100%</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
-                        <div id="bar-hunger" class="bg-amber-500 h-full w-full transition-all duration-300"></div>
+                <div id="stat-row-hunger" class="stat-row" style="--c:#f59e0b" title="Éhség">
+                    <img src="/images/ui/stat-hunger.svg" alt="">
+                    <div class="stat-body">
+                        <div id="bar-hunger" class="stat-segs" data-value="100"></div>
+                        <div id="stat-hunger" class="stat-val">100%</div>
                     </div>
                 </div>
-                <!-- Szomjúság -->
-                <div class="bg-emerald-950/60 p-1 border border-emerald-800/60 clipped-badge flex flex-col justify-between">
-                    <div class="flex justify-between items-center text-[10px] font-bold text-emerald-300 mb-1">
-                        <span>💧</span><span id="stat-thirst" class="text-blue-400 text-[9px]">100%</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
-                        <div id="bar-thirst" class="bg-blue-500 h-full w-full transition-all duration-300"></div>
+                <div id="stat-row-thirst" class="stat-row" style="--c:#3b82f6" title="Szomjúság">
+                    <img src="/images/ui/stat-thirst.svg" alt="">
+                    <div class="stat-body">
+                        <div id="bar-thirst" class="stat-segs" data-value="100"></div>
+                        <div id="stat-thirst" class="stat-val">100%</div>
                     </div>
                 </div>
-                <!-- Fáradtság -->
-                <div class="bg-emerald-950/60 p-1 border border-emerald-800/60 clipped-badge flex flex-col justify-between">
-                    <div class="flex justify-between items-center text-[10px] font-bold text-emerald-300 mb-1">
-                        <span>⚡</span><span id="stat-fatigue" class="text-purple-400 text-[9px]">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-950 h-2 overflow-hidden border border-emerald-900 clipped-badge">
-                        <div id="bar-fatigue" class="bg-purple-500 h-full w-0 transition-all duration-300"></div>
+                <div id="stat-row-fatigue" class="stat-row" style="--c:#84cc16" title="Fáradtság">
+                    <img src="/images/ui/stat-fatigue.svg" alt="">
+                    <div class="stat-body">
+                        <div id="bar-fatigue" class="stat-segs" data-value="100"></div>
+                        <div id="stat-fatigue" class="stat-val">0%</div>
                     </div>
                 </div>
             </div>

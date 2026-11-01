@@ -99,7 +99,7 @@ function useCombatMedicine(index) {
 function describeCombatEvent(ev, enemyName) {
     if (ev.actor === 'enemy') return [`${enemyName} megsebzett: ${ev.amount} sebzés.`, 'text-red-400'];
     switch (ev.type) {
-        case 'hit': return [ev.noAmmo ? `Nincs lőszered, puskatussal ütsz: ${ev.amount} sebzés.` : `Beviszel ${ev.amount} sebzést (${ev.weapon}).${ev.casing ? ' (+1 üres hüvely)' : ''}`, 'text-amber-300'];
+        case 'hit': return [ev.noAmmo ? `Nincs lőszered, puskatussal ütsz: ${ev.amount} sebzés.` : `Beviszel ${ev.amount} sebzést (${ev.weapon}).${ev.recovered ? ` (+1 ${ev.recovered})` : (ev.casing ? ' (+1 üres hüvely)' : '')}`, 'text-amber-300'];
         case 'crit': return [`KRITIKUS TALÁLAT! ${ev.amount} sebzés (${ev.weapon}).`, 'text-yellow-300 font-bold'];
         case 'heal': return [`Bevetted: ${ev.item} (+${ev.amount} élet). Ez nem vett el kört.`, 'text-emerald-400'];
         case 'flee': return ['Sikerült elmenekülnöd!', 'text-emerald-300'];

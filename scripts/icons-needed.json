@@ -1098,5 +1098,30 @@
   "img": "weapon_gauss_gun",
   "pack": "weapons",
   "file": "WEAPON (10).png"
+ },
+ {
+  "img": "SURV-1605_self_bow",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1605_self_bow.png"
+ },
+ {
+  "img": "SURV-1620_bodkin_arrow",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1620_bodkin_arrow.png"
+ },
+ {
+  "img": "SURV-1646_braided_shepherd_sling",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1646_braided_shepherd_sling.png"
+ },
+ {
+  "img": "SURV-1666_stone_hand_axe",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1666_stone_hand_axe.png"
+ },
+ {
+  "img": "SURV-1651_weighted_throwing_club",
+  "folder": "17_hunting_tracking_and_primitive_weapons",
+  "file": "SURV-1651_weighted_throwing_club.png"
  }
 ]

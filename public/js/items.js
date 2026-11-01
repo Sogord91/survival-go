@@ -12,6 +12,7 @@
 //   tier        1-5 (ritkaság / erősség)
 //   effects     fogyasztás hatása: { hunger, thirst, hp, fatigue } (pl. { thirst: 20, fatigue: -30 })
 //   def, hpBonus, bonusSlots, maxWeightBonus, fatigueRate   felszerelés bónuszai (stats.js számolja)
+//   recover     lőszernél: lövés után mi kapható vissza { key, chance } (alapból üres hüvely 60%-kal; false: semmi)
 //   dmg, reqAmmo, slot                                      fegyver adatai; slot: weapon (elsődleges) | secondary (pisztoly) | melee (közelharci)
 //   durability  szerszám tartóssága (ennyi használat után eltörik)
 //   light       fényforrás (éjszaka teljes látótávolság): { fuel: tárgykulcs | null }; a durability = égési idő percben.
@@ -106,7 +107,12 @@ const itemDatabase = {
     'sks_rifle': { name: 'SKS Félautomata Karabély', type: 'weapon', slot: 'weapon', tier: 3, icon: '🎯', img: 'weapon_sks_rifle', desc: 'Tier 3 - Pontos katonai puska (+85 Sebzés)', dmg: 85, reqAmmo: 'ammo_762', weight: 3.6, stackable: false, loot: { military: 1.5 } },
     'submachine_ppsh': { name: 'PPSh-41 Géppisztoly', type: 'weapon', slot: 'weapon', tier: 3, icon: '🔫', img: 'weapon_submachine_ppsh', desc: 'Tier 3 - Dobtáras klasszikus (+70 Sebzés)', dmg: 70, reqAmmo: 'ammo_9mm', weight: 3.5, stackable: false, loot: { military: 1 } },
     'sledgehammer': { name: 'Bontókalapács', type: 'weapon', slot: 'melee', tier: 4, icon: '🔨', img: 'SURV-1020_sledgehammer', desc: 'Tier 4 - Nehéz szerszám (+35 Sebzés)', dmg: 35, weight: 5, stackable: false, loot: { tools: 1.5, hardware: 1, industrial: 1 } },
-    'bow': { name: 'Kompozit Vadász Íj', type: 'weapon', slot: 'weapon', tier: 4, icon: '🏹', img: 'SURV-1608_horn_composite_bow', desc: 'Tier 4 - Csendes íj (+20 Sebzés)', dmg: 20, weight: 1.5, stackable: false, loot: { sport: 0.5, farm: 0.5 } },
+    'bow': { name: 'Kompozit Vadász Íj', type: 'weapon', slot: 'weapon', tier: 4, icon: '🏹', img: 'SURV-1608_horn_composite_bow', desc: 'Tier 4 - Csendes, erős vadászíj (+45 Sebzés)', dmg: 45, reqAmmo: 'arrow', weight: 1.5, stackable: false, loot: { sport: 0.5, farm: 0.5 } },
+    'improvised_bow': { name: 'Barkácsolt Íj', type: 'weapon', slot: 'weapon', tier: 1, icon: '🏹', img: 'SURV-1605_self_bow', desc: 'Tier 1 - Botból és kötélből hajlított íj (+22 Sebzés)', dmg: 22, reqAmmo: 'arrow', weight: 1, stackable: false },
+    'sling': { name: 'Parittya', type: 'weapon', slot: 'secondary', tier: 1, icon: '🪢', img: 'SURV-1646_braided_shepherd_sling', desc: 'Tier 1 - Kődobó parittya, kődarab kell hozzá (+14 Sebzés)', dmg: 14, reqAmmo: 'stone', weight: 0.1, stackable: false },
+    'stone_axe': { name: 'Kőbalta', type: 'weapon', slot: 'melee', tier: 1, icon: '🪓', img: 'SURV-1666_stone_hand_axe', desc: 'Tier 1 - Botra kötözött kő (+13 Sebzés)', dmg: 13, weight: 1.4, stackable: false },
+    'nail_club': { name: 'Szöges Bot', type: 'weapon', slot: 'melee', tier: 1, icon: '🏏', img: 'SURV-1651_weighted_throwing_club', desc: 'Tier 1 - Szögekkel kivert bunkó (+11 Sebzés)', dmg: 11, weight: 1.2, stackable: false },
+    'pipe_club': { name: 'Csőbunkó', type: 'weapon', slot: 'melee', tier: 2, icon: '🔩', desc: 'Tier 2 - Ragasztószalaggal markolatozott acélcső (+16 Sebzés)', dmg: 16, weight: 2.2, stackable: false },
     'hunting_rifle': { name: 'Mosin-Nagant Vadászpuska', type: 'weapon', slot: 'weapon', tier: 4, icon: '🎯', img: 'weapon_hunting_rifle', desc: 'Tier 4 - Nagy hatótáv (+95 Sebzés)', dmg: 95, reqAmmo: 'ammo_sniper', weight: 4, stackable: false, loot: { farm: 0.5, military: 0.5 } },
     'ak47': { name: 'AK-47 Gépkarabély', type: 'weapon', slot: 'weapon', tier: 4, icon: '🔥', img: 'weapon_ak47', desc: 'Tier 4 - Sorozatlövő fegyver (+110 Sebzés)', dmg: 110, reqAmmo: 'ammo_762', weight: 3.8, stackable: false, loot: { military: 1, police: 0.3 } },
     'm4a1_carbine': { name: 'M4A1 Taktikai Gépkarabély', type: 'weapon', slot: 'weapon', tier: 4, icon: '🔫', img: 'weapon_m4a1_carbine', desc: 'Tier 4 - Modern NATO puska (+115 Sebzés)', dmg: 115, reqAmmo: 'ammo_556', weight: 3.3, stackable: false, loot: { military: 0.5 } },
@@ -229,7 +235,7 @@ const itemDatabase = {
     'metal_scrap': { name: 'Fémhulladék', type: 'material', icon: '🔩', img: 'SURV-0893_riveted_metal_strap', desc: 'Fém alkatrész', weight: 0.5, stackable: true, loot: { scrap: 8, industrial: 5, warehouse: 3, auto: 3 } },
     'pipe': { name: 'Acél Fémcső', type: 'material', icon: '🔧', img: 'SURV-0841_pipe_elbow', desc: 'Csőfegyver alap', weight: 1.2, stackable: true, loot: { utility: 4, hardware: 3, industrial: 2, scrap: 2 } },
     'leather': { name: 'Kikezeletlen Bőr', type: 'material', icon: '🐂', img: 'SURV-0572_leather_scrap_bundle', desc: 'Megerősített anyag', weight: 0.8, stackable: true, loot: { farm: 3, household: 1, auto: 1 } },
-    'stone': { name: 'Kődarab', type: 'material', icon: '🪨', desc: 'Közelharchoz / eszközhöz', weight: 1.5, stackable: true, loot: { household: 2, farm: 2, cemetery: 3 } },
+    'stone': { name: 'Kődarab', type: 'material', icon: '🪨', desc: 'Eszközökhöz, és ez a parittya lövedéke', recover: false, weight: 1.5, stackable: true, loot: { household: 2, farm: 2, cemetery: 3 } },
     'stick': { name: 'Faág / Bot', type: 'material', icon: '🪵', desc: 'Fa alapanyag', weight: 0.6, stackable: true, loot: { household: 2, farm: 3, sport: 1 } },
     'gunpowder': { name: 'Lőpor', type: 'material', icon: '⬛', desc: 'Lőszer töltet', weight: 0.3, stackable: true, loot: { police: 1, military: 2, farm: 0.5 } },
     'nails': { name: 'Acél Szögek', type: 'material', icon: '📌', img: 'SURV-0763_finishing_nail_bundle', desc: 'Barkácsoláshoz', weight: 0.4, stackable: true, lootCount: [2, 6], loot: { hardware: 8, household: 2, warehouse: 2 } },
@@ -310,6 +316,7 @@ const itemDatabase = {
     'ammo_556': { name: '5.56x45mm NATO', type: 'ammo', icon: '🎯', desc: 'M4 lőszer', ammoType: 'ammo_556', weight: 0.03, stackable: true, lootCount: [5, 15], loot: { military: 1.5 } },
     'ammo_buckshot': { name: '12 Gauge Sörét', type: 'ammo', icon: '🎯', desc: 'Sörétes töltény', ammoType: 'ammo_buckshot', weight: 0.05, stackable: true, lootCount: [4, 10], loot: { police: 2, farm: 2 } },
     'ammo_sniper': { name: '7.62x54mmR Mesterlövész', type: 'ammo', icon: '🎯', desc: 'SVD / Vadászpuska lőszer', ammoType: 'ammo_sniper', weight: 0.04, stackable: true, lootCount: [3, 8], loot: { military: 1, farm: 0.5 } },
+    'arrow': { name: 'Nyílvessző', type: 'ammo', icon: '➶', img: 'SURV-1620_bodkin_arrow', desc: 'Íjhoz. Lövés után gyakran visszaszedhető', ammoType: 'arrow', recover: { key: 'arrow', chance: 0.5 }, weight: 0.05, stackable: true, lootCount: [3, 8], loot: { sport: 2, farm: 1 } },
     'empty_casing': { name: 'Üres Hüvely', type: 'material', icon: '🥉', desc: 'Lövés után összeszedett hüvely, újratöltéshez', weight: 0.01, stackable: true, lootCount: [3, 8], loot: { police: 2, military: 3 } }
 };
 

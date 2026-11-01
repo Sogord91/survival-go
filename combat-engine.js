@@ -162,6 +162,13 @@ function weaponInfo(p, itemDatabase, slot) {
     return { name: weapon.name, dmg: weapon.dmg || RULES.UNARMED_DMG, ammoKey: null, noAmmo: false };
 }
 
+// Mi kapható vissza egy lövés után: a lőszer "recover" mezője, alapból üres hüvely (lőfegyverek)
+function ammoRecovery(ammoItem) {
+    if (!ammoItem || ammoItem.recover === false) return null;
+    if (ammoItem.recover && ammoItem.recover.key) return { key: ammoItem.recover.key, chance: Number(ammoItem.recover.chance) || 0 };
+    return { key: 'empty_casing', chance: RULES.CASING_CHANCE };
+}
+
 function useAmmo(p, ammoKey) {
     const slot = p.inventory.find(s => s.key === ammoKey && s.count > 0);
     if (!slot) return;
@@ -180,15 +187,17 @@ function enemyTurn(p, combat, itemDatabase, random) {
 }
 
 // Támadás a választott fegyverrel (a fegyverváltás nem vesz el kört): a játékos üt, majd ha az ellenség él, visszaüt.
-// Visszatérés: { events, outcome: 'won' | 'lost' | null, casing: true ha üres hüvelyt kaptál vissza }
+// Visszatérés: { events, outcome: 'won' | 'lost' | null, recovered: tárgykulcs, ha a lövés után visszakaptál valamit
+//   (lőfegyver: üres hüvely, íj: nyílvessző) }
 function attack(p, combat, itemDatabase, random, slot) {
     random = random || Math.random;
     const events = [];
     const weapon = weaponInfo(p, itemDatabase, slot);
-    let casing = false;
+    let recovered = null;
     if (weapon.ammoKey) {
         useAmmo(p, weapon.ammoKey);
-        casing = random() < RULES.CASING_CHANCE;
+        const back = ammoRecovery(itemDatabase[weapon.ammoKey]);
+        if (back && random() < back.chance) recovered = back.key;
     }
 
     const penalty = fatiguePenalty(p.fatigue || 0);
@@ -200,10 +209,10 @@ function attack(p, combat, itemDatabase, random, slot) {
     combat.enemy.hp = Math.max(0, combat.enemy.hp - amount);
     events.push({ actor: 'player', type: crit ? 'crit' : 'hit', amount, weapon: weapon.name, noAmmo: weapon.noAmmo, hpAfter: combat.enemy.hp });
 
-    if (combat.enemy.hp <= 0) return { events, outcome: 'won', casing };
+    if (combat.enemy.hp <= 0) return { events, outcome: 'won', recovered };
     events.push(enemyTurn(p, combat, itemDatabase, random));
     combat.round += 1;
-    return { events, outcome: p.hp <= 0 ? 'lost' : null, casing };
+    return { events, outcome: p.hp <= 0 ? 'lost' : null, recovered };
 }
 
 // Gyógyítás harc közben: SZABAD lépés (nem vesz el kört, az ellenség nem üt utána)

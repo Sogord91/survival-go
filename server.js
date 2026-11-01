@@ -1194,7 +1194,7 @@ io.on('connection', (socket) => {
         withPlayer(username, freeOnly((p) => {
             const recipe = craftingRecipes.find(r => r.key === data.recipeKey);
             if (!recipe) return { save: false, error: 'Ismeretlen recept!' };
-            if (recipe.station === 'workshop') return { save: false, error: 'Ezt csak műhelyben lehet elkészíteni (a műhelyek hamarosan jönnek).' };
+            if (recipe.station) return { save: false, error: 'Ezt csak műhelyben vagy olvasztóban lehet elkészíteni (hamarosan jönnek).' };
             const itemName = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
 
             for (const [matKey, reqQty] of Object.entries(recipe.req)) {
@@ -1418,8 +1418,11 @@ io.on('connection', (socket) => {
             else step = Combat.flee(p, combat, itemDatabase);
             if (step.error) return { save: false, error: step.error };
 
-            // Üres hüvely a lövés után (ha elfér)
-            if (step.casing && addItem(p, 'empty_casing', 1).ok) step.events[0].casing = true;
+            // Lövés után visszaszedett hüvely / nyílvessző (ha elfér)
+            if (step.recovered && addItem(p, step.recovered, 1).ok) {
+                step.events[0].recovered = (itemDatabase[step.recovered] || {}).name || step.recovered;
+                if (step.recovered === 'empty_casing') step.events[0].casing = true;
+            }
 
             const payload = { events: step.events, outcome: step.outcome || null, enemy: combat.enemy };
             const building = { id: combat.buildingId, name: combat.buildingName, type: combat.buildingType };
