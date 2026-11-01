@@ -53,23 +53,43 @@ function syncCombatUI() {
     COMBAT_SLOTS.forEach(slot => {
         const btn = document.getElementById('btn-combat-attack-' + slot);
         if (!btn) return;
-        const label = attackButtonLabel(slot);
-        btn.classList.toggle('hidden', !label);
-        btn.textContent = label || '';
+        const parts = attackButtonParts(slot);
+        btn.classList.toggle('hidden', !parts);
+        // a hosszú fegyvernév a végén kap "…"-t, a lőszer száma mindig látszik
+        // (a gomb közepére igazított szöveg korábban mindkét oldalon levágódott)
+        btn.innerHTML = '';
+        if (parts) {
+            const name = document.createElement('span');
+            name.className = 'truncate min-w-0';
+            name.textContent = parts.name;
+            btn.appendChild(name);
+            if (parts.ammo) {
+                const ammo = document.createElement('span');
+                ammo.className = 'shrink-0';
+                ammo.textContent = ' ' + parts.ammo; // a szóköz a szövegben marad (pl. másoláskor), a flex-térköz adja a látható rést
+                btn.appendChild(ammo);
+            }
+        }
     });
 }
 
 const COMBAT_SLOTS = ['weapon', 'secondary', 'melee'];
 
 function attackButtonLabel(slot) {
+    const parts = attackButtonParts(slot);
+    return parts ? parts.name + (parts.ammo ? ' ' + parts.ammo : '') : '';
+}
+
+// A gomb két része: a fegyver neve (szükség esetén "…"-tal rövidül) és a lőszer száma (mindig látszik)
+function attackButtonParts(slot) {
     const weapon = player.equipment && itemDatabase[player.equipment[slot]];
-    if (!weapon) return slot === 'melee' ? '👊 Puszta kéz' : '';
-    let text = `${weapon.icon || '⚔️'} ${weapon.name}`;
+    if (!weapon) return slot === 'melee' ? { name: '👊 Puszta kéz', ammo: '' } : null;
+    let ammo = '';
     if (weapon.reqAmmo) {
-        const ammo = player.inventory.filter(s => s.key === weapon.reqAmmo).reduce((sum, s) => sum + s.count, 0);
-        text += ammo > 0 ? ` (${ammo})` : ' (nincs lőszer)';
+        const count = player.inventory.filter(s => s.key === weapon.reqAmmo).reduce((sum, s) => sum + s.count, 0);
+        ammo = count > 0 ? `(${count})` : '(nincs lőszer)';
     }
-    return text;
+    return { name: `${weapon.icon || '⚔️'} ${weapon.name}`, ammo };
 }
 
 // Egy lépés küldése a szervernek
