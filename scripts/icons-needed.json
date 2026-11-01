@@ -1123,5 +1123,65 @@
   "img": "SURV-1651_weighted_throwing_club",
   "folder": "17_hunting_tracking_and_primitive_weapons",
   "file": "SURV-1651_weighted_throwing_club.png"
+ },
+ {
+  "img": "SURV-1372_medicine_storage_bottle",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1372_medicine_storage_bottle.png"
+ },
+ {
+  "img": "SURV-0756_aluminum_plate",
+  "folder": "08_ores_metals_ingots_and_hardware",
+  "file": "SURV-0756_aluminum_plate.png"
+ },
+ {
+  "img": "SURV-0700_cement_powder_sack",
+  "folder": "07_stone_clay_sand_and_minerals",
+  "file": "SURV-0700_cement_powder_sack.png"
+ },
+ {
+  "img": "SURV-0629_ceramic_tile",
+  "folder": "07_stone_clay_sand_and_minerals",
+  "file": "SURV-0629_ceramic_tile.png"
+ },
+ {
+  "img": "SURV-2095_repair_patch_roll",
+  "folder": "21_traps_defenses_and_perimeter_security",
+  "file": "SURV-2095_repair_patch_roll.png"
+ },
+ {
+  "img": "SURV-0601_granite_rock",
+  "folder": "07_stone_clay_sand_and_minerals",
+  "file": "SURV-0601_granite_rock.png"
+ },
+ {
+  "img": "SURV-0522_straight_sapling_branch",
+  "folder": "06_wood_fiber_leather_and_bone",
+  "file": "SURV-0522_straight_sapling_branch.png"
+ },
+ {
+  "img": "SURV-0984_activated_charcoal_powder",
+  "folder": "10_fuel_oil_chemicals_and_fire_starters",
+  "file": "SURV-0984_activated_charcoal_powder.png"
+ },
+ {
+  "img": "SURV-1351_hard_shell_tool_case",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1351_hard_shell_tool_case.png"
+ },
+ {
+  "img": "SURV-1393_zippered_document_wallet",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1393_zippered_document_wallet.png"
+ },
+ {
+  "img": "SURV-1376_canvas_hand_tool_roll",
+  "folder": "14_backpacks_bags_and_portable_storage",
+  "file": "SURV-1376_canvas_hand_tool_roll.png"
+ },
+ {
+  "img": "weapon_pipe_club",
+  "pack": "weapons",
+  "file": "WEAPON (26).png"
  }
 ]
