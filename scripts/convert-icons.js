@@ -57,10 +57,17 @@ function indexPngs(dir, index = new Map()) {
     return index;
 }
 
-// Több méret közül a 256-os mappában lévőt választja, ha nincs, akkor az első találatot
+// Több változat közül a színeset (Full_Color mappa) választja, a sziluett / fekete változatot soha;
+// azon belül a 256-os méretet, ha nincs, az 512-est, végül az első találatot
+const COLOR_DIR = /full[_ -]?colou?r/i;
+const MONO_DIR = /silhouette|black|mono|outline|line[_ -]?art|glyph/i;
 function pickSource(paths) {
-    const by = (size) => paths.find(p => p.split(path.sep).some(part => part.includes(String(size))));
-    return by(256) || by(512) || paths[0];
+    const parts = (p) => p.split(/[\\/]/);
+    const color = paths.filter(p => parts(p).some(part => COLOR_DIR.test(part)));
+    const notMono = paths.filter(p => !parts(p).some(part => MONO_DIR.test(part)));
+    const pool = color.length ? color : (notMono.length ? notMono : paths);
+    const by = (size) => pool.find(p => parts(p).some(part => part === String(size) || part.includes(String(size))));
+    return by(256) || by(512) || pool[0];
 }
 
 async function convert(src, dest, size) {
