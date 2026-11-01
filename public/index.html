@@ -29,14 +29,18 @@
         body { margin: 0; padding: 0; background: #050b05; color: #a3e635; font-family: 'Share Tech Mono', monospace; }
         
         /* A térkép */
-        #map { 
-            height: 100vh; 
-            width: 100vw; 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            z-index: 1; 
+        /* fixed + inset: a térkép mindig pontosan a látható képernyőt tölti ki, a telepített (önálló ablakos)
+           alkalmazásban is, ahol a 100vh nem mindig egyezik a valódi magassággal */
+        #map {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
+        /* a térkép forrásjelölése kicsi és a képernyő aljához tapad (a Stadia és az OSM megköveteli) */
+        .leaflet-control-attribution { font-size: 9px !important; line-height: 1.3 !important; opacity: 0.75; }
+        .leaflet-bottom { bottom: env(safe-area-inset-bottom, 0px); }
 
         .hud-panel { 
             z-index: 1000; 
@@ -47,7 +51,13 @@
         }
         .modal { z-index: 2000; background: rgba(0, 0, 0, 0.88); }
         .leaflet-bottom { bottom: 60px !important; }
-        #toast-notification { transition: opacity 0.3s ease-in-out; z-index: 9999; }
+        /* Rövid értesítések: a HUD alatt, egymás alatt, egyenként néhány másodpercig (main.js: logMessage) */
+        #toast-stack { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 9.25rem);
+            width: min(92vw, 24rem); z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+        .toast-item { background: rgba(17, 24, 39, 0.95); border: 1px solid rgba(245, 158, 11, 0.8); color: #fcd34d; border-radius: 12px;
+            padding: 8px 14px; font-size: 12px; font-weight: 700; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            transition: opacity 0.4s ease, transform 0.4s ease; }
+        .toast-item.leaving { opacity: 0; transform: translateY(-6px); }
         /* Ikonos tárgymezők (készlet és felszerelés) */
         .inv-tile, .eq-tile { position: relative; aspect-ratio: 1 / 1; width: 100%; display: flex; align-items: center; justify-content: center;
             background: rgba(2, 20, 12, 0.75); border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 10px; overflow: hidden; }
@@ -250,9 +260,7 @@
     <!-- TÉRKÉP KONTÉNER -->
     <div id="map"></div>
 
-    <div id="toast-notification" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-900/95 border border-amber-500/80 text-amber-300 px-4 py-2 rounded-xl text-xs font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 text-center max-w-sm">
-        Üzenet helye
-    </div>
+    <div id="toast-stack" aria-live="polite"></div>
 
  <!-- JÁTÉK HUD KONTÉNER (Minden benne van, és alapból rejtett a hud-hidden miatt) -->
     <div id="game-hud-container" class="hud-hidden">
@@ -281,6 +289,7 @@
                         <div class="text-[10px] text-emerald-300/80 space-x-1">
                             <span>XP: <span id="hud-xp" class="text-white font-bold">0</span></span> | 
                             <span>🛡️ Véd: <span id="hud-defense" class="text-emerald-400 font-bold">0</span></span> |
+                            <span>💰 <span id="hud-money" class="text-yellow-300 font-bold">0</span></span> |
                             <span id="night-indicator" class="hidden text-sky-300 font-bold"></span> 
                             <span>⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0/30kg</span></span>
                         </div>
@@ -330,6 +339,13 @@
 
         </div>
        
+        <!-- GPS-HIBA JELZÉS (map.js: showGpsProblem) -->
+        <div id="gps-banner" class="hidden absolute left-3 right-3 bottom-40 hud-panel border-2 border-amber-500/80 rounded-xl p-3 text-[11px] text-amber-100 shadow-2xl z-[1100]">
+            <div id="gps-banner-title" class="font-bold text-amber-300 mb-1">📡 Nincs GPS-jel</div>
+            <div id="gps-banner-text"></div>
+            <button id="gps-retry" onclick="retryGps()" class="mt-2 w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded-lg font-bold">Újrapróbálás</button>
+        </div>
+
         <!-- UGRÁS A KARAKTERRE (map.js: recenterOnPlayer) -->
         <button id="btn-recenter" onclick="recenterOnPlayer()" title="Ugrás a karakterre" aria-label="Ugrás a karakterre"
             class="absolute bottom-24 right-4 w-12 h-12 rounded-full hud-panel border-2 border-emerald-500/80 flex items-center justify-center shadow-2xl z-[1000] active:scale-95 transition">
@@ -346,7 +362,7 @@
 
 
     <!-- ALSÓ MENÜSOR (3 gombos, tökéletesen egységes és mobilbarát) -->
-        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-max max-w-full px-3 hud-panel py-2 clipped-panel shadow-2xl">
+        <div class="absolute left-1/2 transform -translate-x-1/2 w-max max-w-full px-3 hud-panel py-2 clipped-panel shadow-2xl" style="bottom: calc(1rem + env(safe-area-inset-bottom, 0px))">
             <div class="flex flex-row items-center justify-center gap-2 sm:gap-3">
                 <button id="btn-open-equipment" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 sm:px-4 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1.5 transition shadow whitespace-nowrap">🎒 Készlet</button>
                 <button id="btn-open-crafting" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 sm:px-4 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1.5 transition shadow whitespace-nowrap">🛠️ Craft</button>
@@ -414,6 +430,7 @@
                 <div class="flex-1 min-w-0">
                     <div id="item-sheet-name" class="text-sm font-bold text-white"></div>
                     <div id="item-sheet-desc" class="text-[11px] text-gray-300 mt-0.5"></div>
+                    <div id="item-sheet-stats" class="flex flex-wrap gap-1 mt-1.5"></div>
                     <div id="item-sheet-meta" class="text-[10px] text-emerald-400/80 mt-1"></div>
                     <div id="item-sheet-dur" class="mt-1"></div>
                 </div>

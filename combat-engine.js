@@ -10,60 +10,82 @@ const SurvivalStats = require('./public/js/stats');
 // nightWeight: éjjel ennyiszer gyakoribb (a ghoulok és a kutyák éjjel aktívak); redZoneOnly: csak a vörös zónákban (v0.2).
 // A kép: public/images/enemies/<kulcs>.webp (ha nincs, az avatar emoji látszik).
 const ENEMIES = {
-    looter:         { name: 'Fosztogató',             avatar: '🧑', lvl: 1, hp: 40,  dmg: 8,  drops: ['canned_food', 'rag', 'water_bottle', 'copper_coins'],
-                      habitat: ['household', 'grocery', 'smallgoods', 'drinks', 'kitchen', 'office', 'culture', 'sport'] },
-    rats:           { name: 'Patkányraj',             avatar: '🐀', lvl: 1, hp: 30,  dmg: 7,  drops: ['rag', 'mutant_steak'],
+    looter:         { name: 'Fosztogató',             avatar: '🧑', lvl: 1, hp: 70, dmg: 8,  drops: ['canned_food', 'rag', 'water_bottle', 'copper_coins'],
+                      habitat: ['household', 'grocery', 'smallgoods', 'drinks', 'kitchen', 'office', 'culture', 'sport', 'medical'] },
+    rats:           { name: 'Patkányraj',             avatar: '🐀', lvl: 1, hp: 60, dmg: 6,  drops: ['rag', 'mutant_steak'],
                       habitat: ['kitchen', 'warehouse', 'grocery', 'farm', 'household', 'utility'] },
-    mutant:         { name: 'Kóbor Mutáns',           avatar: '🧟', lvl: 1, hp: 50,  dmg: 10, drops: ['mutant_steak', 'rag', 'leather'],
+    mutant:         { name: 'Kóbor Mutáns',           avatar: '🧟', lvl: 2, hp: 110, dmg: 10, drops: ['mutant_steak', 'rag', 'leather'],
                       habitat: ['household', 'industrial', 'scrap', 'auto', 'utility', 'cemetery', 'warehouse'] },
-    ghoul:          { name: 'Sugárzott Ghoul',        avatar: '👹', lvl: 2, hp: 75,  dmg: 14, drops: ['rag', 'old_battery', 'radio_parts'], nightWeight: 2,
+    ghoul:          { name: 'Sugárzott Ghoul',        avatar: '👹', lvl: 3, hp: 150, dmg: 13, drops: ['rag', 'old_battery', 'radio_parts'], nightWeight: 2,
                       habitat: ['household', 'culture', 'cemetery', 'office', 'industrial', 'smallgoods'] },
-    dogpack:        { name: 'Kóbor Kutyafalka',       avatar: '🐕', lvl: 2, hp: 70,  dmg: 15, drops: ['mutant_steak', 'leather'], nightWeight: 2,
+    dogpack:        { name: 'Kóbor Kutyafalka',       avatar: '🐕', lvl: 2, hp: 100, dmg: 10, drops: ['mutant_steak', 'leather'], nightWeight: 2,
                       habitat: ['household', 'farm', 'sport', 'scrap', 'cemetery', 'auto'] },
-    hospital_ghoul: { name: 'Kórházi Ghoul',          avatar: '🧟', lvl: 2, hp: 80,  dmg: 15, drops: ['bandage', 'painkillers', 'iodine', 'antiseptic_wipes'], nightWeight: 2,
+    hospital_ghoul: { name: 'Kórházi Ghoul',          avatar: '🧟', lvl: 4, hp: 240, dmg: 26, drops: ['bandage', 'painkillers', 'iodine', 'antiseptic_wipes'], nightWeight: 2,
                       habitat: ['medical', 'hospital'] },
-    bandit:         { name: 'Zóna Bandita',           avatar: '🦹', lvl: 2, hp: 70,  dmg: 16, drops: ['ammo_9mm', 'canned_food', 'bandage', 'copper_coins'],
+    bandit:         { name: 'Zóna Bandita',           avatar: '🦹', lvl: 3, hp: 150, dmg: 14, drops: ['ammo_9mm', 'canned_food', 'bandage', 'copper_coins'],
                       habitat: ['grocery', 'smallgoods', 'drinks', 'auto', 'warehouse', 'valuables', 'household'] },
-    beast:          { name: 'Mutáns Fenevad',         avatar: '🐺', lvl: 3, hp: 95,  dmg: 22, drops: ['mutant_steak', 'leather'],
+    beast:          { name: 'Mutáns Fenevad',         avatar: '🐺', lvl: 4, hp: 270, dmg: 30, drops: ['mutant_steak', 'leather'],
                       habitat: ['farm', 'scrap', 'sport', 'utility', 'cemetery', 'industrial'] },
-    shade:          { name: 'Árnyék',                 avatar: '👤', lvl: 3, hp: 60,  dmg: 26, drops: ['old_battery', 'silver_necklace'], night: true,
+    shade:          { name: 'Árnyék',                 avatar: '👤', lvl: 5, hp: 220, dmg: 40, drops: ['old_battery', 'silver_necklace'], night: true,
                       habitat: [] }, // éjjel bárhol felbukkanhat (lásd enemyPoolFor)
-    wavewalker:     { name: 'Hullámjáró',             avatar: '☢️', lvl: 4, hp: 120, dmg: 26, drops: ['antirad_pills', 'old_battery', 'radio_parts'],
+    wavewalker:     { name: 'Hullámjáró',             avatar: '☢️', lvl: 5, hp: 340, dmg: 36, drops: ['antirad_pills', 'old_battery', 'radio_parts'],
                       habitat: ['hazmat', 'industrial', 'utility'] },
-    cordon_soldier: { name: 'Kordon-katona',          avatar: '🪖', lvl: 4, hp: 120, dmg: 24, drops: ['ammo_762', 'ammo_9mm', 'mre_ration', 'bandage'],
+    cordon_soldier: { name: 'Kordon-katona',          avatar: '🪖', lvl: 6, hp: 420, dmg: 44, drops: ['ammo_762', 'ammo_9mm', 'mre_ration', 'bandage'],
                       habitat: ['military', 'police'] },
-    mercenary:      { name: 'Nehézfegyveres Zsoldos', avatar: '🪖', lvl: 4, hp: 130, dmg: 28, drops: ['ammo_762', 'mre_ration', 'bandage', 'tourniquet'],
+    mercenary:      { name: 'Nehézfegyveres Zsoldos', avatar: '🪖', lvl: 6, hp: 470, dmg: 50, drops: ['ammo_762', 'mre_ration', 'bandage', 'tourniquet'],
                       habitat: ['military', 'hazmat', 'police'] },
-    tuner:          { name: 'A Hangoló',              avatar: '🧠', lvl: 6, hp: 260, dmg: 38, drops: ['antirad_pills', 'medkit'], redZoneOnly: true,
+    tuner:          { name: 'A Hangoló',              avatar: '🧠', lvl: 8, hp: 900, dmg: 70, drops: ['antirad_pills', 'medkit'], redZoneOnly: true,
                       habitat: [] }
 };
 
-// Az épület veszélyessége (encounter esély) szerint a legerősebb ellenség szintje
-function maxEnemyLevel(encounterChance) {
-    if (encounterChance >= 0.15) return 5;
-    if (encounterChance >= 0.10) return 4;
-    return 3;
+// A választás súlya a játékos szintjéhez képest: a vele egyező szintű ellenség a leggyakoribb, utána az eggyel
+// gyengébb; az eggyel erősebb ritkább (kihívás), a még erősebbek nem jönnek (kivéve a veszélyes helyeken).
+const LEVEL_AHEAD_MAX = 1;
+function levelWeight(enemyLvl, playerLvl) {
+    const d = enemyLvl - playerLvl;
+    if (d === 0) return 3;
+    if (d === -1) return 2;
+    return 1; // eggyel erősebb, vagy legalább két szinttel gyengébb
 }
 
-const SHADE_NIGHT_WEIGHT = 1;     // éjjel az Árnyék súlya a listában (a többi ellenség súlya 1, éjjel aktívaké 2)
-const FALLBACK_POOL = ['looter', 'mutant', 'ghoul'];
+const DANGEROUS_ENCOUNTER = 0.15; // e fölött (katonai bázis, bunker, ellenőrzőpont, vegyvédelmi központ) a hely saját ellenségei szinttől függetlenül jönnek
+const FALLBACK_POOL = ['rats', 'looter', 'mutant'];
 
-// Melyik ellenség jöhet egy épületben: az épület típusa (loot-csoportjai), veszélyessége és a napszak szerint.
-// Visszaad: súlyozott lista [[kulcs, súly], ...]
+// Melyik ellenség jöhet egy épületben: az épület típusa (loot-csoportjai), a napszak és a játékos szintje szerint.
+// opts: { night, playerLevel }. Visszaad: súlyozott lista [[kulcs, súly], ...]
 function enemyPoolFor(buildingInfo, opts) {
     const info = buildingInfo || {};
     const night = !!(opts && opts.night);
+    const playerLvl = Math.max(1, Math.floor(Number(opts && opts.playerLevel) || 1));
     const groups = new Set(info.groups || []);
-    const maxLvl = maxEnemyLevel(typeof info.encounter === 'number' ? info.encounter : 0.05);
-    const pool = [];
-    Object.keys(ENEMIES).forEach(key => {
+    const dangerous = (typeof info.encounter === 'number' ? info.encounter : 0) >= DANGEROUS_ENCOUNTER;
+
+    const candidates = Object.keys(ENEMIES).filter(key => {
         const e = ENEMIES[key];
-        if (e.redZoneOnly || e.lvl > maxLvl) return;
-        if (e.night) { if (night) pool.push([key, SHADE_NIGHT_WEIGHT]); return; }
-        if (!e.habitat.some(g => groups.has(g))) return;
-        pool.push([key, night && e.nightWeight ? e.nightWeight : 1]);
+        if (e.redZoneOnly) return false;
+        if (e.night) return night;
+        return e.habitat.some(g => groups.has(g));
     });
-    if (pool.length === 0) FALLBACK_POOL.forEach(key => pool.push([key, 1]));
+    const weightOf = key => {
+        const e = ENEMIES[key];
+        return levelWeight(e.lvl, playerLvl) * (night && e.nightWeight ? e.nightWeight : 1);
+    };
+
+    let pool = candidates.filter(key => ENEMIES[key].lvl <= playerLvl + LEVEL_AHEAD_MAX).map(key => [key, weightOf(key)]);
+    if (dangerous) {
+        // a veszélyes hely saját (erős) ellenségei mindig jöhetnek; a túl erősek ritkábban
+        candidates.filter(key => ENEMIES[key].lvl > playerLvl + LEVEL_AHEAD_MAX && !ENEMIES[key].night)
+            .forEach(key => pool.push([key, 1]));
+    }
+    if (pool.length === 0) {
+        // csak erős ellenségek laknak itt: a leggyengébbjük jön
+        const habitat = candidates.filter(key => !ENEMIES[key].night);
+        if (habitat.length > 0) {
+            const minLvl = Math.min(...habitat.map(key => ENEMIES[key].lvl));
+            pool = habitat.filter(key => ENEMIES[key].lvl === minLvl).map(key => [key, 1]);
+        }
+    }
+    if (pool.length === 0) pool = FALLBACK_POOL.map(key => [key, 1]);
     return pool;
 }
 
@@ -77,8 +99,6 @@ const RULES = {
     ENEMY_VARIANCE: 0.2,     // az ellenség ütése ±20%
     DEFENSE_PER_POINT: 0.015, // 1 védelem = 1,5% sebzéscsökkentés
     DEFENSE_CAP: 0.75,        // legfeljebb 75%
-    ENEMY_HP_PER_LEVEL: 0.15, // játékosszintenként +15% ellenség-HP
-    ENEMY_DMG_PER_LEVEL: 0.10,// játékosszintenként +10% ellenség-sebzés
     FLEE_CHANCE: 0.85,
     DROP_CHANCE: 0.4,
     CASING_CHANCE: 0.6      // lövés után ekkora eséllyel kapsz vissza üres hüvelyt
@@ -111,10 +131,10 @@ function pickWeighted(pool, random) {
 // opts.night: éjszaka van-e az épületnél (Árnyék, aktívabb ghoulok és kutyák)
 function createCombat(p, building, buildingInfo, random, opts) {
     random = random || Math.random;
-    const key = pickWeighted(enemyPoolFor(buildingInfo, opts), random);
+    const key = pickWeighted(enemyPoolFor(buildingInfo, { night: !!(opts && opts.night), playerLevel: p.level || 1 }), random);
     const base = ENEMIES[key];
-    const lvlUp = Math.max(0, (p.level || 1) - 1);
-    const maxHp = Math.round(base.hp * (1 + RULES.ENEMY_HP_PER_LEVEL * lvlUp));
+    // Az ellenség ereje a saját szintjéből jön (a szintlétra), nem a játékos szintjéből
+    const maxHp = base.hp;
     return {
         buildingId: building.id,
         buildingName: building.name,
@@ -122,7 +142,7 @@ function createCombat(p, building, buildingInfo, random, opts) {
         enemy: {
             key, name: base.name, avatar: base.avatar, lvl: base.lvl,
             hp: maxHp, maxHp,
-            dmg: Math.round(base.dmg * (1 + RULES.ENEMY_DMG_PER_LEVEL * lvlUp))
+            dmg: base.dmg
         },
         round: 1,
         startedAt: Date.now()
@@ -222,4 +242,4 @@ function rewards(combat, random) {
     return { xp: 15 + 10 * lvl, money: 5 * lvl + Math.floor(random() * 11), drop };
 }
 
-module.exports = { ENEMIES, RULES, WEAPON_SLOTS, enemyPoolFor, maxEnemyLevel, fatiguePenalty, createCombat, weaponInfo, attack, heal, flee, rewards };
+module.exports = { ENEMIES, RULES, WEAPON_SLOTS, enemyPoolFor, levelWeight, fatiguePenalty, createCombat, weaponInfo, attack, heal, flee, rewards };

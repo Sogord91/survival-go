@@ -167,6 +167,7 @@ function startTracking() {
             const lng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
 
+            hideGpsProblem();
             if (playerMarker) {
                 // Ha ez az első valódi GPS jel, oda ugrik a térkép
                 if (!hasFetchedRealGPS) {
@@ -189,10 +190,10 @@ function startTracking() {
                 isMapInitialized = true;
             }
         }, error => {
-            logMessage("GPS figyelmeztetés: Alapértelmezett koordináta használata.");
+            showGpsProblem(error);
         }, { 
             enableHighAccuracy: true,
-            timeout: 15000,
+            timeout: 20000,
             maximumAge: 0
         });
     }
@@ -498,26 +499,77 @@ function sendMyPosition(lat, lng, accuracy) {
     }
 }
 
-// GPS alapú térkép és játék inicializálás a bejelentkezés után
+// GPS alapú térkép és játék inicializálás a bejelentkezés után.
+// Ha az első helymeghatározás nem sikerül (nincs engedély, nincs jel, túl lassú), a térkép egy alapértelmezett
+// helyen nyílik meg, de a játék NEM teszi le oda csendben a játékost: kiírja a hiba okát, ad egy
+// "Újrapróbálás" gombot, és a háttérben tovább figyeli a GPS-t (az első jó jelnél odaugrik).
+const DEFAULT_POSITION = { lat: 47.4979, lng: 19.0402 };
+const GPS_FIRST_FIX_OPTIONS = { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 };
+
 function initMapAndGame() {
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(position => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            
-            // Térkép indítása a valós GPS pozícióval
-            initMap(lat, lng, true);
-            logMessage(`[GPS] Pozíció rögzítve: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-        }, error => {
-            console.warn("GPS hiba, alapértelmezett koordináta használata.");
-            // Ha letiltod a GPS-t, fallbackként betölti Budapestet
-            initMap(47.4979, 19.0402);
-            logMessage("[GPS] Nem sikerült lekérni a helyzetet, alapértelmezett zóna betöltve.");
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-    } else {
-        console.warn("A böngésző nem támogatja a geolokációt.");
-        initMap(47.4979, 19.0402);
+    if (!("geolocation" in navigator)) {
+        initMap(DEFAULT_POSITION.lat, DEFAULT_POSITION.lng);
+        showGpsProblem({ code: 0 });
+        return;
     }
+    navigator.geolocation.getCurrentPosition(position => {
+        hideGpsProblem();
+        initMap(position.coords.latitude, position.coords.longitude, true);
+        logMessage("[GPS] Pozíció rögzítve, épületek betöltése...");
+    }, error => {
+        console.warn("GPS hiba:", error && error.code, error && error.message);
+        initMap(DEFAULT_POSITION.lat, DEFAULT_POSITION.lng);
+        showGpsProblem(error);
+    }, GPS_FIRST_FIX_OPTIONS);
+}
+
+function isAppleDevice() {
+    const ua = navigator.userAgent || '';
+    return /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+}
+
+// A GPS-hiba oka érthetően, a telefon típusához illő teendőkkel
+function gpsProblemText(error) {
+    const code = error && error.code;
+    if (code === 1) {
+        return isAppleDevice()
+            ? { title: '📍 Nincs engedély a helyzetedhez', text: 'iPhone-on: Beállítások → Adatvédelem és biztonság → Helymeghatározás: kapcsold be, a Safari-webhelyeknél válaszd az „App használata közben” lehetőséget, és kapcsold be a Pontos helyet. Safariban a címsor melletti aA → Webhelybeállítások → Helyzet: Engedélyezés. Utána nyomd meg az Újrapróbálást vagy töltsd újra az oldalt.' }
+            : { title: '📍 Nincs engedély a helyzetedhez', text: 'Engedélyezd a helymeghatározást ennek az oldalnak: a címsor melletti lakat/beállítások ikon → Engedélyek → Helyadatok: Engedélyezés. Ellenőrizd azt is, hogy a telefon helymeghatározása be van-e kapcsolva.' };
+    }
+    if (code === 2) return { title: '📡 Nincs GPS-jel', text: 'A telefon most nem tudja meghatározni a helyzetedet. Menj szabad ég alá vagy ablak közelébe, és ellenőrizd, hogy be van-e kapcsolva a helymeghatározás.' };
+    if (code === 3) return { title: '📡 Keressük a GPS-jelet…', text: 'Az első helymeghatározás tovább tart a szokásosnál. A játék tovább próbálkozik, amint megvan a jel, a térkép odaugrik.' };
+    return { title: '📡 Nincs helymeghatározás', text: 'Ez a böngésző nem ad helyadatot. Próbáld meg Chrome-ban (Android) vagy Safariban (iPhone).' };
+}
+
+function showGpsProblem(error) {
+    const banner = document.getElementById('gps-banner');
+    if (!banner) return;
+    const msg = gpsProblemText(error);
+    document.getElementById('gps-banner-title').textContent = msg.title;
+    document.getElementById('gps-banner-text').textContent = msg.text;
+    banner.classList.remove('hidden');
+}
+
+function hideGpsProblem() {
+    const banner = document.getElementById('gps-banner');
+    if (banner) banner.classList.add('hidden');
+}
+
+// Újrapróbálás gomb: egy friss helymeghatározás; siker esetén a térkép és a jelölő odaugrik
+function retryGps() {
+    if (!("geolocation" in navigator)) return;
+    document.getElementById('gps-banner-title').textContent = '📡 Keressük a GPS-jelet…';
+    navigator.geolocation.getCurrentPosition(position => {
+        hideGpsProblem();
+        const lat = position.coords.latitude, lng = position.coords.longitude;
+        if (!map) { initMap(lat, lng, true); return; }
+        if (playerMarker) playerMarker.setLatLng([lat, lng]);
+        map.setView([lat, lng], 17);
+        hasFetchedRealGPS = true;
+        sendMyPosition(lat, lng, position.coords.accuracy);
+        updateArea(lat, lng);
+        refreshMapMarkers();
+    }, showGpsProblem, GPS_FIRST_FIX_OPTIONS);
 }
 
 // A többi játékos: a szerver CSAK a közelben lévőket küldi (nappal 150 m, éjszaka fény nélkül 30 m),

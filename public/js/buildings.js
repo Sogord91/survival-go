@@ -53,8 +53,8 @@
 
     const DEFAULT_TYPE = 'Romos ház';
 
-    // Darabszám: 1 tárgy 60%, 2 tárgy 30%, 3 tárgy 10% (ha nem üres)
-    const LOOT_COUNT_WEIGHTS = [[1, 60], [2, 30], [3, 10]];
+    // Darabszám: 1 tárgy 70%, 2 tárgy 25%, 3 tárgy 5% (ha nem üres)
+    const LOOT_COUNT_WEIGHTS = [[1, 70], [2, 25], [3, 5]];
 
     // Egyértelmű OSM azonosító: a node és a way azonosítók átfedhetnek, ezért a típus is benne van.
     function buildingId(element) {

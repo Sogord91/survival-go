@@ -122,6 +122,24 @@ function playSound(type) {
 }
 
 
+// Rövid értesítés a HUD alatt: egyszerre legfeljebb 3 látszik (a legújabb felül), mindegyik TOAST_MS ideig,
+// így egy gyors új üzenet nem tünteti el azonnal az előzőt (pl. a zsákmányt)
+const TOAST_MS = 6000;
+const TOAST_MAX = 3;
+function showToast(text) {
+    const stack = document.getElementById('toast-stack');
+    if (!stack) return;
+    const item = document.createElement('div');
+    item.className = 'toast-item';
+    item.textContent = text;
+    stack.prepend(item);
+    while (stack.children.length > TOAST_MAX) stack.lastElementChild.remove();
+    setTimeout(() => {
+        item.classList.add('leaving');
+        setTimeout(() => item.remove(), 450);
+    }, TOAST_MS);
+}
+
 function logMessage(text) {
     const logBox = document.getElementById('game-log');
     if(logBox) {
@@ -131,15 +149,7 @@ function logMessage(text) {
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    const toast = document.getElementById('toast-notification');
-    if(toast) {
-        toast.textContent = text;
-        toast.classList.remove('opacity-0');
-        if (window.toastTimeout) clearTimeout(window.toastTimeout);
-        window.toastTimeout = setTimeout(() => {
-            toast.classList.add('opacity-0');
-        }, 3500);
-    }
+    showToast(text);
 }
 
 function updateHUD() {
@@ -158,6 +168,8 @@ function updateHUD() {
     document.getElementById('hud-level').textContent = player.level || 1;
     document.getElementById('hud-xp').textContent = player.xp || 0;
     document.getElementById('hud-defense').textContent = player.defense || 0;
+    const moneyEl = document.getElementById('hud-money');
+    if (moneyEl) moneyEl.textContent = Math.max(0, Math.floor(Number(player.money) || 0));
 
     const weightEl = document.getElementById('hud-weight');
     if (weightEl) {
@@ -220,6 +232,37 @@ function tileDurabilityHtml(slot, item) {
     return `<div class="tile-dur"><div style="width:${pct}%;background:${color}"></div></div>`;
 }
 
+// A leírás szöveges része: a zárójeles számokat (pl. "(+4 Véd.)") elhagyjuk, mert a pontos
+// értékeket az itemStatLines a tárgy adataiból számolja (így a kettő nem csúszhat szét)
+const STAT_PAREN = /\s*\([^)]*(Véd|HP|Sebzés|hely|kg|fáradtság)[^)]*\)\s*$/i;
+function itemFlavorText(desc) {
+    const text = String(desc || '').replace(STAT_PAREN, '').replace(/\s*-\s*$/, '').trim();
+    // csak számokból álló leírás (pl. "+40 Éhség, -20 Fáradtság"): a hatások úgyis látszanak
+    if (text && text.split(',').every(part => /^\s*[+-]\d/.test(part))) return '';
+    return text;
+}
+
+// A tárgy minden hatása a tárgy adataiból (ugyanazok az értékek, amikkel a szerver számol)
+function itemStatLines(item) {
+    if (!item) return [];
+    const lines = [];
+    const signed = n => (n > 0 ? '+' : '') + n;
+    if (typeof item.dmg === 'number') lines.push(`Sebzés: ${item.dmg}`);
+    if (item.reqAmmo) lines.push(`Lőszer: ${(itemDatabase[item.reqAmmo] || {}).name || item.reqAmmo}`);
+    if (item.def) lines.push(`${signed(item.def)} Védelem`);
+    if (item.hpBonus) lines.push(`${signed(item.hpBonus)} Max HP`);
+    if (item.bonusSlots) lines.push(`${signed(item.bonusSlots)} hely`);
+    if (item.maxWeightBonus) lines.push(`${signed(item.maxWeightBonus)} kg teherbírás`);
+    if (typeof item.fatigueRate === 'number' && item.fatigueRate !== 1) lines.push(`${signed(Math.round((item.fatigueRate - 1) * 100))}% fáradás`);
+    const fx = item.effects || {};
+    if (fx.hp) lines.push(`${signed(fx.hp)} Élet`);
+    if (fx.hunger) lines.push(`${signed(fx.hunger)} Éhség`);
+    if (fx.thirst) lines.push(`${signed(fx.thirst)} Szomjúság`);
+    if (fx.fatigue) lines.push(`${signed(fx.fatigue)} Fáradtság`);
+    if (item.light) lines.push('Fényforrás');
+    return lines;
+}
+
 // ===== TÁRGY LAP (alulról felcsúszó részletek és gombok) =====
 let itemSheetRef = null; // { source: 'inv', index, key } vagy { source: 'eq', slot, key }
 
@@ -261,7 +304,9 @@ function renderItemSheet() {
     const count = (slot && slot.count) || 1;
     document.getElementById('item-sheet-icon').innerHTML = tileIconHtml(item);
     document.getElementById('item-sheet-name').textContent = item.name + (count > 1 ? `  ×${count}` : '');
-    document.getElementById('item-sheet-desc').textContent = item.desc || '';
+    document.getElementById('item-sheet-desc').textContent = itemFlavorText(item.desc);
+    document.getElementById('item-sheet-stats').innerHTML = itemStatLines(item)
+        .map(line => `<span class="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-[10px] font-bold text-emerald-200">${escapeAttr(line)}</span>`).join('');
     const weight = Math.round((item.weight || 0) * count * 100) / 100;
     document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '');
     document.getElementById('item-sheet-dur').innerHTML = ref.source === 'inv' ? durabilityHtml(slot, item) : '';
