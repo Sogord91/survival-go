@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs>
+<linearGradient id="st" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e5ebef"/><stop offset=".5" stop-color="#8f9ba5"/><stop offset="1" stop-color="#4d5760"/></linearGradient>
+<linearGradient id="wd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b47a40"/><stop offset="1" stop-color="#6b4220"/></linearGradient>
+</defs>
+<g stroke="#15181b" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+<!-- csavarkulcs: lent balra gyűrűs vég, fent jobbra villás vég -->
+<path d="M15 49 L43 21" stroke-width="10"/>
+<path d="M15 49 L43 21" stroke-width="5.4" stroke="url(#st)"/>
+<path d="M46 9 A12 12 0 1 0 55 18 L48 22 L42 16 Z" fill="url(#st)"/>
+<circle cx="14" cy="50" r="6" fill="url(#st)"/>
+<circle cx="14" cy="50" r="2.3" fill="#15181b" stroke="none"/>
+<!-- kalapács: fent balra fej, lent jobbra nyél -->
+<path d="M51 53 L25 25" stroke-width="9"/>
+<path d="M51 53 L25 25" stroke-width="4.6" stroke="url(#wd)"/>
+<path d="M11 21 L23 9 L33 19 L21 31 Z" fill="url(#st)"/>
+<path d="M11 21 L6 16 L13 9 L18 14 Z" fill="#5d666e"/>
+</g>
+<path d="M15 18 L22 11" stroke="#fff" stroke-width="1.6" opacity=".7" stroke-linecap="round"/>
+<path d="M19 43 L37 25" stroke="#fff" stroke-width="1.3" opacity=".55" stroke-linecap="round"/>
+</svg>

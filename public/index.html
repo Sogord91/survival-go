@@ -71,6 +71,27 @@
         .tile-dur > div { height: 100%; }
         .eq-summary { flex-direction: column; gap: 2px; font-size: 10px; color: #6ee7b7; border-style: solid; }
         #item-sheet-panel { transition: transform 0.2s ease-out; }
+        /* Felső HUD: szint-csík és értékek */
+        .hud-xpbar { position: relative; height: 13px; background: rgba(2, 6, 4, 0.9); border: 1px solid rgba(6, 95, 70, 0.9); border-radius: 3px; overflow: hidden; }
+        .hud-xpbar-fill { height: 100%; background: linear-gradient(90deg, #15803d, #4ade80); box-shadow: 0 0 6px rgba(74, 222, 128, 0.6); transition: width 0.4s; }
+        .hud-xpbar-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; letter-spacing: 0.03em; }
+        .hud-chips { display: flex; gap: 4px; flex-wrap: nowrap; }
+        .hud-chips > span { flex: 0 1 auto; white-space: nowrap; font-size: 10px; color: rgba(167, 243, 208, 0.85); background: rgba(2, 44, 34, 0.6); border: 1px solid rgba(6, 95, 70, 0.7); border-radius: 4px; padding: 0 5px; line-height: 16px; }
+        /* Alsó menüsor */
+        .nav-bar { position: absolute; left: 50%; transform: translateX(-50%); width: calc(100% - 1rem); max-width: 30rem;
+            display: grid; grid-template-columns: repeat(6, 1fr); padding: 6px 4px 5px;
+            background: linear-gradient(180deg, rgba(10, 32, 18, 0.96), rgba(3, 12, 7, 0.97)); border-top: 2px solid rgba(74, 222, 128, 0.75); }
+        .nav-btn { position: relative; background: transparent; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 0; border-radius: 8px;
+            transition: transform 0.1s, background 0.15s; -webkit-tap-highlight-color: transparent; }
+        .nav-btn img { width: 36px; height: 36px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7)); pointer-events: none; }
+        .nav-btn span { font-size: 9.5px; font-weight: 800; letter-spacing: 0.03em; color: #a7f3d0; text-transform: uppercase; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+        .nav-btn:hover { background: rgba(16, 185, 129, 0.12); }
+        .nav-btn:active { transform: scale(0.92); }
+        .nav-btn.soon img { opacity: 0.55; filter: grayscale(0.6) drop-shadow(0 2px 2px rgba(0,0,0,0.7)); }
+        .nav-btn.soon span { color: rgba(167, 243, 208, 0.5); }
+        .nav-badge { position: absolute; top: -2px; right: calc(50% - 24px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px;
+            background: #dc2626; border: 1.5px solid #fff; color: #fff; font-size: 10px; font-weight: 800; line-height: 14px; text-align: center; }
+        @media (max-width: 360px) { .nav-btn img { width: 30px; height: 30px; } .nav-btn span { font-size: 8.5px; } }
         
         /* Térképstílus: a szűrő CSAK a csempékre hat, a jelölőkre nem (lásd map.js, MAP_STYLES) */
         .zone-tiles { filter: var(--zone-tile-filter, none); }
@@ -270,7 +291,7 @@
             
             <!-- 1. Sor: Avatár, Név és Főbb adatok -->
             <div class="flex items-center justify-between border-b border-emerald-900 pb-2">
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-2.5 flex-1 min-w-0">
                     <!-- Avatár -->
                     <div class="relative flex-shrink-0">
                         <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-900 p-0.5 clipped-badge shadow-lg flex items-center justify-center">
@@ -283,15 +304,22 @@
                         </div>
                     </div>
 
-                    <!-- Név és statok -->
-                    <div class="flex flex-col">
-                        <div class="flex items-center gap-1"><div id="hud-name" class="text-xs font-black tracking-wider text-emerald-400 uppercase drop-shadow">Túlélő</div><span id="hud-badge" class="hidden text-[11px] leading-none" title="Korai túlélő">🎖️</span></div>
-                        <div class="text-[10px] text-emerald-300/80 space-x-1">
-                            <span>XP: <span id="hud-xp" class="text-white font-bold">0</span></span> | 
-                            <span>🛡️ Véd: <span id="hud-defense" class="text-emerald-400 font-bold">0</span></span> |
-                            <span>💰 <span id="hud-money" class="text-yellow-300 font-bold">0</span></span> |
-                            <span id="night-indicator" class="hidden text-sky-300 font-bold"></span> 
-                            <span>⚖️ Súly: <span id="hud-weight" class="text-amber-300 font-bold">0/30kg</span></span>
+                    <!-- Név, szint-csík és statok -->
+                    <div class="flex flex-col flex-1 min-w-0 gap-1">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <div id="hud-name" class="text-xs font-black tracking-wider text-emerald-400 uppercase drop-shadow truncate">Túlélő</div>
+                            <span id="hud-badge" class="hidden text-[11px] leading-none" title="Korai túlélő">🎖️</span>
+                            <span id="night-indicator" class="hidden ml-auto text-[10px] text-sky-300 font-bold whitespace-nowrap"></span>
+                        </div>
+                        <!-- Tapasztalat a következő szintig, pl. 40 / 300 XP -->
+                        <div class="hud-xpbar" title="Tapasztalat a következő szintig">
+                            <div id="bar-xp" class="hud-xpbar-fill" style="width:0%"></div>
+                            <span class="hud-xpbar-text"><span><span id="hud-xp">0</span> / <span id="hud-xp-next">100</span> XP</span></span>
+                        </div>
+                        <div class="hud-chips">
+                            <span>🛡️ <span id="hud-defense" class="text-emerald-300 font-bold">0</span></span>
+                            <span>💰 <span id="hud-money" class="text-yellow-300 font-bold">0</span></span>
+                            <span>⚖️ <span id="hud-weight" class="text-amber-300 font-bold">0/30kg</span></span>
                         </div>
                     </div>
                 </div>
@@ -348,27 +376,40 @@
 
         <!-- UGRÁS A KARAKTERRE (map.js: recenterOnPlayer) -->
         <button id="btn-recenter" onclick="recenterOnPlayer()" title="Ugrás a karakterre" aria-label="Ugrás a karakterre"
-            class="absolute bottom-24 right-4 w-12 h-12 rounded-full hud-panel border-2 border-emerald-500/80 flex items-center justify-center shadow-2xl z-[1000] active:scale-95 transition">
+            class="absolute bottom-28 right-4 w-12 h-12 rounded-full hud-panel border-2 border-emerald-500/80 flex items-center justify-center shadow-2xl z-[1000] active:scale-95 transition">
             <span class="block w-4 h-4 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-4 ring-emerald-400/30"></span>
         </button>
 
         <!-- ÉPÜLETEK BETÖLTÉSE JELZÉS (map.js: updateAreaIndicator) -->
-        <div id="area-loading" class="hidden absolute bottom-24 left-1/2 -translate-x-1/2 hud-panel px-3 py-1.5 clipped-panel text-[11px] font-bold text-emerald-300 shadow-2xl pointer-events-none animate-pulse">📡 Épületek betöltése…</div>
+        <div id="area-loading" class="hidden absolute bottom-28 left-1/2 -translate-x-1/2 hud-panel px-3 py-1.5 clipped-panel text-[11px] font-bold text-emerald-300 shadow-2xl pointer-events-none animate-pulse">📡 Épületek betöltése…</div>
 
         <!-- JÁTÉK NAPLÓ -->
-        <div id="game-log" class="absolute bottom-20 left-4 w-80 hud-panel p-3 clipped-panel text-xs text-emerald-300/90 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
+        <div id="game-log" class="absolute bottom-28 left-4 w-80 hud-panel p-3 clipped-panel text-xs text-emerald-300/90 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
             <div>[Rendszer] Üdv a Zónában! A sugárzás szintje alacsony.</div>
         </div>
 
 
-    <!-- ALSÓ MENÜSOR (3 gombos, tökéletesen egységes és mobilbarát) -->
-        <div class="absolute left-1/2 transform -translate-x-1/2 w-max max-w-full px-3 hud-panel py-2 clipped-panel shadow-2xl" style="bottom: calc(1rem + env(safe-area-inset-bottom, 0px))">
-            <div class="flex flex-row items-center justify-center gap-2 sm:gap-3">
-                <button id="btn-open-equipment" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 sm:px-4 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1.5 transition shadow whitespace-nowrap">🎒 Készlet</button>
-                <button id="btn-open-crafting" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 sm:px-4 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1.5 transition shadow whitespace-nowrap">🛠️ Craft</button>
-                <button id="btn-open-settings" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 sm:px-4 py-2 clipped-badge text-[11px] sm:text-xs font-bold text-emerald-200 flex items-center gap-1.5 transition shadow whitespace-nowrap">⚙️ Menü</button>
+    <!-- ALSÓ MENÜSOR: rajzolt ikonok felirattal (képek: public/images/ui/nav-*.svg) -->
+        <nav id="nav-bar" class="nav-bar hud-panel clipped-panel" style="bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))">
+            <button id="btn-open-equipment" class="nav-btn"><img src="/images/ui/nav-backpack.svg" alt=""><span>Készlet</span></button>
+            <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Craft</span></button>
+            <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
+            <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Csevegés</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
+            <button id="btn-open-journal" class="nav-btn"><img src="/images/ui/nav-journal.svg" alt=""><span>Napló</span></button>
+            <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span></button>
+        </nav>
+
+    <!-- NAPLÓ: az utolsó üzenetek visszaolvasása (az értesítések pár másodperc után eltűnnek) -->
+    <div id="journal-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]" onclick="if (event.target === this) this.classList.add('hidden')">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-5 flex flex-col max-h-[80vh] shadow-2xl clipped-panel">
+            <div class="flex justify-between items-center mb-3 border-b border-emerald-500/30 pb-2">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">📓 NAPLÓ</h2>
+                <button onclick="document.getElementById('journal-modal').classList.add('hidden')" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold">✕</button>
             </div>
+            <div class="text-[10px] text-emerald-500/70 mb-2">A legutóbbi események, a legújabb felül.</div>
+            <div id="journal-list" class="flex flex-col gap-1.5 overflow-y-auto pr-1"></div>
         </div>
+    </div>
 
     <!-- EGYESÍTETT KARAKTER ÉS FELSZERELÉS (Készlet) ABLAK -->
         <div id="equipment-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-2 sm:p-4">
@@ -436,6 +477,7 @@
                 </div>
                 <button onclick="closeItemSheet()" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold px-1">✕</button>
             </div>
+            <div id="item-sheet-compare" class="hidden mt-3 p-2 rounded-lg bg-black/40 border border-emerald-800/60"></div>
             <div id="item-sheet-actions" class="flex gap-2 mt-4"></div>
         </div>
     </div>

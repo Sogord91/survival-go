@@ -140,7 +140,25 @@ function showToast(text) {
     }, TOAST_MS);
 }
 
+// A Napló ablak tartalma: az utolsó üzenetek időponttal (csak a böngészőben, frissítéskor kiürül)
+const JOURNAL_MAX = 60;
+const journalEntries = [];
+function renderJournal() {
+    const list = document.getElementById('journal-list');
+    if (!list) return;
+    if (!journalEntries.length) { list.innerHTML = '<div class="text-[11px] text-gray-400">Még nem történt semmi.</div>'; return; }
+    list.innerHTML = journalEntries.map(e =>
+        `<div class="text-[11px] text-emerald-100 bg-black/30 border border-emerald-800/50 rounded-lg px-2 py-1.5"><span class="text-emerald-500/80 font-mono mr-1.5">${e.time}</span>${escapeAttr(e.text)}</div>`
+    ).join('');
+}
+
 function logMessage(text) {
+    const now = new Date();
+    journalEntries.unshift({ text: String(text), time: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') });
+    if (journalEntries.length > JOURNAL_MAX) journalEntries.length = JOURNAL_MAX;
+    const journalModal = document.getElementById('journal-modal');
+    if (journalModal && !journalModal.classList.contains('hidden')) renderJournal();
+
     const logBox = document.getElementById('game-log');
     if(logBox) {
         const div = document.createElement('div');
@@ -166,14 +184,21 @@ function updateHUD() {
     const badge = document.getElementById('hud-badge');
     if (badge) badge.classList.toggle('hidden', !player.earlySurvivor);
     document.getElementById('hud-level').textContent = player.level || 1;
-    document.getElementById('hud-xp').textContent = player.xp || 0;
+    // A szerver szabálya: a következő szinthez szint × 100 XP kell (server.js, szintlépés)
+    const xpNow = Math.max(0, Math.floor(Number(player.xp) || 0));
+    const xpNext = Math.max(1, (player.level || 1) * 100);
+    document.getElementById('hud-xp').textContent = xpNow;
+    const xpNextEl = document.getElementById('hud-xp-next');
+    if (xpNextEl) xpNextEl.textContent = xpNext;
+    const xpBar = document.getElementById('bar-xp');
+    if (xpBar) xpBar.style.width = Math.min(100, (xpNow / xpNext) * 100) + '%';
     document.getElementById('hud-defense').textContent = player.defense || 0;
     const moneyEl = document.getElementById('hud-money');
     if (moneyEl) moneyEl.textContent = Math.max(0, Math.floor(Number(player.money) || 0));
 
     const weightEl = document.getElementById('hud-weight');
     if (weightEl) {
-        weightEl.textContent = `${currentWeight} / ${player.maxWeight} kg`;
+        weightEl.textContent = `${Math.round(currentWeight * 10) / 10}/${player.maxWeight} kg`;
         weightEl.className = currentWeight > player.maxWeight ? "text-red-500 font-bold animate-pulse" : "text-amber-300 font-bold";
     }
 
@@ -263,6 +288,68 @@ function itemStatLines(item) {
     return lines;
 }
 
+// ===== ÖSSZEHASONLÍTÁS a felszerelt tárggyal =====
+// A számszerű értékek, amiket két tárgy között összevetünk. "better": melyik irány a jobb.
+const COMPARE_STATS = [
+    { key: 'dmg', label: 'Sebzés', get: it => it.dmg },
+    { key: 'def', label: 'Védelem', get: it => it.def },
+    { key: 'hpBonus', label: 'Max HP', get: it => it.hpBonus },
+    { key: 'bonusSlots', label: 'hely', get: it => it.bonusSlots },
+    { key: 'maxWeightBonus', label: 'kg teherbírás', get: it => it.maxWeightBonus },
+    // fáradás: a kisebb a jobb, százalékban mutatjuk
+    { key: 'fatigueRate', label: '% fáradás', get: it => typeof it.fatigueRate === 'number' ? Math.round((it.fatigueRate - 1) * 100) : undefined, lowerIsBetter: true },
+    { key: 'weight', label: 'kg súly', get: it => it.weight, lowerIsBetter: true, decimals: 2 }
+];
+
+// Különbségek: [{ label, diff, good }] - csak ami tényleg eltér
+function itemCompareDiffs(item, other) {
+    const out = [];
+    for (const stat of COMPARE_STATS) {
+        const a = Number(stat.get(item) || 0), b = Number(stat.get(other || {}) || 0);
+        const factor = Math.pow(10, stat.decimals || 0);
+        const diff = Math.round((a - b) * factor) / factor;
+        if (!diff) continue;
+        out.push({ label: stat.label, diff, good: stat.lowerIsBetter ? diff < 0 : diff > 0 });
+    }
+    return out;
+}
+
+const COMPARE_SLOT_NAMES = {
+    helmet: 'Fej', torso: 'Felsőtest', armor: 'Mellény', legs: 'Láb', shoes: 'Cipő',
+    backpack: 'Táska', weapon: 'Fő fegyver', secondary: 'Másodlagos fegyver', melee: 'Közelharci fegyver'
+};
+
+// A leltárban lévő felvehető tárgynál megmutatja, mi van most azon a helyen és mi változna
+function itemCompareHtml(item, key) {
+    const slot = SurvivalStats.equipSlot(item);
+    if (!slot) return '';
+    const equippedKey = (player.equipment || {})[slot];
+    const slotName = COMPARE_SLOT_NAMES[slot] || slot;
+    if (equippedKey === key) {
+        return `<div class="text-[10px] text-emerald-400/80">Ugyanez van rajtad (${escapeAttr(slotName)}).</div>`;
+    }
+    const equipped = equippedKey ? (itemDatabase[equippedKey] || { name: equippedKey, icon: '📦' }) : null;
+    const diffs = itemCompareDiffs(item, equipped);
+    const chip = d => {
+        const cls = d.good ? 'bg-emerald-900/70 border-emerald-500/70 text-emerald-200' : 'bg-red-950/70 border-red-600/70 text-red-200';
+        const arrow = d.good ? '▲' : '▼';
+        return `<span class="px-1.5 py-0.5 rounded border text-[10px] font-bold ${cls}">${arrow} ${d.diff > 0 ? '+' : ''}${d.diff} ${escapeAttr(d.label)}</span>`;
+    };
+    const head = equipped
+        ? `<div class="flex items-center gap-2">
+               <div class="inv-tile shrink-0" style="width:2.25rem">${tileIconHtml(equipped)}</div>
+               <div class="min-w-0">
+                   <div class="text-[9px] uppercase tracking-wide text-emerald-500/80">Most felszerelve · ${escapeAttr(slotName)}</div>
+                   <div class="text-xs font-bold text-white truncate">${escapeAttr(equipped.name)}</div>
+               </div>
+           </div>`
+        : `<div class="text-[10px] text-emerald-400/80">${escapeAttr(slotName)}: most üres</div>`;
+    const body = diffs.length
+        ? `<div class="text-[9px] uppercase tracking-wide text-gray-400 mt-1.5 mb-1">Ha felveszed</div><div class="flex flex-wrap gap-1">${diffs.map(chip).join('')}</div>`
+        : `<div class="text-[10px] text-gray-400 mt-1.5">Nincs különbség az értékekben.</div>`;
+    return head + body;
+}
+
 // ===== TÁRGY LAP (alulról felcsúszó részletek és gombok) =====
 let itemSheetRef = null; // { source: 'inv', index, key } vagy { source: 'eq', slot, key }
 
@@ -310,6 +397,12 @@ function renderItemSheet() {
     const weight = Math.round((item.weight || 0) * count * 100) / 100;
     document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '');
     document.getElementById('item-sheet-dur').innerHTML = ref.source === 'inv' ? durabilityHtml(slot, item) : '';
+    const compare = document.getElementById('item-sheet-compare');
+    if (compare) {
+        const html = ref.source === 'inv' ? itemCompareHtml(item, ref.key) : '';
+        compare.innerHTML = html;
+        compare.classList.toggle('hidden', !html);
+    }
 
     const btn = (label, cls, action) => `<button onclick="${action}" class="flex-1 ${cls} text-white py-2.5 rounded-lg text-xs font-bold">${label}</button>`;
     let actions = '';
@@ -524,6 +617,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.classList.add('hidden'); 
     });
     
+    safeAddEvent('btn-open-journal', 'click', () => {
+        renderJournal();
+        const modal = document.getElementById('journal-modal');
+        if (modal) modal.classList.remove('hidden');
+    });
+    // Ezek a következő nagy frissítésben jönnek, addig csak jelzik
+    safeAddEvent('btn-open-leaderboard', 'click', () => showToast('🏆 A ranglista hamarosan érkezik!'));
+    safeAddEvent('btn-open-chat', 'click', () => showToast('📻 A csevegés hamarosan érkezik!'));
+
     safeAddEvent('btn-open-settings', 'click', () => { 
         const modal = document.getElementById('settings-modal');
         if (modal) modal.classList.remove('hidden'); 
