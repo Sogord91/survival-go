@@ -1,6 +1,20 @@
 let isRegisterMode = false;
 let selectedAvatar = 'avatar1.png'; // Alapértelmezett
 
+// Zárt teszt idején a szerver meghívókódot kér: ekkor megjelenik a mező (a kódot csak a szerver ismeri)
+let registrationCodeRequired = false;
+async function checkRegistrationMode() {
+    try {
+        const res = await fetch('/api/registration');
+        const data = await res.json();
+        registrationCodeRequired = !!(data && data.codeRequired);
+    } catch (e) {
+        registrationCodeRequired = false; // ha nem sikerül lekérdezni, a szerver úgyis szól, ha kell a kód
+    }
+    const group = document.getElementById('invite-group');
+    if (group) group.classList.toggle('hidden', !(isRegisterMode && registrationCodeRequired));
+}
+
 function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;
     const title = document.getElementById('auth-title');
@@ -12,16 +26,19 @@ function toggleAuthMode() {
 
     msg.textContent = '';
 
+    const inviteGroup = document.getElementById('invite-group');
     if (isRegisterMode) {
         title.textContent = 'Új Túlélő Regisztráció';
         emailGroup.classList.remove('hidden');
         avatarGroup.classList.remove('hidden');
+        checkRegistrationMode();
         submitBtn.textContent = 'Regisztráció';
         switchBtn.textContent = 'Már van fiókod? Bejelentkezés';
     } else {
         title.textContent = 'Túlélő Bejelentkezés';
         emailGroup.classList.add('hidden');
         avatarGroup.classList.add('hidden');
+        if (inviteGroup) inviteGroup.classList.add('hidden');
         submitBtn.textContent = 'Belépés';
         switchBtn.textContent = 'Még nincs fiókod? Regisztráció';
     }
@@ -107,9 +124,16 @@ async function handleAuthSubmit() {
         }
     }
 
+    const inviteInput = document.getElementById('auth-invite');
+    const inviteCode = inviteInput ? inviteInput.value.trim() : '';
+    if (isRegisterMode && registrationCodeRequired && !inviteCode) {
+        setAuthMessage('A zárt teszt idején regisztrálni csak meghívókóddal lehet.', false);
+        return;
+    }
+
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     const payload = isRegisterMode
-        ? { username, email, password, avatar: selectedAvatar }
+        ? { username, email, password, avatar: selectedAvatar, inviteCode }
         : { username, password };
 
     try {
@@ -123,6 +147,8 @@ async function handleAuthSubmit() {
 
         if (!data.success) {
             setAuthMessage(data.message || 'Hiba történt!', false);
+            // ha a szerver közben zárt teszt módba váltott, jelenjen meg a meghívókód mező
+            if (isRegisterMode && response.status === 403) checkRegistrationMode();
             return;
         }
 

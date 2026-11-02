@@ -220,11 +220,13 @@ function updateHUD() {
     document.getElementById('stat-thirst').textContent = Math.max(0, Math.round(thirst)) + '%';
     renderStatSegments('thirst', thirst, thirst < 20);
 
-    document.getElementById('stat-fatigue').textContent = Math.max(0, Math.round(fatigue)) + '%';
-    // A fáradtság színe a büntetési fokozatokat követi: zöld, 60%-tól narancs, 85%-tól piros
+    // A játék fáradtsággal számol (0 = kipihent), a kijelzés Energia: 100%-ról fogy, mint a többi csík
+    const energy = Math.max(0, Math.min(100, 100 - fatigue));
+    document.getElementById('stat-fatigue').textContent = Math.round(energy) + '%';
+    // A szín a büntetési fokozatokat követi: zöld, 40% energia alatt narancs (gyengébb ütés), 15% alatt piros
     const fatigueRow = document.getElementById('stat-row-fatigue');
     if (fatigueRow) fatigueRow.style.setProperty('--c', fatigue >= 85 ? '#ef4444' : fatigue >= 60 ? '#f97316' : '#84cc16');
-    renderStatSegments('fatigue', fatigue, fatigue >= 85);
+    renderStatSegments('fatigue', energy, fatigue >= 85);
 }
 
 // 10 szegmenses csík: minden szegmens 10%; a félig telt szegmens részben színes (--f)
@@ -302,7 +304,7 @@ function itemStatLines(item) {
     if (fx.hp) lines.push(`${signed(fx.hp)} Élet`);
     if (fx.hunger) lines.push(`${signed(fx.hunger)} Éhség`);
     if (fx.thirst) lines.push(`${signed(fx.thirst)} Szomjúság`);
-    if (fx.fatigue) lines.push(`${signed(fx.fatigue)} Fáradtság`);
+    if (fx.fatigue) lines.push(`${signed(-fx.fatigue)} Energia`); // a fáradtság csökkenése = energia nő
     if (item.light) lines.push('Fényforrás');
     return lines;
 }

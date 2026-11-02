@@ -129,10 +129,36 @@ function recordLoginFail(ip) {
     if (loginFails.size > 10000) loginFails.clear(); // memória-védelem
 }
 
+// --- ZÁRT TESZT: MEGHÍVÓKÓD ---
+// A kód összevetése állandó idő alatt (ne lehessen az időzítésből kitalálni), kis- és nagybetűtől függetlenül
+function registrationCodeOk(given) {
+    const expected = config.REGISTRATION_CODE;
+    if (!expected) return true;
+    if (typeof given !== 'string') return false;
+    const a = Buffer.from(given.trim().toLocaleLowerCase('hu'));
+    const b = Buffer.from(expected.toLocaleLowerCase('hu'));
+    return a.length === b.length && require('crypto').timingSafeEqual(a, b);
+}
+// A kliens ebből tudja, kell-e mutatni a meghívókód mezőt (magát a kódot soha nem küldjük ki)
+app.get('/api/registration', (req, res) => {
+    res.json({ codeRequired: !!config.REGISTRATION_CODE });
+});
+
 // --- REGISZTRÁCIÓS VÉGPONT ---
 app.post('/api/register', async (req, res) => {
     try {
-        const { username, email, password, avatar } = req.body || {};
+        const { username, email, password, avatar, inviteCode } = req.body || {};
+        // Zárt teszt: meghívókód nélkül nem lehet regisztrálni (a találgatást a belépési korlát fogja meg)
+        if (config.REGISTRATION_CODE) {
+            const ip = req.ip || 'unknown';
+            if (loginBlocked(ip)) {
+                return res.status(429).json({ success: false, message: 'Túl sok sikertelen próbálkozás. Próbáld újra később!' });
+            }
+            if (!registrationCodeOk(inviteCode)) {
+                recordLoginFail(ip);
+                return res.status(403).json({ success: false, message: 'A Survival GO jelenleg zárt tesztben van, regisztrálni csak érvényes meghívókóddal lehet. Kövesd a Discordot, hamarosan mindenki előtt megnyílunk!' });
+            }
+        }
         if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !username || !email || !password) {
             return res.status(400).json({ success: false, message: 'Minden mezőt ki kell tölteni!' });
         }
@@ -508,10 +534,14 @@ function capacityProblem(p) {
     return null;
 }
 
-const EFFECT_LABELS = { hunger: 'Éhség', thirst: 'Szomjúság', hp: 'Élet', fatigue: 'Fáradtság' };
+// A fáradtságot a játékos "Energia"-ként látja (100-ról fogy), ezért annak előjele fordított
+const EFFECT_LABELS = { hunger: 'Éhség', thirst: 'Szomjúság', hp: 'Élet', fatigue: 'Energia' };
 function describeChanges(changes) {
     return Object.entries(changes)
-        .map(([key, value]) => `${value > 0 ? '+' : ''}${Math.round(value)} ${EFFECT_LABELS[key]}`)
+        .map(([key, raw]) => {
+            const value = key === 'fatigue' ? -raw : raw;
+            return `${value > 0 ? '+' : ''}${Math.round(value)} ${EFFECT_LABELS[key]}`;
+        })
         .join(', ');
 }
 

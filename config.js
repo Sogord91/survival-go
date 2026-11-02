@@ -88,6 +88,11 @@ module.exports = {
     LOGIN_MAX_FAILS: 10,                // ennyi sikertelen belépés után...
     LOGIN_WINDOW_MINUTES: 15,           // ...ennyi ideig nem lehet próbálkozni (IP-címenként)
 
+    // --- ZÁRT TESZT ---
+    // Ha a Render "Environment" fülén be van állítva a REGISTRATION_CODE, csak ezzel a meghívókóddal lehet regisztrálni
+    // (a kis- és nagybetű nem számít). Üresen hagyva / törölve bárki regisztrálhat. A meglévő fiókok mindig beléphetnek.
+    REGISTRATION_CODE: (process.env.REGISTRATION_CODE || '').trim(),
+
     // --- TÖBBI JÁTÉKOS ---
     PLAYER_VIEW_METERS: 150,            // ennyire látod a többi játékost
     PLAYER_VIEW_NIGHT_METERS: 30,       // éjszaka, működő fényforrás nélkül
