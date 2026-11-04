@@ -60,6 +60,11 @@ if (typeof socket !== 'undefined' && socket) {
         playSound('loot');
     });
 
+    socket.on('repair_result', (data) => {
+        logMessage(data.message || (data.success ? 'Megjavítva.' : 'Nem sikerült megjavítani.'));
+        playSound(data.success ? 'loot' : 'hit');
+    });
+
     socket.on('equip_result', (data) => {
         if (!data.success) {
             logMessage(data.message || "Nem sikerült felszerelni a tárgyat.");
@@ -102,12 +107,11 @@ function useItem(itemKey) {
 }
 
 // Tárgy felszerelése (szerver oldali kérés)
-function equipItem(itemKey, slotType) {
+function equipItem(itemKey, slotType, index) {
     if (typeof socket !== 'undefined' && socket) {
-        socket.emit('equip_item', {
-            itemKey: itemKey,
-            slotType: slotType
-        });
+        const data = { itemKey: itemKey, slotType: slotType };
+        if (Number.isInteger(index)) data.index = index; // pontosan azt a darabot vesszük fel (a kopottsága miatt)
+        socket.emit('equip_item', data);
     }
 }
 

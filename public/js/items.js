@@ -322,6 +322,28 @@ const itemDatabase = {
 
 
 
+// --- FELSZERELÉS KOPÁSA ---
+// Minden felvehető tárgy (fegyver, ruha, páncél, cipő, táska) tartósságot kap a ritkasága (tier) szerint,
+// ha nincs megadva külön "durability". Kopás: fegyver támadásonként 1, védőfelszerelés és táska minden kapott
+// találatnál 1, a cipő ezen felül 5 km gyaloglásonként 1. 0-nál "tönkrement": rajta marad, de nem ad bónuszt.
+// "wear: true" jelöli, hogy ez felszerelés-kopás (nem szerszám vagy lámpa).
+const WEAR_TABLE = {
+    melee:  [30, 45, 65, 85, 100],   // közelharci fegyver (ütés)
+    ranged: [60, 90, 120, 150, 180], // lőfegyver, íj, parittya (lövés)
+    gear:   [18, 28, 42, 60, 80]     // ruha, páncél, sisak, cipő, táska (kapott találat)
+};
+const GEAR_TYPES = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'];
+Object.keys(itemDatabase).forEach(key => {
+    const item = itemDatabase[key];
+    const isWeapon = item.type === 'weapon';
+    if (!isWeapon && !GEAR_TYPES.includes(item.type)) return;
+    item.wear = true;
+    if (item.durability) return;
+    const kind = isWeapon ? (item.slot === 'melee' ? 'melee' : 'ranged') : 'gear';
+    const tier = Math.min(5, Math.max(1, Math.round(Number(item.tier) || 2)));
+    item.durability = WEAR_TABLE[kind][tier - 1];
+});
+
 // Böngésző támogatás (ha még nem létezett, rátesszük a window-ra)
 if (typeof window !== 'undefined') {
     if (!window.itemDatabase) {

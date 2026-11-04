@@ -31,6 +31,7 @@
             const key = equipment[slot];
             const item = key && itemDatabase[key];
             if (!item) return;
+            if (isBroken(player, slot)) return; // a tönkrement felszerelés rajtad marad, de nem ad bónuszt
             bonuses.push({
                 source: 'equipment:' + slot,
                 maxHp: num(item.hpBonus, 0),
@@ -43,6 +44,18 @@
 
         // Ide jönnek majd a képességek (perk-ek), pl.: bonuses.push({ source: 'perk:packmule', maxWeight: 10 });
         return bonuses;
+    }
+
+    // --- KOPÁS ---
+    // A felvett tárgyak tartóssága: player.equipmentDur[slot] (a leltárban lévőké a slot "dur" mezőjében)
+    function equipmentDur(player, slot) {
+        const d = player && player.equipmentDur && player.equipmentDur[slot];
+        return d === undefined || d === null ? null : num(d, null);
+    }
+    // Tönkrement: a tárgy kopó (wear), és a tartóssága elfogyott
+    function isBroken(player, slot) {
+        const d = equipmentDur(player, slot);
+        return d !== null && d <= 0;
     }
 
     // A leltár és a felszerelés össztömege (kg)
@@ -142,7 +155,8 @@
     const api = {
         BASE, EQUIPMENT_SLOTS, HP_PER_LEVEL, OVERWEIGHT_FACTOR, OVERWEIGHT_HARD_CAP, EFFECT_KEYS,
         num, collectBonuses, carriedWeight, computeStats, overweightMultiplier,
-        isConsumable, isEquippable, equipSlot, applyEffects, findUsableLight
+        isConsumable, isEquippable, equipSlot, applyEffects, findUsableLight,
+        equipmentDur, isBroken
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api; // szerver (Node.js)

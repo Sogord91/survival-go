@@ -69,6 +69,9 @@
         .tile-count { position: absolute; right: 3px; bottom: 2px; font-size: 10px; font-weight: 800; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
         .tile-dur { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 3px; background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden; pointer-events: none; }
         .tile-dur > div { height: 100%; }
+        .eq-tile.broken, .inv-tile.broken { border-color: rgba(239, 68, 68, 0.8); background: rgba(69, 10, 10, 0.55); }
+        .eq-tile.broken img, .inv-tile.broken img { filter: grayscale(0.8) brightness(0.6); }
+        .tile-broken { position: absolute; right: 2px; top: 1px; font-size: 12px; pointer-events: none; filter: drop-shadow(0 0 2px #000); }
         .eq-summary { flex-direction: column; gap: 2px; font-size: 10px; color: #6ee7b7; border-style: solid; }
         #item-sheet-panel { transition: transform 0.2s ease-out; }
         /* Felső HUD: szint-csík és értékek */
@@ -91,19 +94,19 @@
         @keyframes stat-crit { 50% { filter: brightness(1.6) drop-shadow(0 0 5px #ef4444); } }
         /* Alsó menüsor */
         .nav-bar { position: absolute; left: 50%; transform: translateX(-50%); width: calc(100% - 1rem); max-width: 30rem;
-            display: grid; grid-template-columns: repeat(6, 1fr); padding: 6px 4px 5px;
+            display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px 2px 5px;
             background: linear-gradient(180deg, rgba(10, 32, 18, 0.96), rgba(3, 12, 7, 0.97)); border-top: 2px solid rgba(74, 222, 128, 0.75); }
         .nav-btn { position: relative; background: transparent; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 0; border-radius: 8px;
             transition: transform 0.1s, background 0.15s; -webkit-tap-highlight-color: transparent; }
-        .nav-btn img { width: 36px; height: 36px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7)); pointer-events: none; }
-        .nav-btn span { font-size: 9.5px; font-weight: 800; letter-spacing: 0.03em; color: #a7f3d0; text-transform: uppercase; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+        .nav-btn img { width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7)); pointer-events: none; }
+        .nav-btn span { font-size: 8.5px; font-weight: 800; letter-spacing: 0.01em; color: #a7f3d0; text-transform: uppercase; text-shadow: 0 1px 2px #000; white-space: nowrap; }
         .nav-btn:hover { background: rgba(16, 185, 129, 0.12); }
         .nav-btn:active { transform: scale(0.92); }
         .nav-btn.soon img { opacity: 0.55; filter: grayscale(0.6) drop-shadow(0 2px 2px rgba(0,0,0,0.7)); }
         .nav-btn.soon span { color: rgba(167, 243, 208, 0.5); }
         .nav-badge { position: absolute; top: -2px; right: calc(50% - 24px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px;
             background: #dc2626; border: 1.5px solid #fff; color: #fff; font-size: 10px; font-weight: 800; line-height: 14px; text-align: center; }
-        @media (max-width: 360px) { .nav-btn img { width: 30px; height: 30px; } .nav-btn span { font-size: 8.5px; } }
+        @media (max-width: 370px) { .nav-btn img { width: 28px; height: 28px; } .nav-btn span { font-size: 7.5px; letter-spacing: 0; } }
         
         /* Térképstílus: a szűrő CSAK a csempékre hat, a jelölőkre nem (lásd map.js, MAP_STYLES) */
         .zone-tiles { filter: var(--zone-tile-filter, none); }
@@ -403,11 +406,32 @@
         <nav id="nav-bar" class="nav-bar hud-panel clipped-panel" style="bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))">
             <button id="btn-open-equipment" class="nav-btn"><img src="/images/ui/nav-backpack.svg" alt=""><span>Készlet</span></button>
             <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Craft</span></button>
+            <button id="btn-open-skills" class="nav-btn soon"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span></button>
             <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
             <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Csevegés</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-journal" class="nav-btn"><img src="/images/ui/nav-journal.svg" alt=""><span>Napló</span></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span></button>
         </nav>
+
+    <!-- ZSÁKMÁNY: a talált holmi; amit nem teszel el, 30 percig az épületben marad (main.js: openLootWindow) -->
+    <div id="loot-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]" onclick="if (event.target === this) closeLootWindow()">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-5 flex flex-col max-h-[85vh] shadow-2xl clipped-panel border-amber-500/70">
+            <div class="flex justify-between items-start mb-2 border-b border-amber-500/30 pb-2">
+                <div class="min-w-0">
+                    <h2 class="text-sm font-bold text-amber-300 tracking-wider">📦 ZSÁKMÁNY</h2>
+                    <div id="loot-building" class="text-[11px] text-emerald-300/80 truncate"></div>
+                </div>
+                <button onclick="closeLootWindow()" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold">✕</button>
+            </div>
+            <div id="loot-capacity" class="text-[10px] text-emerald-400/80 font-mono mb-2"></div>
+            <div id="loot-list" class="flex flex-col gap-2 overflow-y-auto pr-1"></div>
+            <div id="loot-timer" class="text-[10px] text-amber-300/80 mt-2 text-center"></div>
+            <div class="flex gap-2 mt-3">
+                <button id="loot-take-all" onclick="takeLoot(null)" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white py-2.5 rounded-lg text-xs font-bold">Mindet elteszem</button>
+                <button onclick="closeLootWindow()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 py-2.5 rounded-lg text-xs font-bold">Otthagyom</button>
+            </div>
+        </div>
+    </div>
 
     <!-- NAPLÓ: az utolsó üzenetek visszaolvasása (az értesítések pár másodperc után eltűnnek) -->
     <div id="journal-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]" onclick="if (event.target === this) this.classList.add('hidden')">

@@ -4,6 +4,17 @@ let playerMarker = null;
 let isMapInitialized = false;
 let savedBuildings = [];   // a környék épületei (a szervertől, cellánként), csak a böngészőben élnek
 let buildingLocks = {};    // épület-azonosító -> zár lejárata (a szervertől); a később betöltött épületekre is ráhúzzuk
+let buildingCaches = {};   // épület-azonosító -> az otthagyott zsákmány (📦) lejárata
+
+// Van-e még elvihető, otthagyott zsákmány az épületben
+function cacheUntilFor(id) {
+    const until = buildingCaches[id];
+    return until && until > Date.now() ? until : 0;
+}
+function applyBuildingCaches(caches) {
+    if (!caches || typeof caches !== 'object') return;
+    Object.keys(caches).forEach(id => { buildingCaches[id] = Number(caches[id]) || 0; });
+}
 let buildings = [];
 
 // Egy épület zárolásának rögzítése. Ha az épület még nincs betöltve, csak megjegyezzük,
@@ -28,6 +39,7 @@ if (typeof socket !== 'undefined' && socket) {
     socket.on('building_status', (data) => {
         if (!data || !data.locks) return;
         Object.keys(data.locks).forEach(id => applyBuildingLock(id, data.locks[id]));
+        applyBuildingCaches(data.caches);
         refreshMapMarkers();
     });
 
@@ -149,7 +161,7 @@ function initMap(lat, lng, realPosition) {
     initBuildingSyncListener();
 
     // A lejárt zárak percenként eltűnnek a térképről
-    setInterval(refreshMapMarkers, 60000);
+    setInterval(refreshMapMarkers, 30000); // lejárt zárak és 📦 zsákmányok frissítése
 }
 
 // Ugrás a karakterre: ha elhúztad a térképet, egy koppintással visszaáll rád (legalább a játék alapnagyításával)
@@ -296,6 +308,7 @@ if (typeof socket !== 'undefined' && socket) {
         const now = Date.now();
         const locks = data.locks && typeof data.locks === 'object' ? data.locks : {};
         Object.keys(locks).forEach(id => { buildingLocks[id] = locks[id]; });
+        applyBuildingCaches(data.caches);
 
         const known = new Set(savedBuildings.map(b => b.id));
         let added = 0;
@@ -356,7 +369,10 @@ function dangerUntilFor(id) {
 //  'free': a típus ikonja és színe
 function buildingMarkerIcon(bData, state) {
     let iconHtml;
-    if (state === 'danger') {
+    if (state === 'cache') {
+        // kifosztva, de van még bent otthagyott holmi: bárki elviheti 30 percig
+        iconHtml = '<div style="background:#92400e;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fbbf24;font-size:13px;box-shadow:0 0 12px rgba(251,191,36,0.8);">📦</div>';
+    } else if (state === 'danger') {
         iconHtml = '<div style="background:#c2410c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px dashed #fdba74;font-size:13px;box-shadow:0 0 10px rgba(249,115,22,0.7);">⚠️</div>';
     } else if (state === 'locked') {
         iconHtml = '<div style="background:#b91c1c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #f87171;font-size:12px;box-shadow:0 0 10px rgba(239,68,68,0.7);">🔒</div>';
@@ -381,7 +397,7 @@ function refreshMapMarkers() {
         if (!bData || typeof bData.name !== 'string' || typeof bData.lat !== 'number' || typeof bData.lng !== 'number') return;
         alive.add(bData.id);
         const locked = !!(bData.lockedUntil && now < bData.lockedUntil);
-        const state = locked ? 'locked' : (dangerUntilFor(bData.id) ? 'danger' : 'free');
+        const state = cacheUntilFor(bData.id) ? 'cache' : locked ? 'locked' : (dangerUntilFor(bData.id) ? 'danger' : 'free');
 
         let obj = markerById.get(bData.id);
         if (!obj) {
@@ -431,6 +447,13 @@ function interactWithBuilding(b) {
 
     if (distance > 45) { // a szerver is 30 m + 15 m GPS-tűréssel számol
         logMessage(`Túl messze vagy az épülettől! (${Math.round(distance)}m - Menj 30 méteren belülre)`);
+        return;
+    }
+
+    // Otthagyott zsákmány: a Zsákmány ablak nyílik (a megtalálójának ingyenes, másnak egy kutatásnyi fáradtság)
+    if (cacheUntilFor(b.id)) {
+        if (player.combat) { logMessage("Harc közben ezt nem teheted!"); return; }
+        if (typeof socket !== 'undefined' && socket) socket.emit('cache_open', { buildingId: b.id });
         return;
     }
 
@@ -641,21 +664,16 @@ if (typeof socket !== 'undefined' && socket) {
             return;
         }
 
-        // Az új leltár és fáradtság a player_state üzenettel érkezik.
-        // A szerver üzenete (pl. találkozás az ellenséggel, üres épület) elöl áll.
-        const parts = [];
-        if (data.message) parts.push(data.message);
-        if (data.items && data.items.length > 0) {
-            const list = data.items.map(it => {
-                const cfg = itemDatabase[it.key] || { name: it.key, icon: '📦' };
-                return `${cfg.icon} ${it.count > 1 ? it.count + '× ' : ''}${cfg.name}`;
-            }).join(', ');
-            parts.push(`Találtál: ${list}`);
+        // A szerver üzenete (pl. találkozás az ellenséggel, üres épület)
+        if (data.message) logMessage(data.message);
+        // A talált holmi a Zsákmány ablakba kerül: ott döntöd el, mit teszel el (a többi 30 percig az épületben marad)
+        if (data.cache && data.cache.items && data.cache.items.length) {
             playSound('loot');
-        } else if (!data.message) {
-            parts.push('Semmi hasznosat nem találtál.');
+            buildingCaches[data.buildingId] = data.cache.until;
+            if (typeof openLootWindow === 'function') openLootWindow(data.buildingId, data.buildingName || 'Épület', data.cache);
+        } else if (!data.message && !data.encounter) {
+            logMessage('Semmi hasznosat nem találtál.');
         }
-        logMessage(parts.join(' '));
 
         // Épület zárolása lokálisan is (a többiek a building_looted_update üzenetből tudják meg)
         applyBuildingLock(data.buildingId, data.lockedUntil);
@@ -669,7 +687,8 @@ function initBuildingSyncListener() {
     socket.on('building_looted_update', (data) => {
         if (!data) return;
         // Ha az épület még nincs betöltve, csak megjegyezzük a zárat (nem hozunk létre név nélküli bejegyzést)
-        applyBuildingLock(data.id, data.lockedUntil);
+        if (data.lockedUntil !== undefined) applyBuildingLock(data.id, data.lockedUntil);
+        if (data.cacheUntil !== undefined && typeof data.id === 'string') buildingCaches[data.id] = Number(data.cacheUntil) || 0;
 
         // Azonnal frissítjük a térkép jelölőit (így azonnal piros lakat lesz rajta bárkinél, aki látja)
         refreshMapMarkers();

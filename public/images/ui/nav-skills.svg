@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs>
+<linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b5a35"/><stop offset="1" stop-color="#242c18"/></linearGradient>
+<linearGradient id="gd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset=".45" stop-color="#e9b230"/><stop offset="1" stop-color="#8a5a06"/></linearGradient>
+</defs>
+<path d="M32 4 L54 12 V30 Q54 48 32 60 Q10 48 10 30 V12 Z" fill="url(#sh)" stroke="#12160a" stroke-width="2.6" stroke-linejoin="round"/>
+<path d="M32 9 L49 15 V30 Q49 44 32 54 Q15 44 15 30 V15 Z" fill="none" stroke="#7d8c55" stroke-width="1.4" opacity=".7"/>
+<path d="M32 13 l2.6 5.4 5.9 .8 -4.3 4.1 1 5.8 -5.2-2.8 -5.2 2.8 1-5.8 -4.3-4.1 5.9-.8 z" fill="url(#gd)" stroke="#3a2604" stroke-width="1.4" stroke-linejoin="round"/>
+<g fill="url(#gd)" stroke="#3a2604" stroke-width="1.6" stroke-linejoin="round">
+<path d="M18 32 L32 39 L46 32 L46 37 L32 44 L18 37 Z"/>
+<path d="M20 41 L32 47 L44 41 L44 45.5 L32 51.5 L20 45.5 Z"/>
+</g>
+<path d="M14 14 Q20 11 26 10" stroke="#a9b882" stroke-width="2" fill="none" stroke-linecap="round" opacity=".6"/>
+</svg>

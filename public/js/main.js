@@ -273,6 +273,7 @@ function tileIconHtml(item) {
 // Kopáscsík a rács mezőjének alján (szerszám, lámpa)
 function tileDurabilityHtml(slot, item) {
     if (!item || !item.durability || slot.dur === undefined) return '';
+    if (item.wear && slot.dur >= item.durability) return ''; // ép felszerelésnél nincs csík (kevesebb zaj a rácsban)
     const pct = Math.max(0, Math.min(100, (slot.dur / item.durability) * 100));
     const color = pct > 50 ? '#10b981' : pct > 20 ? '#f59e0b' : '#ef4444';
     return `<div class="tile-dur"><div style="width:${pct}%;background:${color}"></div></div>`;
@@ -350,7 +351,9 @@ function itemCompareHtml(item, key) {
         return `<div class="text-[10px] text-emerald-400/80">Ugyanez van rajtad (${escapeAttr(slotName)}).</div>`;
     }
     const equipped = equippedKey ? (itemDatabase[equippedKey] || { name: equippedKey, icon: '📦' }) : null;
-    const diffs = itemCompareDiffs(item, equipped);
+    // a tönkrement felvett tárgy nem ad bónuszt: ahhoz képest minden érték nyereség (a súlyt kivéve)
+    const equippedBroken = !!equipped && SurvivalStats.isBroken(player, slot);
+    const diffs = itemCompareDiffs(item, equippedBroken ? { weight: equipped.weight } : equipped);
     const chip = d => {
         const cls = d.good ? 'bg-emerald-900/70 border-emerald-500/70 text-emerald-200' : 'bg-red-950/70 border-red-600/70 text-red-200';
         const arrow = d.good ? '▲' : '▼';
@@ -361,7 +364,7 @@ function itemCompareHtml(item, key) {
                <div class="inv-tile shrink-0" style="width:2.25rem">${tileIconHtml(equipped)}</div>
                <div class="min-w-0">
                    <div class="text-[9px] uppercase tracking-wide text-emerald-500/80">Most felszerelve · ${escapeAttr(slotName)}</div>
-                   <div class="text-xs font-bold text-white truncate">${escapeAttr(equipped.name)}</div>
+                   <div class="text-xs font-bold text-white truncate">${escapeAttr(equipped.name)}${equippedBroken ? ' <span class="text-red-400">(tönkrement)</span>' : ''}</div>
                </div>
            </div>`
         : `<div class="text-[10px] text-emerald-400/80">${escapeAttr(slotName)}: most üres</div>`;
@@ -369,6 +372,119 @@ function itemCompareHtml(item, key) {
         ? `<div class="text-[9px] uppercase tracking-wide text-gray-400 mt-1.5 mb-1">Ha felveszed</div><div class="flex flex-wrap gap-1">${diffs.map(chip).join('')}</div>`
         : `<div class="text-[10px] text-gray-400 mt-1.5">Nincs különbség az értékekben.</div>`;
     return head + body;
+}
+
+// ===== ZSÁKMÁNY ABLAK =====
+// Kutatás (vagy győztes harc) után a talált holmi itt jelenik meg. Amit nem teszel el, az LOOT_CACHE_MINUTES
+// percig az épületben marad (📦 a térképen); bárki elviheti, neked a visszatérés ingyenes.
+// Bezáráskor / kilépéskor semmi nem vész el, minden ott marad.
+let lootWindow = null; // { buildingId, buildingName, cache: { items, until, mine } }
+let lootTimer = null;
+
+function openLootWindow(buildingId, buildingName, cache) {
+    if (!buildingId || !cache) return;
+    lootWindow = { buildingId, buildingName, cache };
+    renderLootWindow();
+    document.getElementById('loot-modal').classList.remove('hidden');
+    if (lootTimer) clearInterval(lootTimer);
+    lootTimer = setInterval(() => { if (lootWindow) renderLootWindow(); }, 15000);
+}
+
+function closeLootWindow() {
+    const modal = document.getElementById('loot-modal');
+    if (modal) modal.classList.add('hidden');
+    if (lootWindow && lootWindow.cache && lootWindow.cache.items.length) {
+        logMessage(`📦 Otthagytad a zsákmány egy részét (${lootWindow.buildingName}). ${lootMinutesLeft()} percig még visszajöhetsz érte, de bárki elviheti!`);
+    }
+    lootWindow = null;
+    if (lootTimer) { clearInterval(lootTimer); lootTimer = null; }
+}
+
+function lootMinutesLeft() {
+    if (!lootWindow) return 0;
+    return Math.max(0, Math.ceil((lootWindow.cache.until - Date.now()) / 60000));
+}
+
+function renderLootWindow() {
+    if (!lootWindow) return;
+    const { cache, buildingName } = lootWindow;
+    if (cache.until <= Date.now()) {
+        logMessage(`📦 Lejárt az idő, a(z) ${buildingName} zsákmánya elveszett.`);
+        lootWindow.cache.items = [];
+        closeLootWindow();
+        return;
+    }
+    document.getElementById('loot-building').textContent = buildingName + (cache.mine ? '' : ' · valaki itt hagyta');
+    const weight = Math.round((player.weight || 0) * 10) / 10;
+    document.getElementById('loot-capacity').textContent =
+        `Hely: ${player.inventory.length}/${player.maxInv || 10} · Súly: ${weight}/${player.maxWeight || 30} kg`;
+    document.getElementById('loot-list').innerHTML = cache.items.map((it, index) => {
+        const item = itemDatabase[it.key] || { name: it.key, icon: '📦', weight: 0 };
+        const stats = itemStatLines(item).slice(0, 2).join(' · ');
+        const w = Math.round((item.weight || 0) * it.count * 100) / 100;
+        return `<div class="flex items-center gap-3 p-2 rounded-xl bg-black/30 border border-emerald-800/60">
+            <div class="inv-tile shrink-0" style="width:2.75rem">${tileIconHtml(item)}${it.count > 1 ? `<span class="tile-count">×${it.count}</span>` : ''}</div>
+            <div class="flex-1 min-w-0">
+                <div class="text-xs font-bold text-white truncate">${escapeAttr(item.name)}</div>
+                <div class="text-[10px] text-emerald-400/80 truncate">${w} kg${stats ? ' · ' + escapeAttr(stats) : ''}</div>
+            </div>
+            <button onclick="takeLoot(${index})" class="shrink-0 bg-emerald-800 hover:bg-emerald-700 border border-emerald-500/60 text-emerald-100 px-3 py-1.5 rounded-lg text-[11px] font-bold">Elteszem</button>
+        </div>`;
+    }).join('');
+    const left = lootMinutesLeft();
+    document.getElementById('loot-timer').textContent = `Amit itt hagysz, még ${left} percig vár rád az épületben, de bárki elviheti!`;
+}
+
+// index: egy tétel; null: mind
+function takeLoot(index) {
+    if (!lootWindow || typeof socket === 'undefined' || !socket) return;
+    const data = { buildingId: lootWindow.buildingId };
+    if (index === null) data.all = true; else data.index = index;
+    socket.emit('cache_take', data);
+}
+
+if (typeof socket !== 'undefined' && socket) {
+    // Kinyitás és elvétel válasza: a friss lista (ha elfogyott vagy lejárt, az ablak bezárul)
+    socket.on('cache_result', (data) => {
+        if (!data) return;
+        if (data.message) logMessage(data.message);
+        if (!data.success) {
+            playSound('hit');
+            if (data.gone && typeof buildingCaches !== 'undefined') {
+                buildingCaches[data.buildingId] = 0;
+                if (lootWindow && lootWindow.buildingId === data.buildingId) { lootWindow.cache.items = []; closeLootWindow(); }
+                if (typeof refreshMapMarkers === 'function') refreshMapMarkers();
+            }
+            return;
+        }
+        if (data.message) playSound('loot');
+        const cache = data.cache;
+        if (!cache || !cache.items.length) {
+            if (typeof buildingCaches !== 'undefined') buildingCaches[data.buildingId] = 0;
+            if (lootWindow && lootWindow.buildingId === data.buildingId) { lootWindow.cache.items = []; closeLootWindow(); }
+            if (typeof refreshMapMarkers === 'function') refreshMapMarkers();
+            return;
+        }
+        openLootWindow(data.buildingId, data.buildingName || (lootWindow && lootWindow.buildingName) || 'Épület', cache);
+    });
+}
+
+// ===== FELSZERELÉS JAVÍTÁSA (ugyanazok a szabályok, mint a szerveren: server.js, repair_item) =====
+// Visszaadja, mi kell a javításhoz, és megvan-e: { text, ok, percent }
+function repairRequirement(item) {
+    const have = (key) => player.inventory.filter(s => s.key === key).reduce((sum, s) => sum + s.count, 0);
+    const name = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
+    const gear = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'].includes(item.type);
+    const firearm = item.type === 'weapon' && typeof item.reqAmmo === 'string' && item.reqAmmo.startsWith('ammo_');
+    if (gear) return { text: `${name('sewing_kit')} + 1 ${name('rag')}`, ok: have('sewing_kit') > 0 && have('rag') > 0, percent: 50 };
+    if (firearm) return { text: name('gun_cleaning_kit'), ok: have('gun_cleaning_kit') > 0, percent: 50 };
+    const tools = ['claw_hammer', 'pliers', 'multitool'];
+    return { text: `1 ${name('duct_tape')} + ${tools.map(name).join(' / ')}`, ok: have('duct_tape') > 0 && tools.some(k => have(k) > 0), percent: 40 };
+}
+
+function repairItem(ref) {
+    if (typeof socket === 'undefined' || !socket || !ref) return;
+    socket.emit('repair_item', ref.source === 'eq' ? { source: 'eq', slot: ref.slot } : { source: 'inv', index: ref.index });
 }
 
 // ===== TÁRGY LAP (alulról felcsúszó részletek és gombok) =====
@@ -413,11 +529,21 @@ function renderItemSheet() {
     document.getElementById('item-sheet-icon').innerHTML = tileIconHtml(item);
     document.getElementById('item-sheet-name').textContent = item.name + (count > 1 ? `  ×${count}` : '');
     document.getElementById('item-sheet-desc').textContent = itemFlavorText(item.desc);
-    document.getElementById('item-sheet-stats').innerHTML = itemStatLines(item)
-        .map(line => `<span class="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-[10px] font-bold text-emerald-200">${escapeAttr(line)}</span>`).join('');
+
     const weight = Math.round((item.weight || 0) * count * 100) / 100;
     document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '');
-    document.getElementById('item-sheet-dur').innerHTML = ref.source === 'inv' ? durabilityHtml(slot, item) : '';
+    // Tartósság: a leltárban a slot "dur" mezője, felvett tárgynál az equipmentDur
+    const durSlot = ref.source === 'inv' ? slot : { key: ref.key, dur: SurvivalStats.equipmentDur(player, ref.slot) ?? undefined };
+    const broken = item.wear && durSlot && durSlot.dur !== undefined && durSlot.dur <= 0;
+    const repairInfo = item.wear && durSlot && durSlot.dur !== undefined && durSlot.dur < item.durability ? repairRequirement(item) : null;
+    // a tönkrement tárgy értékei áthúzva: most nem adnak semmit
+    document.getElementById('item-sheet-stats').innerHTML = itemStatLines(item)
+        .map(line => broken
+            ? `<span class="px-1.5 py-0.5 rounded bg-gray-900/80 border border-gray-700/60 text-[10px] font-bold text-gray-500 line-through">${escapeAttr(line)}</span>`
+            : `<span class="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-[10px] font-bold text-emerald-200">${escapeAttr(line)}</span>`).join('');
+    document.getElementById('item-sheet-dur').innerHTML = durabilityHtml(durSlot, item)
+        + (broken ? `<div class="text-[10px] font-bold text-red-400 mt-1">💥 Tönkrement: amíg meg nem javítod, nem ad bónuszt.</div>` : '')
+        + (repairInfo ? `<div class="text-[9px] mt-0.5 ${repairInfo.ok ? 'text-sky-300/90' : 'text-red-400/90'}">🔧 Javítás (+${repairInfo.percent}%): ${escapeAttr(repairInfo.text)}</div>` : '');
     const compare = document.getElementById('item-sheet-compare');
     if (compare) {
         const html = ref.source === 'inv' ? itemCompareHtml(item, ref.key) : '';
@@ -430,8 +556,10 @@ function renderItemSheet() {
     if (ref.source === 'inv') {
         if (SurvivalStats.isConsumable(item)) actions += btn('Használ', 'bg-amber-600 hover:bg-amber-500', `itemSheetAction('use')`);
         else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
+        if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
         actions += btn(count > 1 ? 'Eldob 1 db' : 'Eldob', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('drop')`);
     } else {
+        if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
         actions += btn('Levesz', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('unequip')`);
     }
     document.getElementById('item-sheet-actions').innerHTML = actions;
@@ -443,8 +571,9 @@ function itemSheetAction(action) {
     if (action === 'use' || action === 'equip') inventoryAction(ref.index);
     else if (action === 'drop') dropItem(ref.index);
     else if (action === 'unequip') unequip(ref.slot);
-    // Fogyasztás / felvétel / levétel után a lap bezárul; eldobásnál nyitva marad (több darab egymás után)
-    if (action !== 'drop') closeItemSheet();
+    else if (action === 'repair') repairItem(ref);
+    // Fogyasztás / felvétel / levétel után a lap bezárul; eldobásnál és javításnál nyitva marad
+    if (action !== 'drop' && action !== 'repair') closeItemSheet();
 }
 
 // A leltár gombja: a tárgy KULCSÁT küldjük a szervernek (nem a sorszámát)
@@ -453,7 +582,7 @@ function inventoryAction(index) {
     if (!slot) return;
     const item = itemDatabase[slot.key];
     if (SurvivalStats.isConsumable(item)) useItem(slot.key);
-    else if (SurvivalStats.isEquippable(item)) equipItem(slot.key, SurvivalStats.equipSlot(item));
+    else if (SurvivalStats.isEquippable(item)) equipItem(slot.key, SurvivalStats.equipSlot(item), index);
 }
 
 function updateUI() {
@@ -471,7 +600,8 @@ function updateUI() {
         if (!slot) { invHtml += '<div class="inv-tile empty"></div>'; continue; }
         const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦', desc: '', weight: 0 };
         const count = slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : '';
-        invHtml += `<button class="inv-tile" onclick="openItemSheet('inv', ${index})" title="${escapeAttr(item.name)}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}</button>`;
+        const brokenTile = item.wear && slot.dur !== undefined && slot.dur <= 0;
+        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}" onclick="openItemSheet('inv', ${index})" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}</button>`;
     }
     invGrid.innerHTML = invHtml;
     refreshItemSheet();
@@ -509,10 +639,14 @@ function updateUI() {
         const item = itemKey ? itemDatabase[itemKey] : null;
         if (item) {
             el.classList.remove('empty');
-            el.innerHTML = tileIconHtml(item);
-            el.title = item.name;
+            const dur = SurvivalStats.equipmentDur(player, slot);
+            const broken = dur !== null && dur <= 0;
+            el.classList.toggle('broken', broken);
+            el.innerHTML = tileIconHtml(item) + (dur !== null ? tileDurabilityHtml({ dur }, item) : '') + (broken ? '<span class="tile-broken">💥</span>' : '');
+            el.title = item.name + (broken ? ' (tönkrement)' : '');
         } else {
             el.classList.add('empty');
+            el.classList.remove('broken');
             el.innerHTML = `<span class="tile-emoji">${el.dataset.empty || '▫️'}</span>`;
             el.title = slot === 'backpack' ? `Alap hátizsák (${player.maxInv || 10} hely)` : 'Üres';
         }
@@ -521,6 +655,7 @@ function updateUI() {
     if (summary) summary.innerHTML = `<span>🛡️ ${player.defense || 0}</span><span>🎒 ${player.maxInv || 10}</span>`;
 
     renderCraftList();
+    if (lootWindow) renderLootWindow(); // a hely és a súly kijelzése frissül
 }
 
 // Kopó tárgy (szerszám) tartóssága kis csíkkal
@@ -528,7 +663,7 @@ function durabilityHtml(slot, item) {
     if (!item || !item.durability || slot.dur === undefined) return '';
     const pct = Math.max(0, Math.min(100, (slot.dur / item.durability) * 100));
     const color = pct > 50 ? 'bg-emerald-500' : pct > 20 ? 'bg-amber-500' : 'bg-red-500';
-    const label = item.light ? `${Math.ceil(slot.dur)}/${item.durability} perc` : `${slot.dur}/${item.durability}`;
+    const label = item.light ? `${Math.ceil(slot.dur)}/${item.durability} perc` : item.wear ? `Tartósság: ${slot.dur}/${item.durability}` : `${slot.dur}/${item.durability}`;
     return `<div class="flex items-center gap-1 mt-0.5"><div class="w-16 h-1.5 bg-gray-900 rounded overflow-hidden"><div class="${color} h-full" style="width:${pct}%"></div></div><span class="text-[9px] text-gray-400">${label}</span></div>`;
 }
 
@@ -652,6 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.classList.remove('hidden');
     });
     // Ezek a következő nagy frissítésben jönnek, addig csak jelzik
+    safeAddEvent('btn-open-skills', 'click', () => showToast('⭐ A képességek hamarosan érkeznek! Szintlépéskor választhatsz majd.'));
     safeAddEvent('btn-open-leaderboard', 'click', () => showToast('🏆 A ranglista hamarosan érkezik!'));
     safeAddEvent('btn-open-chat', 'click', () => showToast('📻 A csevegés hamarosan érkezik!'));
 

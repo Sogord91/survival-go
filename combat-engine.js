@@ -151,9 +151,12 @@ function createCombat(p, building, buildingInfo, random, opts) {
 
 // A választott fegyver és lőszere: { name, dmg, ammoKey (ha fogy) }. slot: weapon | secondary | melee
 function weaponInfo(p, itemDatabase, slot) {
-    const key = p.equipment && p.equipment[WEAPON_SLOTS.includes(slot) ? slot : 'weapon'];
+    const slotName = WEAPON_SLOTS.includes(slot) ? slot : 'weapon';
+    const key = p.equipment && p.equipment[slotName];
     const weapon = key && itemDatabase[key];
     if (!weapon) return { name: 'Puszta kéz', dmg: RULES.UNARMED_DMG, ammoKey: null, noAmmo: false };
+    // Tönkrement fegyver: csak annyit ér, mint a puszta kéz, és lőszert sem használ
+    if (SurvivalStats.isBroken(p, slotName)) return { name: weapon.name + ' (tönkrement)', dmg: RULES.UNARMED_DMG, ammoKey: null, noAmmo: false, broken: true };
     if (weapon.reqAmmo) {
         const hasAmmo = p.inventory.some(s => s.key === weapon.reqAmmo && s.count > 0);
         if (!hasAmmo) return { name: weapon.name, dmg: RULES.NO_AMMO_DMG, ammoKey: null, noAmmo: true };

@@ -89,6 +89,7 @@ function attackButtonParts(slot) {
         const count = player.inventory.filter(s => s.key === weapon.reqAmmo).reduce((sum, s) => sum + s.count, 0);
         ammo = count > 0 ? `(${count})` : '(nincs lőszer)';
     }
+    if (SurvivalStats.isBroken(player, slot)) return { name: `💥 ${weapon.name}`, ammo: '(tönkrement)' };
     return { name: `${weapon.icon || '⚔️'} ${weapon.name}`, ammo };
 }
 
@@ -118,6 +119,7 @@ function useCombatMedicine(index) {
 // Egy esemény szövege a harcnaplóba
 function describeCombatEvent(ev, enemyName) {
     if (ev.actor === 'enemy') return [`${enemyName} megsebzett: ${ev.amount} sebzés.`, 'text-red-400'];
+    if (ev.type === 'notice') return [ev.text || '', 'text-orange-300 font-bold']; // kopás, tönkremenés
     switch (ev.type) {
         case 'hit': return [ev.noAmmo ? `Nincs lőszered, puskatussal ütsz: ${ev.amount} sebzés.` : `Beviszel ${ev.amount} sebzést (${ev.weapon}).${ev.recovered ? ` (+1 ${ev.recovered})` : (ev.casing ? ' (+1 üres hüvely)' : '')}`, 'text-amber-300'];
         case 'crit': return [`KRITIKUS TALÁLAT! ${ev.amount} sebzés (${ev.weapon}).`, 'text-yellow-300 font-bold'];
@@ -144,15 +146,12 @@ if (typeof socket !== 'undefined' && socket) {
         });
 
         if (data.outcome === 'won') {
-            const parts = [data.message];
-            if (data.items && data.items.length > 0) {
-                parts.push('Találtál: ' + data.items.map(it => {
-                    const cfg = itemDatabase[it.key] || { name: it.key, icon: '📦' };
-                    return `${cfg.icon} ${it.count > 1 ? it.count + '× ' : ''}${cfg.name}`;
-                }).join(', '));
-            }
-            logMessage(parts.join(' '));
+            logMessage(data.message);
             playSound('win');
+            // A talált holmi a Zsákmány ablakba kerül (amit nem teszel el, 30 percig az épületben marad)
+            if (data.cache && data.cache.items && data.cache.items.length && typeof openLootWindow === 'function') {
+                openLootWindow(data.buildingId, data.buildingName || 'Épület', data.cache);
+            }
         } else if (data.outcome === 'fled') {
             logMessage(data.message);
         } else if (data.outcome === 'lost') {

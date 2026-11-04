@@ -51,6 +51,13 @@ module.exports = {
 
     // --- FÁRADTSÁG (0 = kipihent, 100 = teljesen kimerült, nem lehet lootolni) ---
     FATIGUE_PER_METER: 0.01,        // séta: 100% / 10 km
+
+    // --- FELSZERELÉS KOPÁSA (a tartósságokat az items.js adja tier szerint) ---
+    SHOE_WEAR_METERS: 5000,             // a cipő ennyi gyaloglásonként kopik 1-et (a harci kopás mellett)
+    WEAR_WARN_FRACTION: 0.2,            // ennyi alatt figyelmeztet: "hamarosan tönkremegy"
+    REPAIR_GEAR_FRACTION: 0.5,          // varrókészlet + rongy: ruha, páncél, táska +50%
+    REPAIR_FIREARM_FRACTION: 0.5,       // fegyverpucoló készlet: lőfegyver +50%
+    REPAIR_OTHER_FRACTION: 0.4,         // ragasztószalag + kalapács / fogó: közelharci fegyver, íj, parittya +40%
     FATIGUE_LOOT: 2,                // épület átkutatása
     FATIGUE_COMBAT: 5,              // harc (győzelem vagy menekülés)
     FATIGUE_FULL_REST_MINUTES: 30,  // ennyi idő alatt pihen ki 100%-ról 0-ra (offline vagy egy helyben állva)
@@ -58,6 +65,8 @@ module.exports = {
 
     // --- LOOT ÉS ÉPÜLETEK ---
     LOOT_LOCK_HOURS: 4,                 // kifosztás után ennyi óráig senki nem fosztogathatja (globális zár)
+    LOOT_CACHE_MINUTES: 30,             // a talált, de el nem tett holmi ennyi ideig marad az épületben (bárki elviheti;
+                                        // aki nem a megtalálója, annak a kinyitás egy kutatásnyi fáradtság)
     LOOT_RANGE_METERS: 30,              // ennyire kell megközelíteni az épületet
     LOOT_RANGE_TOLERANCE_METERS: 15,    // + GPS-pontatlanság tűrése (a szerver 45 m-ig fogadja el)
     POSITION_MAX_AGE_SECONDS: 120,      // ennél régebbi GPS pozícióval nem lehet lootolni
