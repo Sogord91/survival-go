@@ -328,9 +328,9 @@ const itemDatabase = {
 // találatnál 1, a cipő ezen felül 5 km gyaloglásonként 1. 0-nál "tönkrement": rajta marad, de nem ad bónuszt.
 // "wear: true" jelöli, hogy ez felszerelés-kopás (nem szerszám vagy lámpa).
 const WEAR_TABLE = {
-    melee:  [30, 45, 65, 85, 100],   // közelharci fegyver (ütés)
-    ranged: [60, 90, 120, 150, 180], // lőfegyver, íj, parittya (lövés)
-    gear:   [18, 28, 42, 60, 80]     // ruha, páncél, sisak, cipő, táska (kapott találat)
+    melee:  [40, 60, 90, 120, 150],  // közelharci fegyver (ütés)
+    ranged: [80, 120, 160, 200, 250], // lőfegyver, íj, parittya (lövés)
+    gear:   [25, 40, 60, 90, 120]     // ruha, páncél, sisak, cipő, táska (kapott találat)
 };
 const GEAR_TYPES = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'];
 Object.keys(itemDatabase).forEach(key => {

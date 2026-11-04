@@ -81,6 +81,7 @@ const userSchema = new mongoose.Schema({
         dead: { type: Boolean, default: false },   // halott karakter: csak az újrakezdés (respawn) engedélyezett
         equipmentDur: { type: mongoose.Schema.Types.Mixed, default: {} }, // a felvett tárgyak tartóssága: { slot: érték }
         walkMeters: { type: Number, default: 0 },  // gyaloglás a cipő legutóbbi kopása óta (méter)
+        wearVersion: { type: Number, default: 0 }, // a kopási táblázat verziója (régi mentések arányos átszámításához)
         combat: { type: mongoose.Schema.Types.Mixed, default: null },     // folyamatban lévő harc (újracsatlakozás után is folytatódik)
         dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} }   // személyes zárak menekülés után: { épület-azonosító: lejárat }
     }
@@ -100,6 +101,7 @@ function newPlayerData(earlyKit) {
             backpack: earlyKit ? config.EARLY_SURVIVOR_BACKPACK : null, secondary: null, melee: null },
         equipmentDur: {},   // a felvett tárgyak teljes tartóssággal indulnak (normalizePlayer tölti ki)
         walkMeters: 0,
+        wearVersion: WEAR_VERSION,
         lastSeen: null,
         dead: false,
         combat: null,
@@ -332,6 +334,7 @@ const REST_PER_MS = 100 / (config.FATIGUE_FULL_REST_MINUTES * 60 * 1000); // fá
 // A mentett adatok egységes formára hozása (hiányzó vagy régi mezők kitöltése)
 function normalizePlayer(raw) {
     const p = raw || {};
+    migrateWear(p); // régi (gyorsabb) kopási táblázat szerinti tartósságok arányos átszámítása
     const eq = p.equipment || {};
     const equipment = {};
     SurvivalStats.EQUIPMENT_SLOTS.forEach(slot => {
@@ -365,11 +368,36 @@ function normalizePlayer(raw) {
         equipment,
         equipmentDur: normalizeEquipmentDur(equipment, p.equipmentDur),
         walkMeters: Math.max(0, num(p.walkMeters, 0)),
+        wearVersion: WEAR_VERSION,
         lastSeen: (p.lastSeen === null || p.lastSeen === undefined) ? null : num(p.lastSeen, null),
         dead: !!p.dead,
         combat: p.combat && typeof p.combat === 'object' && p.combat.enemy ? p.combat : null,
         dangerUntil: activeDangerLocks(p.dangerUntil)
     };
+}
+
+// --- KOPÁSI TÁBLÁZAT VERZIÓJA ---
+// A v0.1.8 első kiadása gyorsabb kopással ment ki; a v0.1.8.1 lassabb táblázata után a már megkopott tárgyak
+// tartósságát arányosan átszámoljuk (pl. 9/18 -> 13/25), így senki nem jár rosszul.
+const WEAR_VERSION = 2;
+const WEAR_TABLE_V1 = { melee: [30, 45, 65, 85, 100], ranged: [60, 90, 120, 150, 180], gear: [18, 28, 42, 60, 80] };
+function oldWearMax(item) {
+    const kind = item.type === 'weapon' ? (item.slot === 'melee' ? 'melee' : 'ranged') : 'gear';
+    const tier = Math.min(5, Math.max(1, Math.round(Number(item.tier) || 2)));
+    return WEAR_TABLE_V1[kind][tier - 1];
+}
+function migrateWear(raw) {
+    if (!raw || num(raw.wearVersion, 0) >= WEAR_VERSION) return;
+    const scale = (key, d) => {
+        const item = itemDatabase[key];
+        if (!item || !item.wear || d === undefined || d === null || !Number.isFinite(Number(d))) return d;
+        const oldMax = oldWearMax(item);
+        return Math.min(item.durability, Math.round(Number(d) / oldMax * item.durability));
+    };
+    if (Array.isArray(raw.inventory)) raw.inventory.forEach(s => { if (s && s.dur !== undefined) s.dur = scale(s.key, s.dur); });
+    if (raw.equipmentDur && raw.equipment) {
+        Object.keys(raw.equipmentDur).forEach(slot => { raw.equipmentDur[slot] = scale(raw.equipment[slot], raw.equipmentDur[slot]); });
+    }
 }
 
 // A felvett kopó tárgyak tartóssága: hiányzó érték (régi mentés, új tárgy) = teljes; csak a felvett helyek maradnak
