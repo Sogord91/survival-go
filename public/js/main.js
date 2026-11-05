@@ -477,9 +477,86 @@ function repairRequirement(item) {
     const gear = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'].includes(item.type);
     const firearm = item.type === 'weapon' && typeof item.reqAmmo === 'string' && item.reqAmmo.startsWith('ammo_');
     if (gear) return { text: `${name('sewing_kit')} + 1 ${name('rag')}`, ok: have('sewing_kit') > 0 && have('rag') > 0, percent: 50 };
-    if (firearm) return { text: name('gun_cleaning_kit'), ok: have('gun_cleaning_kit') > 0, percent: 50 };
-    const tools = ['claw_hammer', 'pliers', 'multitool'];
+    if (firearm) {
+        if (have('gun_cleaning_kit') > 0) return { text: name('gun_cleaning_kit'), ok: true, percent: 50 };
+        if (have('machine_oil') > 0 && have('rag') > 0) return { text: `1 ${name('machine_oil')} + 1 ${name('rag')}`, ok: true, percent: 25 };
+        return { text: `${name('gun_cleaning_kit')} (+50%), vagy 1 ${name('machine_oil')} + 1 ${name('rag')} (+25%)`, ok: false, percent: 50 };
+    }
+    const tools = ['claw_hammer', 'pliers', 'multitool', 'toolbox'];
     return { text: `1 ${name('duct_tape')} + ${tools.map(name).join(' / ')}`, ok: have('duct_tape') > 0 && tools.some(k => have(k) > 0), percent: 40 };
+}
+
+// ===== "MIRE JÓ?" =====
+// A tárgy lapján: mire használható (receptekből, javításból, fényből, lőszerből, passzív hatásból összerakva).
+// Visszaad: [{ icon, label, text }]
+function itemUses(key) {
+    const item = itemDatabase[key];
+    if (!item) return [];
+    const name = (k) => (itemDatabase[k] ? itemDatabase[k].name : k);
+    const list = (names, max = 5) => {
+        const unique = [...new Set(names)];
+        return unique.slice(0, max).join(', ') + (unique.length > max ? ` és még ${unique.length - max}` : '');
+    };
+    const recipes = window.craftingRecipes || [];
+    const toolOptions = (entry) => (window.RecipeTools ? RecipeTools.toolOptions(entry) : (Array.isArray(entry) ? entry : [entry]));
+    const fire = (window.RecipeTools && RecipeTools.FIRE_STARTERS) || ['matchbox', 'ferro_rod'];
+    const uses = [];
+    const add = (icon, label, text) => uses.push({ icon, label, text });
+
+    const hand = recipes.filter(r => !r.station);
+    const station = recipes.filter(r => r.station);
+    const asIngredient = hand.filter(r => r.req && r.req[key]);
+    if (asIngredient.length) add('🔨', asIngredient.every(r => r.cat === 'Szétszerelés') ? 'Szétszedhető' : 'Alapanyag', list(asIngredient.map(r => r.name)));
+    const asTool = hand.filter(r => (r.tools || []).some(entry => toolOptions(entry).includes(key)));
+    if (asTool.length) add('🛠️', 'Szerszám (kopik)', list(asTool.map(r => r.name)));
+    if (fire.includes(key)) {
+        const fireRecipes = hand.filter(r => r.fire);
+        if (fireRecipes.length) add('🔥', key === fire[0] ? 'Tűzgyújtás (elfogy)' : 'Tűzgyújtás (kopik)', list(fireRecipes.map(r => r.name)));
+    }
+    const atStation = station.filter(r => (r.req && r.req[key]) || (r.tools || []).some(entry => toolOptions(entry).includes(key)));
+    const smelter = atStation.filter(r => r.station === 'smelter');
+    const workshop = atStation.filter(r => r.station === 'workshop');
+    if (smelter.length) add('🔥', 'Olvasztóban (hamarosan)', list(smelter.map(r => r.name)));
+    if (workshop.length) add('🏭', 'Műhelyben (hamarosan)', list(workshop.map(r => r.name)));
+
+    // Javítás (ugyanaz a szabály, mint a szerveren)
+    if (key === 'sewing_kit') add('🔧', 'Javítás', 'ruha, páncél, sisak, cipő és táska (+50%, 1 ronggyal)');
+    if (key === 'rag') add('🔧', 'Javítás', 'varrókészlettel ruha és páncél; gépolajjal lőfegyver');
+    if (key === 'gun_cleaning_kit') add('🔧', 'Javítás', 'lőfegyverek (+50%)');
+    if (key === 'machine_oil') add('🔧', 'Javítás', 'lőfegyver gyorsjavítása 1 ronggyal (+25%)');
+    if (key === 'duct_tape') add('🔧', 'Javítás', 'közelharci fegyver, íj, parittya (+40%, kalapáccsal / fogóval)');
+    if (['claw_hammer', 'pliers', 'multitool', 'toolbox'].includes(key)) add('🔧', 'Javítás', 'közelharci fegyver, íj, parittya (+40%, 1 ragasztószalaggal)');
+    if (key === 'toolbox') add('🧰', 'Pótolja', list(((window.RecipeTools && RecipeTools.TOOLBOX_REPLACES) || []).map(name), 9));
+
+    // Fény és üzemanyag
+    if (item.light) add('💡', 'Fényforrás', 'éjszaka magától ég, ha a leltáradban van: messzebbre látsz és minden épületet látsz');
+    const fuelFor = Object.keys(itemDatabase).filter(k => itemDatabase[k].light && itemDatabase[k].light.fuel === key);
+    if (fuelFor.length) add('⛽', 'Üzemanyag', list(fuelFor.map(name)));
+    if (key === 'power_bank') add('🔋', 'Töltés', list(Object.keys(itemDatabase).filter(k => itemDatabase[k].light && itemDatabase[k].light.fuel === 'aa_batteries').map(name)));
+
+    // Lőszer
+    if (item.type === 'ammo') {
+        const weapons = Object.keys(itemDatabase).filter(k => itemDatabase[k].reqAmmo === key);
+        if (weapons.length) add('🎯', 'Lőszer ehhez', list(weapons.map(name)));
+    }
+    if (item.passive) add('🎒', 'Passzív', 'elég, ha a leltáradban van');
+
+    // Később jövő funkciók
+    if (['valuable', 'collectible', 'artifact'].includes(item.type)) add('💰', 'Értéktárgy', 'a Menedék kereskedője jó pénzt ad érte (hamarosan, v0.2)');
+    if (key === 'antirad_pills') add('☢️', 'Sugárzás ellen', 'a vörös (sugárzó) zónákkal érkezik (hamarosan)');
+
+    if (uses.length === 0) {
+        if (SurvivalStats.isConsumable(item)) add('🍽️', 'Fogyasztható', 'a hatását fent látod');
+        else if (SurvivalStats.isEquippable(item)) add('🧥', 'Felvehető', 'a bónuszait fent látod');
+    }
+    return uses;
+}
+
+function itemUsesHtml(key) {
+    const uses = itemUses(key);
+    if (uses.length === 0) return '';
+    return `<div class="text-[10px] font-bold tracking-wider text-amber-400 uppercase mb-1">Mire jó?</div>`
+        + uses.map(u => `<div class="text-[10px] text-gray-300 leading-snug">${u.icon} <span class="font-bold text-amber-200">${escapeAttr(u.label)}:</span> ${escapeAttr(u.text)}</div>`).join('');
 }
 
 function repairItem(ref) {
@@ -544,6 +621,12 @@ function renderItemSheet() {
     document.getElementById('item-sheet-dur').innerHTML = durabilityHtml(durSlot, item)
         + (broken ? `<div class="text-[10px] font-bold text-red-400 mt-1">💥 Tönkrement: amíg meg nem javítod, nem ad bónuszt.</div>` : '')
         + (repairInfo ? `<div class="text-[9px] mt-0.5 ${repairInfo.ok ? 'text-sky-300/90' : 'text-red-400/90'}">🔧 Javítás (+${repairInfo.percent}%): ${escapeAttr(repairInfo.text)}</div>` : '');
+    const usesBox = document.getElementById('item-sheet-uses');
+    if (usesBox) {
+        const html = itemUsesHtml(ref.key);
+        usesBox.innerHTML = html;
+        usesBox.classList.toggle('hidden', !html);
+    }
     const compare = document.getElementById('item-sheet-compare');
     if (compare) {
         const html = ref.source === 'inv' ? itemCompareHtml(item, ref.key) : '';
@@ -585,6 +668,60 @@ function inventoryAction(index) {
     else if (SurvivalStats.isEquippable(item)) equipItem(slot.key, SurvivalStats.equipSlot(item), index);
 }
 
+// ===== LELTÁR: RENDEZÉS ÉS KIDOBÁS MÓD =====
+let dropMode = false;
+let dropSelection = new Set();  // kijelölt leltárhelyek (index)
+let dropConfirmArmed = false;   // a "Kidob" gombot kétszer kell megnyomni
+
+function sortInventory() {
+    dropSelection = new Set(); dropConfirmArmed = false; // a helyek sorrendje megváltozik
+    if (typeof socket !== 'undefined' && socket) socket.emit('sort_inventory');
+}
+
+function toggleDropMode(on) {
+    dropMode = typeof on === 'boolean' ? on : !dropMode;
+    dropSelection = new Set();
+    dropConfirmArmed = false;
+    if (dropMode) closeItemSheet();
+    updateUI();
+}
+
+function toggleDropSelect(index) {
+    if (!player.inventory[index]) return;
+    if (dropSelection.has(index)) dropSelection.delete(index); else dropSelection.add(index);
+    dropConfirmArmed = false;
+    updateUI();
+}
+
+function renderDropBar() {
+    const bar = document.getElementById('drop-bar');
+    const modeBtn = document.getElementById('btn-inv-dropmode');
+    if (modeBtn) modeBtn.classList.toggle('active', dropMode);
+    if (!bar) return;
+    bar.classList.toggle('hidden', !dropMode);
+    if (!dropMode) return;
+    // a már nem létező helyek kiesnek (pl. elhasznált tárgy)
+    dropSelection.forEach(i => { if (!player.inventory[i]) dropSelection.delete(i); });
+    const pieces = [...dropSelection].reduce((sum, i) => sum + (player.inventory[i] ? player.inventory[i].count : 0), 0);
+    const info = document.getElementById('drop-bar-info');
+    if (info) info.textContent = dropSelection.size ? `${dropSelection.size} hely kijelölve (${pieces} db)` : 'Koppints a kidobandó tárgyakra';
+    const confirmBtn = document.getElementById('drop-bar-confirm');
+    if (confirmBtn) {
+        confirmBtn.textContent = dropConfirmArmed ? 'Biztos? Kidob!' : `Kidob${dropSelection.size ? ` (${dropSelection.size})` : ''}`;
+        confirmBtn.classList.toggle('opacity-50', dropSelection.size === 0);
+    }
+}
+
+function confirmDropSelection() {
+    if (dropSelection.size === 0) return;
+    if (!dropConfirmArmed) { dropConfirmArmed = true; renderDropBar(); return; }
+    const slots = [...dropSelection].filter(i => player.inventory[i]).map(i => ({ index: i, key: player.inventory[i].key }));
+    if (typeof socket !== 'undefined' && socket && slots.length) socket.emit('drop_items', { slots });
+    dropSelection = new Set();
+    dropConfirmArmed = false;
+    renderDropBar();
+}
+
 function updateUI() {
     updateHUD();
     if (!Array.isArray(player.inventory)) player.inventory = [];
@@ -601,9 +738,12 @@ function updateUI() {
         const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦', desc: '', weight: 0 };
         const count = slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : '';
         const brokenTile = item.wear && slot.dur !== undefined && slot.dur <= 0;
-        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}" onclick="openItemSheet('inv', ${index})" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}</button>`;
+        const selected = dropMode && dropSelection.has(index);
+        const click = dropMode ? `toggleDropSelect(${index})` : `openItemSheet('inv', ${index})`;
+        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}${selected ? ' selected' : ''}" onclick="${click}" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}${selected ? '<span class="tile-check">❌</span>' : ''}</button>`;
     }
     invGrid.innerHTML = invHtml;
+    renderDropBar();
     refreshItemSheet();
 
     const combatHealList = document.getElementById('combat-heal-list');
@@ -674,7 +814,10 @@ function renderCraftList() {
     if (!craftList) return;
     const have = (key) => player.inventory.filter(s => s.key === key).reduce((sum, s) => sum + s.count, 0);
     const name = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
-    const hasTools = (recipe) => (recipe.tools || []).every(entry => (Array.isArray(entry) ? entry : [entry]).some(k => have(k) > 0));
+    const toolOptions = (entry) => (window.RecipeTools ? RecipeTools.toolOptions(entry) : (Array.isArray(entry) ? entry : [entry]));
+    const fire = (window.RecipeTools && RecipeTools.FIRE_STARTERS) || ['matchbox', 'ferro_rod'];
+    const hasFire = (recipe) => !recipe.fire || fire.some(k => have(k) > 0);
+    const hasTools = (recipe) => hasFire(recipe) && (recipe.tools || []).every(entry => toolOptions(entry).some(k => have(k) > 0));
     const hasMaterials = (recipe) => Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty);
 
     const recipes = craftingRecipes.filter(recipe => !recipe.station);
@@ -694,7 +837,7 @@ function renderCraftList() {
                 return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${qty}× ${name(mat)}</span>`;
             }).join(', ');
             const toolText = (recipe.tools || []).map(entry => {
-                const options = Array.isArray(entry) ? entry : [entry];
+                const options = toolOptions(entry);
                 const ok = options.some(k => have(k) > 0);
                 return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${options.map(name).join(' / ')}</span>`;
             }).join(', ');
@@ -707,6 +850,7 @@ function renderCraftList() {
                         <div class="text-xs font-bold text-emerald-300">${recipe.name}${recipe.count > 1 ? ` (${recipe.count} db)` : ''}</div>
                         <div class="text-[10px] text-emerald-400/80">${recipe.desc}</div>
                         <div class="text-[9px] text-amber-300/80">Kell: ${reqText}</div>
+                        ${recipe.fire ? `<div class="text-[9px] text-orange-300/80">Tűz: <span class="${hasFire(recipe) ? 'text-emerald-300' : 'text-red-400'}">${name(fire[0])} (fogy) / ${name(fire[1])} (kopik)</span></div>` : ''}
                         ${toolText ? `<div class="text-[9px] text-sky-300/80">Szerszám (kopik): ${toolText}</div>` : ''}
                     </div>
                 </div>
@@ -753,6 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeAddEvent('btn-close-equipment', 'click', () => { 
         const modal = document.getElementById('equipment-modal');
         if (modal) modal.classList.add('hidden'); 
+        if (dropMode) toggleDropMode(false); // bezáráskor a Kidobás mód is kikapcsol
     });
 
     // Craft ablak

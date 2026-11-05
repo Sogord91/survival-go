@@ -69,6 +69,10 @@
         .tile-count { position: absolute; right: 3px; bottom: 2px; font-size: 10px; font-weight: 800; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
         .tile-dur { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 3px; background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden; pointer-events: none; }
         .tile-dur > div { height: 100%; }
+        .inv-tile.selected { border-color: rgba(248, 113, 113, 0.95); background: rgba(127, 29, 29, 0.55); box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.5) inset; }
+        .inv-tile .tile-check { position: absolute; top: 2px; left: 3px; font-size: 11px; line-height: 1; pointer-events: none; }
+        .inv-tool-btn { font-size: 10px; font-weight: 700; color: #a7f3d0; background: rgba(6, 78, 59, 0.6); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 6px; padding: 3px 7px; }
+        .inv-tool-btn.active { color: #fecaca; background: rgba(127, 29, 29, 0.7); border-color: rgba(248, 113, 113, 0.8); }
         .eq-tile.broken, .inv-tile.broken { border-color: rgba(239, 68, 68, 0.8); background: rgba(69, 10, 10, 0.55); }
         .eq-tile.broken img, .inv-tile.broken img { filter: grayscale(0.8) brightness(0.6); }
         .tile-broken { position: absolute; right: 2px; top: 1px; font-size: 12px; pointer-events: none; filter: drop-shadow(0 0 2px #000); }
@@ -474,10 +478,18 @@
         <!-- ALSÓ SZEKCIÓ: HÁTIZSÁK TARTALMA (Rácsos elrendezésben) -->
         <div class="bg-emerald-950/40 border border-emerald-600/40 rounded-xl p-3 flex flex-col flex-1">
             <div class="flex justify-between items-center mb-2">
-                <span class="text-xs font-bold text-emerald-300">📦 HÁTIZSÁK TARTALMA</span>
-                <span class="text-[11px] text-emerald-400 font-mono">(<span id="inv-count">0</span> / <span id="inv-max">10</span>)</span>
+                <span class="text-xs font-bold text-emerald-300">📦 HÁTIZSÁK <span class="text-[11px] text-emerald-400 font-mono font-normal">(<span id="inv-count">0</span> / <span id="inv-max">10</span>)</span></span>
+                <span class="flex gap-1.5">
+                    <button id="btn-inv-sort" onclick="sortInventory()" class="inv-tool-btn" title="Rendezés típus szerint">⇅ Rendez</button>
+                    <button id="btn-inv-dropmode" onclick="toggleDropMode()" class="inv-tool-btn" title="Több tárgy kidobása egyszerre">🗑️ Kidobás</button>
+                </span>
             </div>
             <div id="inventory-grid" class="grid grid-cols-5 gap-2 overflow-y-auto max-h-[42vh] pr-1"></div>
+            <div id="drop-bar" class="hidden mt-2 flex items-center gap-2">
+                <span id="drop-bar-info" class="flex-1 text-[11px] text-red-300 font-bold">Koppints a kidobandó tárgyakra</span>
+                <button onclick="toggleDropMode(false)" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Mégse</button>
+                <button id="drop-bar-confirm" onclick="confirmDropSelection()" class="bg-red-800 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-bold opacity-50">Kidob</button>
+            </div>
         </div>
 
     </div>
@@ -511,6 +523,7 @@
                 </div>
                 <button onclick="closeItemSheet()" class="text-emerald-500 hover:text-emerald-300 text-lg font-bold px-1">✕</button>
             </div>
+            <div id="item-sheet-uses" class="hidden mt-3 p-2 rounded-lg bg-black/40 border border-amber-800/50 max-h-44 overflow-y-auto"></div>
             <div id="item-sheet-compare" class="hidden mt-3 p-2 rounded-lg bg-black/40 border border-emerald-800/60"></div>
             <div id="item-sheet-actions" class="flex gap-2 mt-4"></div>
         </div>

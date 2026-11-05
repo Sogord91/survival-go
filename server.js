@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const config = require('./config');
 const authToken = require('./auth-token');
 const craftingRecipes = require('./public/js/recipes');
+const { RecipeTools } = craftingRecipes;
 const itemDatabase = require('./public/js/items');
 const SurvivalStats = require('./public/js/stats'); // közös számítások (a kliens is ezt használja)
 const SurvivalBuildings = require('./public/js/buildings'); // közös épülettípusok és loot-sorsolás
@@ -291,7 +292,8 @@ function safeAvatar(avatar) {
 function viewRadius(viewer) {
     if (viewer.lat === null) return 0;
     const night = SurvivalSun.isNight(viewer.lat, viewer.lng, new Date(Date.now()));
-    return night && !viewer.hasLight ? config.PLAYER_VIEW_NIGHT_METERS : config.PLAYER_VIEW_METERS;
+    if (night && !viewer.hasLight) return config.PLAYER_VIEW_NIGHT_METERS;
+    return viewer.hasBinoculars ? config.PLAYER_VIEW_BINOCULARS_METERS : config.PLAYER_VIEW_METERS;
 }
 
 // A néző közelében lévő többi játékos (név, avatar, szint, hely) – a pontos helyet csak a közelieknek adjuk ki
@@ -317,7 +319,7 @@ function sendNearby(name) {
 
 // Akiket érint egy mozgás / kilépés: mindenki, aki a régi vagy az új hely közelében van
 function notifyAround(points, exceptName) {
-    const maxRadius = config.PLAYER_VIEW_METERS;
+    const maxRadius = Math.max(config.PLAYER_VIEW_METERS, config.PLAYER_VIEW_BINOCULARS_METERS);
     for (const name in activePlayers) {
         if (name === exceptName) continue;
         const p = activePlayers[name];
@@ -353,6 +355,13 @@ function normalizePlayer(raw) {
                 const existing = inventory.find(x => x.key === s.key);
                 if (existing) existing.count += count;
                 else inventory.push({ key: s.key, count });
+                // stackelhető, de fogyó fény (gyertya, jelzőfény): a legfelső darab égési ideje megmarad
+                const max = item && Number(item.durability);
+                const d = Number(s.dur);
+                if (max && s.dur !== undefined && s.dur !== null && Number.isFinite(d)) {
+                    const slot = existing || inventory[inventory.length - 1];
+                    slot.dur = Math.min(slot.dur === undefined ? max : slot.dur, Math.min(Math.max(d, 0), max));
+                }
             }
         });
     return {
@@ -494,6 +503,8 @@ function sendPlayerState(username, p, extra) {
     if (!entry) return;
     entry.level = p.level;                                                  // a többiek ezt látják
     entry.hasLight = !!SurvivalStats.findUsableLight(p.inventory, itemDatabase); // éjszakai látótávolsághoz
+    entry.hasBinoculars = hasItem(p, 'binoculars');                          // messzebbre látsz
+    entry.walkXpBonus = ['pocket_compass', 'topo_map'].filter(k => hasItem(p, k)).length * config.WALK_XP_BONUS_PER_ITEM;
     io.to(entry.socketId).emit('player_state', {
         player: publicPlayerData(p),
         stats: playerStats(p),
@@ -692,17 +703,40 @@ function collectWarnings(entry, p) {
 // --- FÉNYFORRÁSOK FOGYÁSA (éjszaka, online) ---
 // A fény percben fogy. Lemerült lámpába automatikusan új elem / lámpaolaj kerül, ha van; a fáklya elég.
 // Visszaadja az üzeneteket (pl. "Elégett a fáklyád").
+// Powerbank: egy lemerült elemes lámpa teljes feltöltése 1 töltésért. true, ha sikerült.
+function rechargeWithPowerBank(p, notices) {
+    const bank = p.inventory.find(s => s.key === 'power_bank' && (s.dur === undefined || s.dur > 0));
+    if (!bank) return false;
+    const lamp = p.inventory.find(s => {
+        const item = itemDatabase[s.key];
+        return item && item.light && item.light.fuel === 'aa_batteries' && s.dur !== undefined && s.dur <= 0;
+    });
+    if (!lamp) return false;
+    const lampItem = itemDatabase[lamp.key];
+    lamp.dur = lampItem.durability;
+    bank.dur = (bank.dur === undefined ? itemDatabase.power_bank.durability : bank.dur) - 1;
+    notices.push(`🔋 A powerbank feltöltötte: ${lampItem.name}.`);
+    if (bank.dur <= 0) {
+        p.inventory = p.inventory.filter(s => s !== bank);
+        notices.push(`Elhasználódott: ${itemDatabase.power_bank.name}.`);
+    }
+    return true;
+}
+
 function burnLight(p, minutes) {
     const notices = [];
     let remaining = minutes;
     let guard = 0;
     while (remaining > 1e-9 && guard++ < 20) {
         const light = SurvivalStats.findUsableLight(p.inventory, itemDatabase);
+        // Powerbank: ha nincs elem, egy lemerült elemes lámpát feltölt (mielőtt fáklyát/gyertyát égetnénk el)
+        if ((!light || !light.item.light.fuel) && rechargeWithPowerBank(p, notices)) continue;
         if (!light) {
             notices.push('Nincs működő fényforrásod, sötétben vagy.');
             break;
         }
         const { slot, item } = light;
+        if (slot.dur === undefined) slot.dur = item.durability; // stackelt gyertya / jelzőfény: a legfelső darab még ép
         if (light.needsRefill) {
             removeItem(p, item.light.fuel, 1);
             slot.dur = item.durability;
@@ -713,7 +747,9 @@ function burnLight(p, minutes) {
         remaining -= use;
         if (slot.dur <= 0) {
             if (!item.light.fuel) {
-                p.inventory = p.inventory.filter(s => s !== slot);
+                // fogyó fény: a köteg következő darabja jön (gyertya, jelzőfény), az utolsó után eltűnik
+                if (slot.count > 1) { slot.count -= 1; delete slot.dur; }
+                else p.inventory = p.inventory.filter(s => s !== slot);
                 notices.push(`Elégett: ${item.name}.`);
             } else {
                 slot.dur = 0;
@@ -1084,6 +1120,35 @@ async function releaseBuildingLock(id, username, lockedUntil) {
 
 // Egy épület átkutatása (loot-sorsolás és jóváírás). emptyFactor < 1: kisebb eséllyel üres (pl. győzelem után)
 // A talált holmi (még nem kerül a leltárba: a Zsákmány ablakban lehet elvenni)
+// Leltár sorrend: fegyver, lőszer, felszerelés, gyógyszer, étel, ital, eszköz, alapanyag, értéktárgy
+const INVENTORY_TYPE_ORDER = ['weapon', 'ammo', 'helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack',
+    'medicine', 'food', 'drink', 'tool', 'material', 'mod', 'valuable', 'collectible', 'artifact'];
+function sortInventory(inventory) {
+    const rank = (s) => {
+        const item = itemDatabase[s.key];
+        const i = item ? INVENTORY_TYPE_ORDER.indexOf(item.type) : -1;
+        return i < 0 ? INVENTORY_TYPE_ORDER.length : i;
+    };
+    const label = (s) => (itemDatabase[s.key] ? itemDatabase[s.key].name : s.key);
+    return inventory.slice().sort((a, b) => (rank(a) - rank(b))
+        || label(a).localeCompare(label(b), 'hu')
+        || ((b.dur ?? Infinity) - (a.dur ?? Infinity)));
+}
+
+function hasItem(p, key) {
+    return p.inventory.some(s => s.key === key && s.count > 0);
+}
+
+// Álkulcs: ha nálad van, ritkábban üres az épület; minden kutatás 1-et koptat rajta. { factor, broke }
+function useLockpick(p) {
+    const slot = p.inventory.find(s => s.key === 'lockpick' && s.count > 0);
+    if (!slot) return { factor: 1, broke: false };
+    slot.dur = (slot.dur === undefined ? itemDatabase.lockpick.durability : slot.dur) - 1;
+    const broke = slot.dur <= 0;
+    if (broke) p.inventory = p.inventory.filter(s => s !== slot);
+    return { factor: config.LOCKPICK_EMPTY_FACTOR, broke };
+}
+
 function rollBuildingLoot(building, emptyFactor) {
     return SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor })
         .map(({ key, count }) => ({ key, count }));
@@ -1178,7 +1243,12 @@ io.on('connection', (socket) => {
             if (!SurvivalStats.isConsumable(itemConfig)) return { save: false, error: 'Ezt a tárgyat nem lehet így használni!' };
 
             // A hatások az items.js "effects" mezőjéből jönnek (éhség, szomjúság, élet, fáradtság)
-            const changes = SurvivalStats.applyEffects(p, itemConfig.effects, playerStats(p).maxHp);
+            // Termosz a leltárban: az italok jobban oltják a szomjat
+            let effects = itemConfig.effects;
+            if (itemConfig.type === 'drink' && effects && effects.thirst > 0 && hasItem(p, 'thermos')) {
+                effects = { ...effects, thirst: Math.round(effects.thirst * (1 + config.THERMOS_DRINK_BONUS)) };
+            }
+            const changes = SurvivalStats.applyEffects(p, effects, playerStats(p).maxHp);
             if (Object.keys(changes).length === 0) return { save: false, error: 'Most nincs rá szükséged.' };
 
             removeItem(p, data.itemKey, 1);
@@ -1286,12 +1356,19 @@ io.on('connection', (socket) => {
             const itemName = (k) => (itemDatabase[k] ? itemDatabase[k].name : k);
             let toolKeys, materials, fraction;
             if (isGear) { toolKeys = ['sewing_kit']; materials = { rag: 1 }; fraction = config.REPAIR_GEAR_FRACTION; }
+            else if (isFirearm && countItem(p, 'gun_cleaning_kit') === 0) {
+                // Pucolókészlet nélkül: gépolaj + rongy gyorsjavítás (kisebb hatás, nem kell szerszám)
+                if (countItem(p, 'machine_oil') < 1 || countItem(p, 'rag') < 1) {
+                    return { save: false, error: `A javításhoz kell: ${itemName('gun_cleaning_kit')}, vagy 1 ${itemName('machine_oil')} + 1 ${itemName('rag')}.` };
+                }
+                toolKeys = []; materials = { machine_oil: 1, rag: 1 }; fraction = config.MACHINE_OIL_REPAIR_FRACTION;
+            }
             else if (isFirearm) { toolKeys = ['gun_cleaning_kit']; materials = {}; fraction = config.REPAIR_FIREARM_FRACTION; }
-            else { toolKeys = ['claw_hammer', 'pliers', 'multitool']; materials = { duct_tape: 1 }; fraction = config.REPAIR_OTHER_FRACTION; }
+            else { toolKeys = ['claw_hammer', 'pliers', 'multitool', 'toolbox']; materials = { duct_tape: 1 }; fraction = config.REPAIR_OTHER_FRACTION; }
 
             const tools = p.inventory.filter(s => toolKeys.includes(s.key) && s.count > 0)
-                .sort((a, b) => (a.dur ?? Infinity) - (b.dur ?? Infinity));
-            if (tools.length === 0) return { save: false, error: `A javításhoz kell: ${toolKeys.map(itemName).join(' vagy ')}.` };
+                .sort((a, b) => ((a.key === 'toolbox') - (b.key === 'toolbox')) || ((a.dur ?? Infinity) - (b.dur ?? Infinity)));
+            if (toolKeys.length > 0 && tools.length === 0) return { save: false, error: `A javításhoz kell: ${toolKeys.map(itemName).join(' vagy ')}.` };
             for (const [mat, qty] of Object.entries(materials)) {
                 if (countItem(p, mat) < qty) return { save: false, error: `A javításhoz kell: ${qty}× ${itemName(mat)}.` };
             }
@@ -1301,7 +1378,7 @@ io.on('connection', (socket) => {
             setDur(after);
             let message = `🔧 Megjavítottad: ${item.name} (${after}/${max}).`;
             const tool = tools[0];
-            if (tool.dur !== undefined) {
+            if (tool && tool.dur !== undefined) {
                 tool.dur -= 1;
                 if (tool.dur <= 0) {
                     p.inventory = p.inventory.filter(s => s !== tool);
@@ -1323,6 +1400,35 @@ io.on('connection', (socket) => {
             const item = itemDatabase[data.itemKey];
             return { message: `Eldobtál ${count} db-ot: ${item ? item.name : data.itemKey}` };
         })).then(reply('drop_result')).catch(logError("Hiba eldobás során:"));
+    });
+
+    // --- TÖBB TÁRGY ELDOBÁSA EGYSZERRE (Kidobás mód) ---
+    // A kliens a kijelölt helyeket küldi: [{ index, key }]; minden hely teljes egészében (az egész köteg) eltűnik.
+    // A kulcs ellenőrzése miatt egy közben megváltozott leltárnál nem dobunk el rossz tárgyat.
+    socket.on('drop_items', (data) => {
+        if (!data || !Array.isArray(data.slots) || data.slots.length === 0 || data.slots.length > 200) return;
+        if (!data.slots.every(x => x && Number.isInteger(x.index) && typeof x.key === 'string')) return;
+
+        withPlayer(username, freeOnly((p) => {
+            const indices = [...new Set(data.slots.map(x => x.index))];
+            if (indices.length !== data.slots.length) return { save: false, error: 'Hibás kijelölés.' };
+            for (const x of data.slots) {
+                const slot = p.inventory[x.index];
+                if (!slot || slot.key !== x.key) return { save: false, error: 'A leltár közben megváltozott, jelöld ki újra!' };
+            }
+            const dropped = data.slots.map(x => p.inventory[x.index]);
+            p.inventory = p.inventory.filter(s => !dropped.includes(s));
+            const pieces = dropped.reduce((sum, s) => sum + s.count, 0);
+            return { message: `Kidobtál ${dropped.length} helyet (${pieces} db tárgy).`, payload: { dropped: dropped.length } };
+        })).then(reply('drop_result')).catch(logError("Hiba a több tárgy eldobása során:"));
+    });
+
+    // --- LELTÁR RENDEZÉSE (típus, majd név szerint) ---
+    socket.on('sort_inventory', () => {
+        withPlayer(username, freeOnly((p) => {
+            p.inventory = sortInventory(p.inventory);
+            return { message: 'Leltár rendezve.' };
+        })).then(reply('sort_result')).catch(logError("Hiba a leltár rendezése során:"));
     });
 
     // --- POZÍCIÓ SZINKRON + MOZGÁS (fáradtság, XP) ---
@@ -1377,7 +1483,7 @@ io.on('connection', (socket) => {
         entry.lastMovedAt = now;
         if (speedKmh > config.MOVE_MAX_SPEED_KMH) return; // járművel: nem jár érte XP és nem fáraszt
 
-        entry.xpMeters += moved;
+        entry.xpMeters += moved * (1 + (entry.walkXpBonus || 0)); // iránytű / térkép: több XP
         const xp = Math.floor(entry.xpMeters / config.MOVE_XP_METERS);
         entry.xpMeters -= xp * config.MOVE_XP_METERS;
 
@@ -1418,21 +1524,35 @@ io.on('connection', (socket) => {
                 }
             }
 
-            // Szerszámok: nem fogynak el, de kopnak. Több lehetőségnél a legkopottabbat használjuk el előbb.
+            // Szerszámok: nem fogynak el, de kopnak. Több lehetőségnél a legkopottabbat használjuk el előbb,
+            // a szerszámosládát (ami mindent pótol) csak akkor, ha nincs más.
             const usedTools = [];
             for (const entry of recipe.tools || []) {
-                const options = Array.isArray(entry) ? entry : [entry];
+                const options = RecipeTools.toolOptions(entry);
                 const candidates = p.inventory.filter(s => options.includes(s.key) && s.count > 0 && !usedTools.includes(s));
                 if (candidates.length === 0) {
                     return { save: false, error: `Hiányzó szerszám: ${options.map(itemName).join(' vagy ')}` };
                 }
-                candidates.sort((a, b) => (a.dur ?? Infinity) - (b.dur ?? Infinity));
+                candidates.sort((a, b) => ((a.key === 'toolbox') - (b.key === 'toolbox')) || ((a.dur ?? Infinity) - (b.dur ?? Infinity)));
                 usedTools.push(candidates[0]);
+            }
+
+            // Tűzgyújtás: gyufa (elfogy), ha nincs, a tűzgyújtó rúd (kopik)
+            let fireMatch = false;
+            if (recipe.fire) {
+                const [match, rod] = RecipeTools.FIRE_STARTERS;
+                if (countItem(p, match) >= 1 + (recipe.req[match] || 0)) fireMatch = true;
+                else {
+                    const rodSlot = p.inventory.find(s => s.key === rod && s.count > 0 && !usedTools.includes(s));
+                    if (!rodSlot) return { save: false, error: `Tüzet kell gyújtani: ${itemName(match)} vagy ${itemName(rod)} kell hozzá.` };
+                    usedTools.push(rodSlot);
+                }
             }
 
             // Előbb elvesszük az alapanyagokat (ez helyet szabadíthat fel), aztán megnézzük, elfér-e a termék.
             // Ha nem fér el, semmi nem mentődik (save: false), így az alapanyagok sem vesznek el.
             for (const [matKey, reqQty] of Object.entries(recipe.req)) removeItem(p, matKey, reqQty);
+            if (fireMatch) removeItem(p, RecipeTools.FIRE_STARTERS[0], 1);
             const result = recipe.result || recipe.key;
             const count = recipe.count || 1;
             const added = addItem(p, result, count);
@@ -1525,13 +1645,15 @@ io.on('connection', (socket) => {
                 };
             }
 
-            const found = rollBuildingLoot(building, 1);
+            const pick = useLockpick(p);
+            const found = rollBuildingLoot(building, pick.factor);
             addFatigue(p, config.FATIGUE_LOOT);
+            const pickNote = pick.broke ? ` Eltört: ${itemDatabase.lockpick.name}.` : '';
 
             if (found.length === 0) {
                 return {
                     lockedUntil,
-                    message: `Ez a(z) ${building.name} üres volt.`,
+                    message: `Ez a(z) ${building.name} üres volt.${pickNote}`,
                     payload: { items: [], buildingId, lockedUntil, buildingName: building.name, encounter: null, cache: null }
                 };
             }
@@ -1541,6 +1663,7 @@ io.on('connection', (socket) => {
             return {
                 lockedUntil,
                 cacheUntil: cache.until,
+                ...(pickNote ? { message: pickNote.trim() } : {}),
                 payload: { items: found, buildingId, lockedUntil, buildingName: building.name, encounter: null, cache: publicCache(cache, username) }
             };
         })).then(r => {
@@ -1759,7 +1882,9 @@ io.on('connection', (socket) => {
                 const messages = [`Legyőzted: ${combat.enemy.name}! +${reward.xp} XP, +${reward.money} pénz.`];
                 // Győzelem után átkutatod az épületet (kisebb eséllyel üres); az ellenfélnél lévő tárgy is a zsákmányba kerül.
                 // Minden a Zsákmány ablakba megy, amit nem teszel el, az LOOT_CACHE_MINUTES percig az épületben marad.
-                const found = rollBuildingLoot(building, config.COMBAT_WIN_EMPTY_FACTOR);
+                const pick = useLockpick(p);
+                const found = rollBuildingLoot(building, config.COMBAT_WIN_EMPTY_FACTOR * pick.factor);
+                if (pick.broke) messages.push(`Eltört: ${itemDatabase.lockpick.name}.`);
                 if (reward.drop) {
                     found.unshift({ key: reward.drop, count: 1 });
                     messages.push(`Nála volt: ${itemDatabase[reward.drop].name}.`);

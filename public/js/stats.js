@@ -132,7 +132,7 @@
 
     // --- FÉNYFORRÁSOK ---
     // Melyik fény ég: előbb az elemes / olajos lámpák, a fáklyát (ami elfogy) a végére hagyjuk
-    const LIGHT_ORDER = ['led_lantern', 'headlamp', 'flashlight', 'kerosene_lantern', 'torch'];
+    const LIGHT_ORDER = ['led_lantern', 'headlamp', 'flashlight', 'rescue_strobe', 'kerosene_lantern', 'torch', 'candle', 'flare'];
 
     // Használható fényforrás a leltárban: { slot, item, needsRefill } vagy null.
     // needsRefill: lemerült, de van hozzá üzemanyag (elem, lámpaolaj), így újratölthető.

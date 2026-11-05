@@ -237,8 +237,10 @@ function heal(p, combat, itemDatabase, itemKey, random) {
 // Menekülés: nagy eséllyel sikerül (fáradtan nehezebb); ha nem, az ellenség üt
 function flee(p, combat, itemDatabase, random) {
     random = random || Math.random;
-    const chance = RULES.FLEE_CHANCE + fatiguePenalty(p.fatigue || 0).flee;
-    if (random() < chance) return { events: [{ actor: 'player', type: 'flee', chance }], outcome: 'fled' };
+    // Mentősíp a leltárban: a sípszóra a támadó megtorpan, a menekülés mindig sikerül
+    const whistle = Array.isArray(p.inventory) && p.inventory.some(s => s.key === 'rescue_whistle' && s.count > 0);
+    const chance = whistle ? 1 : RULES.FLEE_CHANCE + fatiguePenalty(p.fatigue || 0).flee;
+    if (whistle || random() < chance) return { events: [{ actor: 'player', type: 'flee', chance, whistle }], outcome: 'fled' };
     const events = [{ actor: 'player', type: 'flee_fail', chance }];
     events.push(enemyTurn(p, combat, itemDatabase, random));
     combat.round += 1;

@@ -83,6 +83,10 @@ if (typeof socket !== 'undefined' && socket) {
         }
         logMessage(data.message);
     });
+
+    socket.on('sort_result', (data) => {
+        if (!data.success) logMessage(data.message || 'Nem sikerült rendezni a leltárt.');
+    });
 }
 
 // Tárgy eldobása (szerver oldali kérés; az eldobott tárgy eltűnik)

@@ -105,6 +105,7 @@ module.exports = {
     // --- TÖBBI JÁTÉKOS ---
     PLAYER_VIEW_METERS: 150,            // ennyire látod a többi játékost
     PLAYER_VIEW_NIGHT_METERS: 30,       // éjszaka, működő fényforrás nélkül
+    PLAYER_VIEW_BINOCULARS_METERS: 300, // távcsővel a leltárban (ha nem korlátoz a sötét)
     AVATARS: ['avatar1.png', 'avatar2.png', 'avatar3.png', 'avatar4.png'], // csak ezek választhatók (a public/images/avatars mappából)
 
     // --- MOZGÁS (GPS) ---
@@ -114,5 +115,11 @@ module.exports = {
     JUMP_MIN_METERS: 300,           // GPS-ugrás: legalább ekkora elmozdulás két jelentés között...
     JUMP_MIN_SPEED_KMH: 180,        // ...ennél nagyobb sebességgel (pl. GPS-hamisítás, rossz jel)
     JUMP_LOOT_BLOCK_SECONDS: 120,   // ugrás után ennyi ideig nem lehet lootolni
-    MOVE_XP_METERS: 100             // ennyi megtett méterenként jár +1 XP
+    MOVE_XP_METERS: 100,            // ennyi megtett méterenként jár +1 XP
+
+    // --- ESZKÖZÖK PASSZÍV HATÁSA (ha a leltárban vannak) ---
+    WALK_XP_BONUS_PER_ITEM: 0.10,   // zsebiránytű, topográfiai térkép: egyenként +10% gyaloglási XP
+    LOCKPICK_EMPTY_FACTOR: 0.6,     // álkulccsal ennyiszeresére csökken az üres épület esélye (1 kopás / kutatás)
+    THERMOS_DRINK_BONUS: 0.25,      // termosszal az italok szomjúságoltása +25%
+    MACHINE_OIL_REPAIR_FRACTION: 0.25 // lőfegyver gyorsjavítása gépolajjal + ronggyal
 };
