@@ -75,6 +75,11 @@ if (typeof socket !== 'undefined' && socket) {
         playSound('win');
     });
 
+    socket.on('quickbar_result', (data) => {
+        if (data.message) logMessage(data.message);
+        if (typeof renderItemSheet === 'function' && itemSheetRef) renderItemSheet();
+    });
+
     socket.on('drop_result', (data) => {
         if (!data.success) {
             logMessage(data.message || "Nem sikerült eldobni a tárgyat.");

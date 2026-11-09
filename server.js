@@ -84,7 +84,10 @@ const userSchema = new mongoose.Schema({
         walkMeters: { type: Number, default: 0 },  // gyaloglás a cipő legutóbbi kopása óta (méter)
         wearVersion: { type: Number, default: 0 }, // a kopási táblázat verziója (régi mentések arányos átszámításához)
         combat: { type: mongoose.Schema.Types.Mixed, default: null },     // folyamatban lévő harc (újracsatlakozás után is folytatódik)
-        dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} }   // személyes zárak menekülés után: { épület-azonosító: lejárat }
+        dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} },  // személyes zárak menekülés után: { épület-azonosító: lejárat }
+        stats: { type: mongoose.Schema.Types.Mixed, default: {} },        // életre szóló statisztika (a halál után is megmarad; v0.1.10)
+        lifeStartedAt: { type: Number, default: null },                   // a mostani túlélő mikor indult (a leghosszabb élethez)
+        quickbar: { type: Array, default: [] }                            // gyorssáv: 3 kitűzött fogyasztható tárgy kulcsa (vagy null)
     }
 });
 
@@ -102,6 +105,7 @@ function newPlayerData(earlyKit) {
             backpack: earlyKit ? config.EARLY_SURVIVOR_BACKPACK : null, secondary: null, melee: null },
         equipmentDur: {},   // a felvett tárgyak teljes tartóssággal indulnak (normalizePlayer tölti ki)
         walkMeters: 0,
+        lifeStartedAt: Date.now(),
         wearVersion: WEAR_VERSION,
         lastSeen: null,
         dead: false,
@@ -381,7 +385,10 @@ function normalizePlayer(raw) {
         lastSeen: (p.lastSeen === null || p.lastSeen === undefined) ? null : num(p.lastSeen, null),
         dead: !!p.dead,
         combat: p.combat && typeof p.combat === 'object' && p.combat.enemy ? p.combat : null,
-        dangerUntil: activeDangerLocks(p.dangerUntil)
+        dangerUntil: activeDangerLocks(p.dangerUntil),
+        stats: normalizeStats(p.stats),
+        quickbar: normalizeQuickbar(p.quickbar),
+        lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
     };
 }
 
@@ -457,7 +464,13 @@ function finalizePlayer(p) {
     p.fatigue = clamp(p.fatigue, 0, 100);
     p.hunger = clamp(p.hunger, 0, 100);
     p.thirst = clamp(p.thirst, 0, 100);
-    if (p.hp <= 0) { p.dead = true; p.combat = null; } // bármi viszi 0-ra a HP-t (éhezés, harc), a karakter meghal
+    if (p.hp <= 0) { // bármi viszi 0-ra a HP-t (éhezés, harc), a karakter meghal
+        if (!p.dead && p.stats) {
+            p.stats.deaths += 1;
+            if (p.lifeStartedAt) p.stats.longestLifeMs = Math.max(p.stats.longestLifeMs, Date.now() - p.lifeStartedAt);
+        }
+        p.dead = true; p.combat = null;
+    }
     return stats;
 }
 
@@ -495,6 +508,37 @@ function withPlayer(username, fn) {
     playerQueues.set(username, tail);
     tail.then(() => { if (playerQueues.get(username) === tail) playerQueues.delete(username); });
     return run;
+}
+
+// ===================== GYORSSÁV (v0.1.10) =====================
+const QUICKBAR_SIZE = 3;
+function normalizeQuickbar(raw) {
+    const list = Array.isArray(raw) ? raw : [];
+    const out = [];
+    for (let i = 0; i < QUICKBAR_SIZE; i++) {
+        const k = list[i];
+        out.push(typeof k === 'string' && itemDatabase[k] && SurvivalStats.isConsumable(itemDatabase[k]) && !out.includes(k) ? k : null);
+    }
+    return out;
+}
+
+// ===================== STATISZTIKA (v0.1.10) =====================
+// Egyelőre csak gyűjtjük (nincs kijelezve): később ebből lesznek az eredmények és a profil statisztikája.
+const STAT_NUMBERS = ['walkedMeters', 'buildingsLooted', 'itemsCrafted', 'combatsWon', 'killsTotal', 'deaths', 'longestLifeMs'];
+function normalizeStats(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    const out = {};
+    STAT_NUMBERS.forEach(k => { out[k] = Math.max(0, Number(s[k]) || 0); });
+    out.kills = {};
+    if (s.kills && typeof s.kills === 'object') {
+        Object.keys(s.kills).forEach(k => { const v = Number(s.kills[k]) || 0; if (v > 0) out.kills[k] = v; });
+    }
+    out.since = Number(s.since) || Date.now(); // mióta gyűjtjük
+    return out;
+}
+function bumpStat(p, key, amount) {
+    if (!p.stats) p.stats = normalizeStats(null);
+    p.stats[key] = (p.stats[key] || 0) + (amount === undefined ? 1 : amount);
 }
 
 // A teljes, friss állapot elküldése a játékos aktív kapcsolatára
@@ -1489,6 +1533,8 @@ io.on('connection', (socket) => {
 
         withPlayer(username, aliveOnly((p) => {
             addFatigue(p, moved * config.FATIGUE_PER_METER);
+            bumpStat(p, 'walkedMeters', moved);
+            if (!p.lifeStartedAt) p.lifeStartedAt = Date.now();
             const levels = xp > 0 ? grantXp(p, xp) : 0;
             // A cipő a gyaloglástól is kopik (5 km-enként 1)
             const notices = [];
@@ -1537,6 +1583,13 @@ io.on('connection', (socket) => {
                 usedTools.push(candidates[0]);
             }
 
+            // Víz: bármilyen víz jó, a legolcsóbbat használjuk (szennyezett csapvíz előbb)
+            let waterKey = null;
+            if (recipe.water) {
+                waterKey = RecipeTools.WATER_SOURCES.find(k => countItem(p, k) >= recipe.water + (recipe.req[k] || 0)) || null;
+                if (!waterKey) return { save: false, error: `Víz kell hozzá: ${recipe.water} adag (bármilyen, a szennyezett is jó).` };
+            }
+
             // Tűzgyújtás: gyufa (elfogy), ha nincs, a tűzgyújtó rúd (kopik)
             let fireMatch = false;
             if (recipe.fire) {
@@ -1553,6 +1606,7 @@ io.on('connection', (socket) => {
             // Ha nem fér el, semmi nem mentődik (save: false), így az alapanyagok sem vesznek el.
             for (const [matKey, reqQty] of Object.entries(recipe.req)) removeItem(p, matKey, reqQty);
             if (fireMatch) removeItem(p, RecipeTools.FIRE_STARTERS[0], 1);
+            if (waterKey) removeItem(p, waterKey, recipe.water);
             const result = recipe.result || recipe.key;
             const count = recipe.count || 1;
             const added = addItem(p, result, count);
@@ -1569,6 +1623,7 @@ io.on('connection', (socket) => {
                 }
             });
 
+            bumpStat(p, 'itemsCrafted', count);
             let message = `Sikeresen megbarkácsoltad: ${recipe.name}${count > 1 ? ` (${count} db)` : ''}!`;
             if (broken.length > 0) message += ` Eltört: ${broken.join(', ')}.`;
             return { message, payload: { broken } };
@@ -1582,6 +1637,82 @@ io.on('connection', (socket) => {
     //  3. atomi művelettel lezárja az épületet mindenki számára (ha már zárva van, elutasít),
     //  4. sorsol: találkozás (az épülettípus veszélyessége szerint), majd a loot-tábla alapján 1-3 tárgy.
     let lastLootRequestAt = 0;
+    let activeSearch = null; // folyamatban lévő átkutatás ezen a kapcsolaton: { buildingId, readyAt }
+
+    // Közös ellenőrzés a kutatás kezdetéhez és befejezéséhez. Hibánál { error }, különben { entry, building, now }.
+    async function lootPrecheck(p, buildingId) {
+        if (p.fatigue >= 100) return { error: 'Teljesen kimerültél! Pihenned kell.' };
+        const entry = activePlayers[username];
+        const now = Date.now();
+        if (entry && entry.lootBlockedUntil > now) {
+            const seconds = Math.ceil((entry.lootBlockedUntil - now) / 1000);
+            return { error: `A GPS-pozíciód nemrég hirtelen ugrott. Várj még ${seconds} másodpercet!` };
+        }
+        const dangerUntil = p.dangerUntil[buildingId];
+        if (dangerUntil && dangerUntil > now) {
+            const minutes = Math.max(1, Math.ceil((dangerUntil - now) / 60000));
+            return { error: `Az ellenség még bent van, ahonnan elmenekültél. Gyere vissza később! (kb. ${minutes} perc)` };
+        }
+        if (!entry || entry.lat === null || !entry.positionAt || now - entry.positionAt > config.POSITION_MAX_AGE_SECONDS * 1000) {
+            return { error: 'Várd meg a friss GPS pozíciót!' };
+        }
+        let building;
+        try {
+            building = await getBuilding(buildingId);
+        } catch (err) {
+            if (err.code === 'NOT_FOUND') return { error: 'Ez az épület nem található.' };
+            return { error: 'Nem sikerült azonosítani az épületet. Próbáld újra egy kicsit később!' };
+        }
+        const distance = SurvivalBuildings.distanceToBuilding(entry, building); // nagy létesítménynél a szélétől
+        if (distance > config.LOOT_RANGE_METERS + config.LOOT_RANGE_TOLERANCE_METERS) {
+            return { error: `Túl messze vagy az épülettől! (${Math.round(distance)} m - menj ${config.LOOT_RANGE_METERS} méteren belülre)` };
+        }
+        return { entry, building, now };
+    }
+
+    // --- ÁTKUTATÁS KEZDETE (v0.1.10) ---
+    // Az átkutatás időbe telik (épülettípustól függően 15/30/60 mp). A kliens a csík végén küldi a loot_building-et;
+    // a szerver csak akkor fogadja el, ha ugyanennél az épületnél elkezdte, és letelt az idő.
+    socket.on('search_start', (data) => {
+        if (!data || !SurvivalBuildings.parseBuildingId(data.buildingId)) return;
+        const buildingId = data.buildingId;
+        withPlayer(username, freeOnly(async (p) => {
+            const check = await lootPrecheck(p, buildingId);
+            if (check.error) return { save: false, error: check.error, payload: { buildingId } };
+            const until = await currentLock(buildingId);
+            if (until > check.now) {
+                const minutes = Math.max(1, Math.ceil((until - check.now) / 60000));
+                return { save: false, error: `Ezt az épületet nemrég kifosztották. Gyere vissza később! (kb. ${minutes} perc)`, payload: { buildingId }, lockInfo: { [buildingId]: until } };
+            }
+            const seconds = SurvivalBuildings.searchSeconds(check.building.type) * config.SEARCH_TIME_SCALE;
+            activeSearch = { buildingId, readyAt: check.now + seconds * 1000 };
+            return { save: false, payload: { buildingId, seconds, buildingName: check.building.name } };
+        })).then(r => {
+            if (!r) return;
+            if (r.result && r.result.lockInfo) socket.emit('building_status', { locks: r.result.lockInfo });
+            socket.emit('search_started', r.result.error
+                ? { success: false, message: r.result.error, buildingId }
+                : { success: true, ...r.result.payload });
+        }).catch(logError("Hiba az átkutatás indításakor:"));
+    });
+
+    socket.on('search_cancel', () => { activeSearch = null; });
+
+    // --- GYORSSÁV: tárgy kitűzése / levétele ---
+    // { slot: 0..2, key: tárgykulcs | null }. Csak fogyasztható tárgy tűzhető ki; egy tárgy csak egy helyen lehet.
+    socket.on('set_quickbar', (data) => {
+        if (!data || !Number.isInteger(data.slot) || data.slot < 0 || data.slot >= QUICKBAR_SIZE) return;
+        const key = data.key === null ? null : data.key;
+        if (key !== null && (typeof key !== 'string' || !itemDatabase[key] || !SurvivalStats.isConsumable(itemDatabase[key]))) return;
+        withPlayer(username, (p) => {
+            const bar = normalizeQuickbar(p.quickbar);
+            if (key !== null) { const i = bar.indexOf(key); if (i >= 0) bar[i] = null; }
+            bar[data.slot] = key;
+            p.quickbar = bar;
+            return { message: key ? `Kitűzve a gyorssávra: ${itemDatabase[key].name}` : 'Levetted a gyorssávról.' };
+        }).then(reply('quickbar_result')).catch(logError("Hiba a gyorssáv beállításakor:"));
+    });
+
     socket.on('loot_building', (data) => {
         if (!data || !SurvivalBuildings.parseBuildingId(data.buildingId)) return;
         const buildingId = data.buildingId;
@@ -1593,37 +1724,20 @@ io.on('connection', (socket) => {
         lastLootRequestAt = requestedAt;
 
         withPlayer(username, freeOnly(async (p) => {
-            if (p.fatigue >= 100) return { save: false, error: 'Teljesen kimerültél! Pihenned kell.' };
             // (Teli táskával is lehet kutatni: a talált holmi az épületben marad, a Zsákmány ablakból lehet elvenni)
-
-            const entry = activePlayers[username];
-            const now = Date.now();
-            if (entry && entry.lootBlockedUntil > now) {
-                const seconds = Math.ceil((entry.lootBlockedUntil - now) / 1000);
-                return { save: false, error: `A GPS-pozíciód nemrég hirtelen ugrott. Várj még ${seconds} másodpercet!` };
+            // Átkutatási idő: csak az előbb elkezdett és letelt kutatást fogadjuk el
+            if (config.SEARCH_TIME_SCALE > 0) {
+                if (!activeSearch || activeSearch.buildingId !== buildingId) {
+                    return { save: false, error: 'Előbb kezdd el az épület átkutatását!' };
+                }
+                if (Date.now() + config.SEARCH_GRACE_MS < activeSearch.readyAt) {
+                    return { save: false, error: 'Még nem végeztél az átkutatással!' };
+                }
             }
-            const dangerUntil = p.dangerUntil[buildingId];
-            if (dangerUntil && dangerUntil > now) {
-                const minutes = Math.max(1, Math.ceil((dangerUntil - now) / 60000));
-                return { save: false, error: `Az ellenség még bent van, ahonnan elmenekültél. Gyere vissza később! (kb. ${minutes} perc)` };
-            }
-
-            if (!entry || entry.lat === null || !entry.positionAt || now - entry.positionAt > config.POSITION_MAX_AGE_SECONDS * 1000) {
-                return { save: false, error: 'Várd meg a friss GPS pozíciót!' };
-            }
-
-            let building;
-            try {
-                building = await getBuilding(buildingId);
-            } catch (err) {
-                if (err.code === 'NOT_FOUND') return { save: false, error: 'Ez az épület nem található.' };
-                return { save: false, error: 'Nem sikerült azonosítani az épületet. Próbáld újra egy kicsit később!' };
-            }
-
-            const distance = SurvivalBuildings.distanceToBuilding(entry, building); // nagy létesítménynél a szélétől
-            if (distance > config.LOOT_RANGE_METERS + config.LOOT_RANGE_TOLERANCE_METERS) {
-                return { save: false, error: `Túl messze vagy az épülettől! (${Math.round(distance)} m - menj ${config.LOOT_RANGE_METERS} méteren belülre)` };
-            }
+            const check = await lootPrecheck(p, buildingId);
+            if (check.error) { activeSearch = null; return { save: false, error: check.error }; }
+            activeSearch = null;
+            const { building, now } = check;
 
             const lockedUntil = now + config.LOOT_LOCK_HOURS * 60 * 60 * 1000;
             if (!(await lockBuilding(buildingId, username, now, lockedUntil))) {
@@ -1648,6 +1762,7 @@ io.on('connection', (socket) => {
             const pick = useLockpick(p);
             const found = rollBuildingLoot(building, pick.factor);
             addFatigue(p, config.FATIGUE_LOOT);
+            bumpStat(p, 'buildingsLooted');
             const pickNote = pick.broke ? ` Eltört: ${itemDatabase.lockpick.name}.` : '';
 
             if (found.length === 0) {
@@ -1875,6 +1990,10 @@ io.on('connection', (socket) => {
 
             if (step.outcome === 'won') {
                 p.combat = null;
+                bumpStat(p, 'combatsWon');
+                bumpStat(p, 'killsTotal');
+                const enemyKey = (combat.enemy && (combat.enemy.key || combat.enemy.name)) || 'ismeretlen';
+                p.stats.kills[enemyKey] = (p.stats.kills[enemyKey] || 0) + 1;
                 addFatigue(p, config.FATIGUE_COMBAT + config.FATIGUE_LOOT);
                 const reward = Combat.rewards(combat);
                 p.money += reward.money;
@@ -1928,7 +2047,8 @@ io.on('connection', (socket) => {
     socket.on('respawn', () => {
         withPlayer(username, (p) => {
             if (!p.dead) return { save: false, error: 'A karaktered még él.' };
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now() });
+            const keepStats = p.stats; // a statisztika életre szól, az újrakezdés nem törli
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };

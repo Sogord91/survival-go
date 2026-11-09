@@ -14,6 +14,8 @@
 // A szerszámosláda (toolbox) bármelyik alapszerszámot pótolja (TOOLBOX_REPLACES), és ilyenkor ő kopik.
 const TOOLBOX_REPLACES = ['claw_hammer', 'pliers', 'screwdriver', 'socket_wrench', 'multitool'];
 const FIRE_STARTERS = ['matchbox', 'ferro_rod']; // [fogyó, kopó]
+// water: N -> N adag bármilyen víz kell; a sorrend a felhasználás sorrendje (a legolcsóbb előbb)
+const WATER_SOURCES = ['dirty_water', 'water_bottle', 'mineral_water', 'distilled_water'];
 
 // Egy "tools" bejegyzés összes elfogadható szerszáma (a szerszámosládával együtt)
 function toolOptions(entry) {
@@ -75,7 +77,7 @@ const craftingRecipes = [
     { key: 'leather_backpack', cat: 'Ruha és táska', name: 'Bőr Túrahátizsák', desc: 'Nagy, erős bőrhátizsák', req: { tanned_leather: 2, hemp_rope: 1, cotton_cord: 2 }, tools: ['sewing_kit'] },
 
     // --- ALAPANYAG ---
-    { key: 'clean_rag', cat: 'Alapanyag', result: 'rag', count: 2, name: 'Rongymosás', desc: 'Koszos rongyból tiszta szövet', req: { dirty_rag: 2, dirty_water: 1 } },
+    { key: 'clean_rag', cat: 'Alapanyag', result: 'rag', count: 2, name: 'Rongymosás', desc: 'Koszos rongyból tiszta szövet', req: { dirty_rag: 2 }, water: 1 },
     { key: 'cotton_cord', cat: 'Alapanyag', name: 'Pamutzsinór', desc: 'Rongycsíkokból sodort zsinór', req: { rag: 2 } },
     { key: 'hemp_rope', cat: 'Alapanyag', name: 'Kenderkötél', desc: 'Zsinórokból font erős kötél', req: { cotton_cord: 3 } },
     { key: 'canvas_roll', cat: 'Alapanyag', name: 'Vászontekercs', desc: 'Rongyokból összevarrt erős anyag', req: { rag: 4, cotton_cord: 1 }, tools: ['sewing_kit'] },
@@ -86,6 +88,24 @@ const craftingRecipes = [
     { key: 'scrap_toaster', cat: 'Szétszerelés', result: 'metal_scrap', count: 2, name: 'Kenyérpirító Szétszedése', desc: 'Fémhulladék a házából', req: { broken_toaster: 1 }, tools: ['screwdriver'] },
     { key: 'scrap_radiator', cat: 'Szétszerelés', result: 'metal_scrap', count: 3, name: 'Radiátor Szétszedése', desc: 'Az alumíniumbordák fémhulladéknak', req: { radiator_chunk: 1 }, tools: [['pliers', 'socket_wrench', 'pipe_wrench']] },
     { key: 'strip_wire', cat: 'Szétszerelés', result: 'wire', name: 'Kábel Kibontása', desc: 'A gabalyból használható drót', req: { scrap_wire_bundle: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'cut_tshirt', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Szakadt Póló Szétvágása', desc: 'Rongynak vágva', req: { tshirt: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_shorts', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Rövidnadrág Szétvágása', desc: 'Rongynak vágva', req: { shorts: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_cap', cat: 'Szétszerelés', result: 'rag', name: 'Baseball Sapka Szétvágása', desc: 'Rongynak vágva', req: { cap: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_canvas_shoes', cat: 'Szétszerelés', result: 'rag', name: 'Vászoncipő Szétvágása', desc: 'Rongynak vágva', req: { canvas_shoes: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_hivis_vest', cat: 'Szétszerelés', result: 'rag', name: 'Láthatósági Mellény Szétvágása', desc: 'Rongynak vágva', req: { hivis_vest: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_hoodie', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Kapucnis Pulóver Szétvágása', desc: 'Rongynak vágva', req: { hoodie: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_jeans', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Kopott Farmernadrág Szétvágása', desc: 'Rongynak vágva', req: { jeans: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_windbreaker', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Széldzseki Szétvágása', desc: 'Rongynak vágva', req: { windbreaker: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_wool_trousers', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Gyapjú Nadrág Szétvágása', desc: 'Rongynak vágva', req: { wool_trousers: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_beanie', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Kötött Sínmaszk / Sapka Szétvágása', desc: 'Rongynak vágva', req: { beanie: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_earflap_cap', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Füles Téli Sapka Szétvágása', desc: 'Rongynak vágva', req: { earflap_cap: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_parka', cat: 'Szétszerelés', result: 'rag', count: 4, name: 'Bélelt Parka Szétvágása', desc: 'Rongynak vágva', req: { parka: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_military_jacket', cat: 'Szétszerelés', result: 'canvas_roll', name: 'Flora Katonai Zubbony Szétvágása', desc: 'Az erős katonai vászon kivágva', req: { military_jacket: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_gorka_jacket', cat: 'Szétszerelés', result: 'canvas_roll', name: 'Gorka Taktikai Ruházat Szétvágása', desc: 'Az erős katonai vászon kivágva', req: { gorka_jacket: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_gorka_pants', cat: 'Szétszerelés', result: 'canvas_roll', name: 'Gorka Taktikai Nadrág Szétvágása', desc: 'Az erős katonai vászon kivágva', req: { gorka_pants: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_tactical_pants', cat: 'Szétszerelés', result: 'canvas_roll', name: 'Taktikai Zsebes Nadrág Szétvágása', desc: 'Az erős katonai vászon kivágva', req: { tactical_pants: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_leather_jacket', cat: 'Szétszerelés', result: 'tanned_leather', name: 'Klasszikus Bőrdzseki Szétvágása', desc: 'A bőr kivágva és kiterítve', req: { leather_jacket: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_leather_pants', cat: 'Szétszerelés', result: 'tanned_leather', name: 'Bőrnadrág Szétvágása', desc: 'A bőr kivágva és kiterítve', req: { leather_pants: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
     { key: 'scrap_old_battery', cat: 'Szétszerelés', result: 'lead_pipes_scrap', count: 2, name: 'Akksi Bontása', desc: 'Az ólomlemezek kiszedése (lőszerhez)', req: { old_battery: 1 }, tools: [['screwdriver', 'pliers']] },
     { key: 'scrap_radio', cat: 'Szétszerelés', result: 'copper_wire', name: 'Rádió Kibelezése', desc: 'Rézdrót a tekercsekből', req: { radio_parts: 1 }, tools: [['screwdriver', 'multitool']] },
     { key: 'scrap_switch', cat: 'Szétszerelés', result: 'copper_wire', name: 'Kapcsolók Bontása', desc: 'Rézérintkezők és vezetékek', req: { electrical_switch: 2 }, tools: [['screwdriver', 'multitool']] },
@@ -124,12 +144,12 @@ if (typeof window !== 'undefined') {
     if (!window.craftingRecipes) {
         window.craftingRecipes = craftingRecipes;
         window.CRAFT_CATEGORIES = CRAFT_CATEGORIES;
-        window.RecipeTools = { TOOLBOX_REPLACES, FIRE_STARTERS, toolOptions };
+        window.RecipeTools = { TOOLBOX_REPLACES, FIRE_STARTERS, WATER_SOURCES, toolOptions };
     }
 }
 
 // Szerver (Node.js) támogatás
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = craftingRecipes;
-    module.exports.RecipeTools = { TOOLBOX_REPLACES, FIRE_STARTERS, toolOptions };
+    module.exports.RecipeTools = { TOOLBOX_REPLACES, FIRE_STARTERS, WATER_SOURCES, toolOptions };
 }

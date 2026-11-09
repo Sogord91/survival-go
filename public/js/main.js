@@ -509,6 +509,11 @@ function itemUses(key) {
     if (asIngredient.length) add('🔨', asIngredient.every(r => r.cat === 'Szétszerelés') ? 'Szétszedhető' : 'Alapanyag', list(asIngredient.map(r => r.name)));
     const asTool = hand.filter(r => (r.tools || []).some(entry => toolOptions(entry).includes(key)));
     if (asTool.length) add('🛠️', 'Szerszám (kopik)', list(asTool.map(r => r.name)));
+    const waters = (window.RecipeTools && RecipeTools.WATER_SOURCES) || [];
+    if (waters.includes(key)) {
+        const waterRecipes = hand.filter(r => r.water);
+        if (waterRecipes.length) add('💧', 'Víz receptekhez', list(waterRecipes.map(r => r.name)));
+    }
     if (fire.includes(key)) {
         const fireRecipes = hand.filter(r => r.fire);
         if (fireRecipes.length) add('🔥', key === fire[0] ? 'Tűzgyújtás (elfogy)' : 'Tűzgyújtás (kopik)', list(fireRecipes.map(r => r.name)));
@@ -637,7 +642,11 @@ function renderItemSheet() {
     const btn = (label, cls, action) => `<button onclick="${action}" class="flex-1 ${cls} text-white py-2.5 rounded-lg text-xs font-bold">${label}</button>`;
     let actions = '';
     if (ref.source === 'inv') {
-        if (SurvivalStats.isConsumable(item)) actions += btn('Használ', 'bg-amber-600 hover:bg-amber-500', `itemSheetAction('use')`);
+        if (SurvivalStats.isConsumable(item)) {
+            actions += btn('Használ', 'bg-amber-600 hover:bg-amber-500', `itemSheetAction('use')`);
+            const pinned = (player.quickbar || []).includes(ref.key);
+            actions += btn(pinned ? '📌 Levesz' : '📌 Gyorssáv', 'bg-slate-700 hover:bg-slate-600', `itemSheetAction('pin')`);
+        }
         else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
         if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
         actions += btn(count > 1 ? 'Eldob 1 db' : 'Eldob', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('drop')`);
@@ -655,8 +664,9 @@ function itemSheetAction(action) {
     else if (action === 'drop') dropItem(ref.index);
     else if (action === 'unequip') unequip(ref.slot);
     else if (action === 'repair') repairItem(ref);
+    else if (action === 'pin') togglePin(ref.key);
     // Fogyasztás / felvétel / levétel után a lap bezárul; eldobásnál és javításnál nyitva marad
-    if (action !== 'drop' && action !== 'repair') closeItemSheet();
+    if (action !== 'drop' && action !== 'repair' && action !== 'pin') closeItemSheet();
 }
 
 // A leltár gombja: a tárgy KULCSÁT küldjük a szervernek (nem a sorszámát)
@@ -666,6 +676,49 @@ function inventoryAction(index) {
     const item = itemDatabase[slot.key];
     if (SurvivalStats.isConsumable(item)) useItem(slot.key);
     else if (SurvivalStats.isEquippable(item)) equipItem(slot.key, SurvivalStats.equipSlot(item), index);
+}
+
+// ===== GYORSSÁV (v0.1.10) =====
+// 3 hely a térkép alján: egy koppintással használod a kitűzött tárgyat (kötszer, víz, étel...).
+const QUICKBAR_SIZE = 3;
+function quickbarList() {
+    const bar = Array.isArray(player.quickbar) ? player.quickbar.slice(0, QUICKBAR_SIZE) : [];
+    while (bar.length < QUICKBAR_SIZE) bar.push(null);
+    return bar;
+}
+
+// Kitűzés: az első üres helyre (ha nincs, az elsőt cseréli); ha már kint van, leveszi
+function togglePin(key) {
+    if (typeof socket === 'undefined' || !socket) return;
+    const bar = quickbarList();
+    const at = bar.indexOf(key);
+    if (at >= 0) { socket.emit('set_quickbar', { slot: at, key: null }); return; }
+    const free = bar.indexOf(null);
+    socket.emit('set_quickbar', { slot: free >= 0 ? free : 0, key });
+}
+
+function quickbarTap(i) {
+    const key = quickbarList()[i];
+    if (!key) {
+        logMessage('📌 Tűzz ki ide egy tárgyat: Készlet → koppints a tárgyra → „📌 Gyorssáv”.');
+        return;
+    }
+    if (player.combat) { logMessage('Harc közben a harci ablakból gyógyíthatsz.'); return; }
+    const have = (player.inventory || []).filter(s => s.key === key).reduce((n, s) => n + (s.count || 0), 0);
+    if (have < 1) { logMessage(`Elfogyott: ${(itemDatabase[key] || {}).name || key}`); playSound('hit'); return; }
+    useItem(key);
+}
+
+function renderQuickbar() {
+    const box = document.getElementById('quickbar');
+    if (!box) return;
+    const bar = quickbarList();
+    box.innerHTML = bar.map((key, i) => {
+        if (!key) return `<button class="qb-slot qb-empty" onclick="quickbarTap(${i})" aria-label="Üres gyorssáv hely">+</button>`;
+        const item = itemDatabase[key] || { name: key, icon: '📦' };
+        const have = (player.inventory || []).filter(s => s.key === key).reduce((n, s) => n + (s.count || 0), 0);
+        return `<button class="qb-slot${have ? '' : ' qb-out'}" onclick="quickbarTap(${i})" title="${escapeAttr(item.name)}">${tileIconHtml(item)}<span class="qb-count">${have}</span></button>`;
+    }).join('');
 }
 
 // ===== LELTÁR: RENDEZÉS ÉS KIDOBÁS MÓD =====
@@ -724,6 +777,7 @@ function confirmDropSelection() {
 
 function updateUI() {
     updateHUD();
+    renderQuickbar();
     if (!Array.isArray(player.inventory)) player.inventory = [];
     document.getElementById('inv-count').textContent = player.inventory.length;
     document.getElementById('inv-max').textContent = player.maxInv || 10;
@@ -817,6 +871,8 @@ function renderCraftList() {
     const toolOptions = (entry) => (window.RecipeTools ? RecipeTools.toolOptions(entry) : (Array.isArray(entry) ? entry : [entry]));
     const fire = (window.RecipeTools && RecipeTools.FIRE_STARTERS) || ['matchbox', 'ferro_rod'];
     const hasFire = (recipe) => !recipe.fire || fire.some(k => have(k) > 0);
+    const waters = (window.RecipeTools && RecipeTools.WATER_SOURCES) || ['dirty_water'];
+    const hasWater = (recipe) => !recipe.water || waters.some(k => have(k) >= recipe.water + (recipe.req[k] || 0));
     const hasTools = (recipe) => hasFire(recipe) && (recipe.tools || []).every(entry => toolOptions(entry).some(k => have(k) > 0));
     const hasMaterials = (recipe) => Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty);
 
@@ -828,7 +884,7 @@ function renderCraftList() {
     categories.forEach(cat => {
         const group = recipes.filter(r => (r.cat || 'Egyéb') === cat);
         if (!group.length) return;
-        const ready = group.filter(r => hasMaterials(r) && hasTools(r)).length;
+        const ready = group.filter(r => hasMaterials(r) && hasTools(r) && hasWater(r)).length;
         html += `<div class="text-[10px] font-bold tracking-wider text-emerald-500 uppercase mt-2 mb-1 flex justify-between"><span>${escapeAttr(cat)}</span>${ready ? `<span class="text-emerald-300">${ready} elkészíthető</span>` : ''}</div>`;
         group.forEach(recipe => {
             const result = itemDatabase[recipe.result || recipe.key] || {};
@@ -841,7 +897,7 @@ function renderCraftList() {
                 const ok = options.some(k => have(k) > 0);
                 return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${options.map(name).join(' / ')}</span>`;
             }).join(', ');
-            const canCraft = hasMaterials(recipe) && hasTools(recipe);
+            const canCraft = hasMaterials(recipe) && hasTools(recipe) && hasWater(recipe);
             html += `
             <div class="hud-panel border border-emerald-600/40 p-3 rounded-xl flex items-center justify-between bg-emerald-950/40 ${canCraft ? '' : 'opacity-75'}">
                 <div class="flex items-center gap-3">
@@ -850,6 +906,7 @@ function renderCraftList() {
                         <div class="text-xs font-bold text-emerald-300">${recipe.name}${recipe.count > 1 ? ` (${recipe.count} db)` : ''}</div>
                         <div class="text-[10px] text-emerald-400/80">${recipe.desc}</div>
                         <div class="text-[9px] text-amber-300/80">Kell: ${reqText}</div>
+                        ${recipe.water ? `<div class="text-[9px] text-sky-300/80">Víz: <span class="${hasWater(recipe) ? 'text-emerald-300' : 'text-red-400'}">${recipe.water} adag, bármilyen (a szennyezett is jó)</span></div>` : ''}
                         ${recipe.fire ? `<div class="text-[9px] text-orange-300/80">Tűz: <span class="${hasFire(recipe) ? 'text-emerald-300' : 'text-red-400'}">${name(fire[0])} (fogy) / ${name(fire[1])} (kopik)</span></div>` : ''}
                         ${toolText ? `<div class="text-[9px] text-sky-300/80">Szerszám (kopik): ${toolText}</div>` : ''}
                     </div>

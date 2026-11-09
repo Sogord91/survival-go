@@ -69,6 +69,14 @@
         .tile-count { position: absolute; right: 3px; bottom: 2px; font-size: 10px; font-weight: 800; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
         .tile-dur { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 3px; background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden; pointer-events: none; }
         .tile-dur > div { height: 100%; }
+        .qb-slot { position: relative; width: 52px; height: 52px; border-radius: 14px; border: 2px solid rgba(52, 211, 153, 0.75);
+            background: linear-gradient(180deg, rgba(10, 32, 18, 0.95), rgba(3, 12, 7, 0.95)); display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 18px rgba(0,0,0,.5); -webkit-tap-highlight-color: transparent; transition: transform .1s; overflow: hidden; }
+        .qb-slot:active { transform: scale(0.93); }
+        .qb-slot img { width: 80%; height: 80%; object-fit: contain; }
+        .qb-slot .qb-count { position: absolute; right: 3px; bottom: 1px; font: 700 11px ui-monospace, monospace; color: #ecfdf5; text-shadow: 0 1px 2px #000; }
+        .qb-empty { color: rgba(110, 231, 183, 0.6); font-size: 24px; font-weight: 700; border-style: dashed; border-color: rgba(52, 211, 153, 0.4); }
+        .qb-out { filter: grayscale(1); opacity: 0.55; }
         .inv-tile.selected { border-color: rgba(248, 113, 113, 0.95); background: rgba(127, 29, 29, 0.55); box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.5) inset; }
         .inv-tile .tile-check { position: absolute; top: 2px; left: 3px; font-size: 11px; line-height: 1; pointer-events: none; }
         .inv-tool-btn { font-size: 10px; font-weight: 700; color: #a7f3d0; background: rgba(6, 78, 59, 0.6); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 6px; padding: 3px 7px; }
@@ -397,11 +405,14 @@
             <span class="block w-4 h-4 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-4 ring-emerald-400/30"></span>
         </button>
 
+        <!-- GYORSSÁV (main.js: renderQuickbar) -->
+        <div id="quickbar" class="absolute bottom-28 left-4 flex gap-2 z-[1000]"></div>
+
         <!-- ÉPÜLETEK BETÖLTÉSE JELZÉS (map.js: updateAreaIndicator) -->
         <div id="area-loading" class="hidden absolute bottom-28 left-1/2 -translate-x-1/2 hud-panel px-3 py-1.5 clipped-panel text-[11px] font-bold text-emerald-300 shadow-2xl pointer-events-none animate-pulse">📡 Épületek betöltése…</div>
 
         <!-- JÁTÉK NAPLÓ -->
-        <div id="game-log" class="absolute bottom-28 left-4 w-80 hud-panel p-3 clipped-panel text-xs text-emerald-300/90 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
+        <div id="game-log" class="absolute bottom-44 left-4 w-80 hud-panel p-3 clipped-panel text-xs text-emerald-300/90 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
             <div>[Rendszer] Üdv a Zónában! A sugárzás szintje alacsony.</div>
         </div>
 
@@ -418,6 +429,19 @@
         </nav>
 
     <!-- ZSÁKMÁNY: a talált holmi; amit nem teszel el, 30 percig az épületben marad (main.js: openLootWindow) -->
+    <div id="search-panel" class="hidden fixed left-3 right-3 z-[2500] rounded-2xl border-2 border-amber-400/80 bg-[#071a10]/95 px-4 py-3 shadow-2xl" style="bottom:180px">
+        <div class="flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+                <div id="search-panel-name" class="text-sm font-bold text-amber-200 truncate font-mono">Átkutatod…</div>
+                <div class="mt-2 h-3 rounded-full bg-gray-800 overflow-hidden"><div id="search-panel-bar" class="h-full rounded-full" style="width:0%;background:linear-gradient(90deg,#4d7c0f,#a3e635)"></div></div>
+            </div>
+            <div class="text-right">
+                <div id="search-panel-left" class="text-xs font-mono text-emerald-300 mb-1">0 mp</div>
+                <button onclick="cancelSearch()" class="bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Megszakít</button>
+            </div>
+        </div>
+    </div>
+
     <div id="loot-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]" onclick="if (event.target === this) closeLootWindow()">
         <div class="hud-panel w-full max-w-sm rounded-2xl p-5 flex flex-col max-h-[85vh] shadow-2xl clipped-panel border-amber-500/70">
             <div class="flex justify-between items-start mb-2 border-b border-amber-500/30 pb-2">

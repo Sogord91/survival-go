@@ -498,16 +498,74 @@ if (b.lockedUntil && Date.now() < b.lockedUntil) {
     }
 
     if (typeof socket !== 'undefined' && socket) {
-        lootPending = { id: b.id, name: b.name, at: Date.now() };
-        logMessage(`Átkutatod: ${b.name}...`);
-        socket.emit('loot_building', { buildingId: b.id });
+        // v0.1.10: az átkutatás időbe telik. Előbb elindítjuk (a szerver megmondja, hány másodperc),
+        // a csík végén kérjük a zsákmányt.
+        lootPending = { id: b.id, name: b.name, at: Date.now(), building: b };
+        socket.emit('search_start', { buildingId: b.id });
     }
+}
+
+// ===== ÁTKUTATÁS FOLYAMATBAN (csík) =====
+let searchState = null; // { id, name, building, startedAt, seconds, timer }
+
+function startSearchProgress(data) {
+    const b = (lootPending && lootPending.id === data.buildingId) ? lootPending.building : null;
+    const name = data.buildingName || (b && b.name) || 'épület';
+    logMessage(`Átkutatod: ${name}... (${data.seconds} mp)`);
+    if (!data.seconds || data.seconds <= 0) { finishSearch({ id: data.buildingId, name }); return; }
+    stopSearchProgress();
+    searchState = { id: data.buildingId, name, building: b, startedAt: Date.now(), seconds: data.seconds };
+    const panel = document.getElementById('search-panel');
+    if (panel) {
+        document.getElementById('search-panel-name').textContent = `Átkutatod: ${name}…`;
+        panel.classList.remove('hidden');
+    }
+    searchState.timer = setInterval(tickSearch, 200);
+    tickSearch();
+}
+
+function tickSearch() {
+    if (!searchState) return;
+    const elapsed = (Date.now() - searchState.startedAt) / 1000;
+    const pct = Math.min(1, elapsed / searchState.seconds);
+    const bar = document.getElementById('search-panel-bar');
+    const left = document.getElementById('search-panel-left');
+    if (bar) bar.style.width = (pct * 100).toFixed(1) + '%';
+    if (left) left.textContent = `${Math.max(0, Math.ceil(searchState.seconds - elapsed))} mp`;
+    // Ha közben eltávolodsz az épülettől, a kutatás megszakad
+    if (searchState.building && playerMarker) {
+        const ll = playerMarker.getLatLng();
+        const d = SurvivalBuildings.distanceToBuilding({ lat: ll.lat, lng: ll.lng }, searchState.building);
+        if (d > 45) { cancelSearch('Eltávolodtál az épülettől, a kutatás megszakadt.'); return; }
+    }
+    if (pct >= 1) finishSearch(searchState);
+}
+
+function finishSearch(st) {
+    stopSearchProgress();
+    if (lootPending) lootPending.at = Date.now(); // a válaszig ne lehessen újra kezdeni
+    if (typeof socket !== 'undefined' && socket) socket.emit('loot_building', { buildingId: st.id });
+}
+
+function stopSearchProgress() {
+    if (searchState && searchState.timer) clearInterval(searchState.timer);
+    searchState = null;
+    const panel = document.getElementById('search-panel');
+    if (panel) panel.classList.add('hidden');
+}
+
+function cancelSearch(message) {
+    if (!searchState) return;
+    stopSearchProgress();
+    lootPending = null;
+    if (typeof socket !== 'undefined' && socket) socket.emit('search_cancel');
+    logMessage(message || 'Megszakítottad az átkutatást.');
 }
 
 // A folyamatban lévő átkutatás (a szerver válaszáig). Ha válasz nem jön (pl. megszakadt a kapcsolat),
 // a megadott idő után újra lehet próbálkozni.
 let lootPending = null;
-const LOOT_PENDING_TIMEOUT_MS = 15000;
+const LOOT_PENDING_TIMEOUT_MS = 75000; // a leghosszabb kutatás (60 mp) + a szerver válasza
 
 
 
@@ -656,8 +714,21 @@ function showOtherPlayer(pData) {
 
 // --- BIZTONSÁGOS LOOT EREDMÉNY FOGADÁSA A SZERVERTŐL ---
 if (typeof socket !== 'undefined' && socket) {
+    socket.on('search_started', (data) => {
+        if (!data) return;
+        if (!data.success) {
+            lootPending = null;
+            stopSearchProgress();
+            logMessage(data.message || 'Nem sikerült elkezdeni az átkutatást.');
+            playSound('hit');
+            return;
+        }
+        startSearchProgress(data);
+    });
+
     socket.on('loot_result', (data) => {
         lootPending = null;
+        stopSearchProgress();
         if (!data.success) {
             logMessage(data.message || "Hiba a lootolás során.");
             playSound('hit');

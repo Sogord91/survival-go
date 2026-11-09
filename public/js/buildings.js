@@ -8,53 +8,53 @@
     // empty:     esély, hogy az épület üres
     // encounter: esély, hogy ellenséggel találkozol bent
     const BUILDING_TYPES = {
-        'Élelmiszerbolt':                                { icon: '🛒', color: '#10b981', groups: ['grocery', 'drinks'], empty: 0.30, encounter: 0.05 },
-        'Kisbolt / Trafik':                              { icon: '🏪', color: '#14b8a6', groups: ['grocery', 'drinks', 'smallgoods'], empty: 0.30, encounter: 0.05 },
-        'Barkácsáruház':                                 { icon: '🛠️', color: '#d97706', groups: ['hardware', 'tools'], empty: 0.30, encounter: 0.05 },
-        'Étterem / Kávézó / Fagyizó / Csárda':           { icon: '☕', color: '#ec4899', groups: ['kitchen', 'drinks'], empty: 0.30, encounter: 0.05 },
-        'Benzinkút / Kút':                               { icon: '⛽', color: '#dc2626', groups: ['drinks', 'smallgoods', 'auto'], empty: 0.30, encounter: 0.05 },
-        'Kocsma / Pub / Söröző':                         { icon: '🍺', color: '#f97316', groups: ['drinks', 'kitchen'], empty: 0.30, encounter: 0.05 },
-        'Gyógyszertár':                                  { icon: '💊', color: '#ef4444', groups: ['medical'], empty: 0.30, encounter: 0.05 },
-        'Kórház':                                        { icon: '🏥', color: '#dc2626', groups: ['medical', 'hospital'], empty: 0.40, encounter: 0.10 },
-        'Rendőrség':                                     { icon: '🛡️', color: '#3b82f6', groups: ['police', 'office'], empty: 0.40, encounter: 0.10 },
-        'Tűzoltóság':                                    { icon: '🚒', color: '#f97316', groups: ['fire', 'tools'], empty: 0.40, encounter: 0.05 },
-        'Katonai bázis':                                 { icon: '⭐', color: '#b91c1c', groups: ['military'], empty: 0.40, encounter: 0.20 },
-        'Kormányzati Bunker / Óvóhely':                  { icon: '☢️', color: '#7f1d1d', groups: ['military', 'hazmat', 'grocery'], empty: 0.40, encounter: 0.20 },
-        'Elhagyatott Katonai Ellenőrzőpont / Blokád':    { icon: '🚧', color: '#b45309', groups: ['military'], empty: 0.45, encounter: 0.15 },
-        'Katasztrófavédelmi / Vegyvédelmi Központ':      { icon: '☣️', color: '#047857', groups: ['hazmat', 'medical'], empty: 0.40, encounter: 0.15 },
-        'Iskola / Óvoda':                                { icon: '🏫', color: '#0ea5e9', groups: ['office', 'household'], empty: 0.40, encounter: 0.05 },
-        'Könyvtár':                                      { icon: '📚', color: '#8b5cf6', groups: ['office', 'culture'], empty: 0.45, encounter: 0.05 },
-        'Templom / Kápolna':                             { icon: '⛪', color: '#eab308', groups: ['culture', 'valuables'], empty: 0.45, encounter: 0.02 },
-        'Kolostor / Apátság':                            { icon: '⛪', color: '#ca8a04', groups: ['culture', 'kitchen', 'valuables'], empty: 0.45, encounter: 0.02 },
-        'Városháza / Polgármesteri Hivatal':             { icon: '🏛️', color: '#6366f1', groups: ['office', 'valuables'], empty: 0.40, encounter: 0.05 },
-        'Múzeum / Kiállítóterem':                        { icon: '🏛️', color: '#a855f7', groups: ['culture', 'valuables'], empty: 0.45, encounter: 0.05 },
-        'Bíróság / Ügyvédi Iroda':                       { icon: '⚖️', color: '#4f46e5', groups: ['office', 'valuables'], empty: 0.45, encounter: 0.05 },
-        'Mozi / Színház / Művelődési Ház':               { icon: '🎭', color: '#db2777', groups: ['culture', 'smallgoods'], empty: 0.45, encounter: 0.05 },
-        'Elhagyatott raktár':                            { icon: '🏭', color: '#f59e0b', groups: ['warehouse', 'hardware'], empty: 0.40, encounter: 0.05 },
-        'Ipari létesítmény / Gyár':                      { icon: '⚙️', color: '#7c2d12', groups: ['industrial', 'hardware'], empty: 0.40, encounter: 0.05 },
-        'Autószerviz / Gumis':                           { icon: '🔧', color: '#b45309', groups: ['auto', 'tools'], empty: 0.30, encounter: 0.05 },
-        'Autóbontó / Roncstelep':                        { icon: '🚗', color: '#78716c', groups: ['auto', 'scrap'], empty: 0.40, encounter: 0.05 },
-        'Garázs':                                        { icon: '🚗', color: '#78716c', groups: ['auto', 'household', 'tools'], empty: 0.45, encounter: 0.05 },
-        'Vasútállomás / Rendezőpályaudvar':              { icon: '🚂', color: '#374151', groups: ['industrial', 'smallgoods'], empty: 0.45, encounter: 0.05 },
-        'Posta / Csomagátvevő pont':                     { icon: '📦', color: '#d97706', groups: ['office', 'smallgoods', 'warehouse'], empty: 0.40, encounter: 0.05 },
-        'Mezőgazdasági Géptelep / Téesz':                { icon: '🚜', color: '#65a30d', groups: ['farm', 'tools', 'auto'], empty: 0.40, encounter: 0.05 },
-        'Malom / Gabonasiló':                            { icon: '🌾', color: '#ca8a04', groups: ['farm'], empty: 0.45, encounter: 0.05 },
-        'Állatfarm / Lovarda':                           { icon: '🐎', color: '#854d0e', groups: ['farm', 'kitchen'], empty: 0.45, encounter: 0.05 },
-        'Víztorony / Vízmű':                             { icon: '💧', color: '#0284c7', groups: ['utility', 'drinks'], empty: 0.45, encounter: 0.05 },
-        'Elektromos Alállomás / Trafóház':               { icon: '⚡', color: '#eab308', groups: ['utility', 'industrial'], empty: 0.45, encounter: 0.05 },
-        'Romos ház':                                     { icon: '🏠', color: '#6b7280', groups: ['household'], empty: 0.50, encounter: 0.05 },
-        'Szálloda / Hotel / Panzió':                     { icon: '🏨', color: '#9333ea', groups: ['household', 'kitchen', 'valuables'], empty: 0.40, encounter: 0.05 },
-        'Motel / Kamionos pihenő':                       { icon: '🏨', color: '#793e75', groups: ['household', 'drinks', 'smallgoods'], empty: 0.40, encounter: 0.05 },
-        'Sportcsarnok / Edzőterem':                      { icon: '🏋️', color: '#2563eb', groups: ['sport', 'drinks'], empty: 0.40, encounter: 0.05 },
-        'Stadion / Futballpálya':                        { icon: '⚽', color: '#16a34a', groups: ['sport'], empty: 0.45, encounter: 0.05 },
-        'Strand / Uszoda':                               { icon: '🏊', color: '#06b6d4', groups: ['sport', 'drinks'], empty: 0.45, encounter: 0.05 },
-        'Temető':                                        { icon: '⚰️', color: '#3f3f46', groups: ['cemetery', 'valuables'], empty: 0.50, encounter: 0.05 }
+        'Élelmiszerbolt':                                { icon: '🛒', color: '#10b981', groups: ['grocery', 'drinks'], empty: 0.40, encounter: 0.05 },
+        'Kisbolt / Trafik':                              { icon: '🏪', color: '#14b8a6', groups: ['grocery', 'drinks', 'smallgoods'], empty: 0.40, encounter: 0.05 },
+        'Barkácsáruház':                                 { icon: '🛠️', color: '#d97706', groups: ['hardware', 'tools'], empty: 0.40, encounter: 0.05 },
+        'Étterem / Kávézó / Fagyizó / Csárda':           { icon: '☕', color: '#ec4899', groups: ['kitchen', 'drinks'], empty: 0.40, encounter: 0.05 },
+        'Benzinkút / Kút':                               { icon: '⛽', color: '#dc2626', groups: ['drinks', 'smallgoods', 'auto'], empty: 0.40, encounter: 0.05 },
+        'Kocsma / Pub / Söröző':                         { icon: '🍺', color: '#f97316', groups: ['drinks', 'kitchen'], empty: 0.40, encounter: 0.05 },
+        'Gyógyszertár':                                  { icon: '💊', color: '#ef4444', groups: ['medical'], empty: 0.40, encounter: 0.05 },
+        'Kórház':                                        { icon: '🏥', color: '#dc2626', groups: ['medical', 'hospital'], empty: 0.50, encounter: 0.10 },
+        'Rendőrség':                                     { icon: '🛡️', color: '#3b82f6', groups: ['police', 'office'], empty: 0.50, encounter: 0.10 },
+        'Tűzoltóság':                                    { icon: '🚒', color: '#f97316', groups: ['fire', 'tools'], empty: 0.50, encounter: 0.05 },
+        'Katonai bázis':                                 { icon: '⭐', color: '#b91c1c', groups: ['military'], empty: 0.50, encounter: 0.20 },
+        'Kormányzati Bunker / Óvóhely':                  { icon: '☢️', color: '#7f1d1d', groups: ['military', 'hazmat', 'grocery'], empty: 0.50, encounter: 0.20 },
+        'Elhagyatott Katonai Ellenőrzőpont / Blokád':    { icon: '🚧', color: '#b45309', groups: ['military'], empty: 0.55, encounter: 0.15 },
+        'Katasztrófavédelmi / Vegyvédelmi Központ':      { icon: '☣️', color: '#047857', groups: ['hazmat', 'medical'], empty: 0.50, encounter: 0.15 },
+        'Iskola / Óvoda':                                { icon: '🏫', color: '#0ea5e9', groups: ['office', 'household'], empty: 0.50, encounter: 0.05 },
+        'Könyvtár':                                      { icon: '📚', color: '#8b5cf6', groups: ['office', 'culture'], empty: 0.55, encounter: 0.05 },
+        'Templom / Kápolna':                             { icon: '⛪', color: '#eab308', groups: ['culture', 'valuables'], empty: 0.55, encounter: 0.02 },
+        'Kolostor / Apátság':                            { icon: '⛪', color: '#ca8a04', groups: ['culture', 'kitchen', 'valuables'], empty: 0.55, encounter: 0.02 },
+        'Városháza / Polgármesteri Hivatal':             { icon: '🏛️', color: '#6366f1', groups: ['office', 'valuables'], empty: 0.50, encounter: 0.05 },
+        'Múzeum / Kiállítóterem':                        { icon: '🏛️', color: '#a855f7', groups: ['culture', 'valuables'], empty: 0.55, encounter: 0.05 },
+        'Bíróság / Ügyvédi Iroda':                       { icon: '⚖️', color: '#4f46e5', groups: ['office', 'valuables'], empty: 0.55, encounter: 0.05 },
+        'Mozi / Színház / Művelődési Ház':               { icon: '🎭', color: '#db2777', groups: ['culture', 'smallgoods'], empty: 0.55, encounter: 0.05 },
+        'Elhagyatott raktár':                            { icon: '🏭', color: '#f59e0b', groups: ['warehouse', 'hardware'], empty: 0.50, encounter: 0.05 },
+        'Ipari létesítmény / Gyár':                      { icon: '⚙️', color: '#7c2d12', groups: ['industrial', 'hardware'], empty: 0.50, encounter: 0.05 },
+        'Autószerviz / Gumis':                           { icon: '🔧', color: '#b45309', groups: ['auto', 'tools'], empty: 0.40, encounter: 0.05 },
+        'Autóbontó / Roncstelep':                        { icon: '🚗', color: '#78716c', groups: ['auto', 'scrap'], empty: 0.50, encounter: 0.05 },
+        'Garázs':                                        { icon: '🚗', color: '#78716c', groups: ['auto', 'household', 'tools'], empty: 0.55, encounter: 0.05 },
+        'Vasútállomás / Rendezőpályaudvar':              { icon: '🚂', color: '#374151', groups: ['industrial', 'smallgoods'], empty: 0.55, encounter: 0.05 },
+        'Posta / Csomagátvevő pont':                     { icon: '📦', color: '#d97706', groups: ['office', 'smallgoods', 'warehouse'], empty: 0.50, encounter: 0.05 },
+        'Mezőgazdasági Géptelep / Téesz':                { icon: '🚜', color: '#65a30d', groups: ['farm', 'tools', 'auto'], empty: 0.50, encounter: 0.05 },
+        'Malom / Gabonasiló':                            { icon: '🌾', color: '#ca8a04', groups: ['farm'], empty: 0.55, encounter: 0.05 },
+        'Állatfarm / Lovarda':                           { icon: '🐎', color: '#854d0e', groups: ['farm', 'kitchen'], empty: 0.55, encounter: 0.05 },
+        'Víztorony / Vízmű':                             { icon: '💧', color: '#0284c7', groups: ['utility', 'drinks'], empty: 0.55, encounter: 0.05 },
+        'Elektromos Alállomás / Trafóház':               { icon: '⚡', color: '#eab308', groups: ['utility', 'industrial'], empty: 0.55, encounter: 0.05 },
+        'Romos ház':                                     { icon: '🏠', color: '#6b7280', groups: ['household'], empty: 0.60, encounter: 0.05 },
+        'Szálloda / Hotel / Panzió':                     { icon: '🏨', color: '#9333ea', groups: ['household', 'kitchen', 'valuables'], empty: 0.50, encounter: 0.05 },
+        'Motel / Kamionos pihenő':                       { icon: '🏨', color: '#793e75', groups: ['household', 'drinks', 'smallgoods'], empty: 0.50, encounter: 0.05 },
+        'Sportcsarnok / Edzőterem':                      { icon: '🏋️', color: '#2563eb', groups: ['sport', 'drinks'], empty: 0.50, encounter: 0.05 },
+        'Stadion / Futballpálya':                        { icon: '⚽', color: '#16a34a', groups: ['sport'], empty: 0.55, encounter: 0.05 },
+        'Strand / Uszoda':                               { icon: '🏊', color: '#06b6d4', groups: ['sport', 'drinks'], empty: 0.55, encounter: 0.05 },
+        'Temető':                                        { icon: '⚰️', color: '#3f3f46', groups: ['cemetery', 'valuables'], empty: 0.60, encounter: 0.05 }
     };
 
     const DEFAULT_TYPE = 'Romos ház';
 
-    // Darabszám: 1 tárgy 70%, 2 tárgy 25%, 3 tárgy 5% (ha nem üres)
-    const LOOT_COUNT_WEIGHTS = [[1, 70], [2, 25], [3, 5]];
+    // Darabszám: 1 tárgy 80%, 2 tárgy 17%, 3 tárgy 3% (ha nem üres)
+    const LOOT_COUNT_WEIGHTS = [[1, 80], [2, 17], [3, 3]];
 
     // Egyértelmű OSM azonosító: a node és a way azonosítók átfedhetnek, ezért a típus is benne van.
     function buildingId(element) {
@@ -167,6 +167,21 @@
         return haversine(point.lat, point.lng, building.lat, building.lng);
     }
 
+    // Átkutatási idő (másodperc) épülettípusonként: a kis házak gyorsak, a nagy létesítmények lassúak (v0.1.10)
+    const SEARCH_SECONDS_SMALL = 15;
+    const SEARCH_SECONDS_MEDIUM = 30;
+    const SEARCH_SECONDS_LARGE = 60;
+    const SMALL_TYPES = ['Romos ház', 'Garázs', 'Kisbolt / Trafik', 'Temető'];
+    const LARGE_TYPES = ['Kórház', 'Rendőrség', 'Tűzoltóság', 'Katonai bázis', 'Kormányzati Bunker / Óvóhely',
+        'Elhagyatott Katonai Ellenőrzőpont / Blokád', 'Katasztrófavédelmi / Vegyvédelmi Központ', 'Elhagyatott raktár',
+        'Ipari létesítmény / Gyár', 'Vasútállomás / Rendezőpályaudvar', 'Szálloda / Hotel / Panzió', 'Stadion / Futballpálya',
+        'Mezőgazdasági Géptelep / Téesz', 'Kolostor / Apátság', 'Városháza / Polgármesteri Hivatal', 'Barkácsáruház'];
+    function searchSeconds(type) {
+        if (SMALL_TYPES.includes(type)) return SEARCH_SECONDS_SMALL;
+        if (LARGE_TYPES.includes(type)) return SEARCH_SECONDS_LARGE;
+        return SEARCH_SECONDS_MEDIUM;
+    }
+
     function typeInfo(type) {
         return BUILDING_TYPES[type] || BUILDING_TYPES[DEFAULT_TYPE];
     }
@@ -264,7 +279,7 @@
     const api = {
         BUILDING_TYPES, DEFAULT_TYPE, LOOT_COUNT_WEIGHTS,
         buildingId, parseBuildingId, classifyBuilding, displayName, typeInfo, haversine, cleanBounds, elementPosition, distanceToBuilding,
-        weightedPick, lootTable, rollLoot,
+        weightedPick, lootTable, rollLoot, searchSeconds,
         CELL_LAT, CELL_LNG, cellOf, parseCellId, cellCenter, cellsAround, cellDistance
     };
 

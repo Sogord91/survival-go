@@ -58,7 +58,7 @@ module.exports = {
     REPAIR_GEAR_FRACTION: 0.5,          // varrókészlet + rongy: ruha, páncél, táska +50%
     REPAIR_FIREARM_FRACTION: 0.5,       // fegyverpucoló készlet: lőfegyver +50%
     REPAIR_OTHER_FRACTION: 0.4,         // ragasztószalag + kalapács / fogó: közelharci fegyver, íj, parittya +40%
-    FATIGUE_LOOT: 2,                // épület átkutatása
+    FATIGUE_LOOT: 3,                // épület átkutatása (v0.1.10: 2 -> 3)
     FATIGUE_COMBAT: 5,              // harc (győzelem vagy menekülés)
     FATIGUE_FULL_REST_MINUTES: 30,  // ennyi idő alatt pihen ki 100%-ról 0-ra (offline vagy egy helyben állva)
     REST_IDLE_MINUTES: 5,           // ennyi mozdulatlanság után kezd pihenni online is
@@ -69,6 +69,8 @@ module.exports = {
                                         // aki nem a megtalálója, annak a kinyitás egy kutatásnyi fáradtság)
     LOOT_RANGE_METERS: 30,              // ennyire kell megközelíteni az épületet
     LOOT_RANGE_TOLERANCE_METERS: 15,    // + GPS-pontatlanság tűrése (a szerver 45 m-ig fogadja el)
+    SEARCH_TIME_SCALE: 1,               // átkutatási idő szorzója (épülettípusonként 15/30/60 mp; a tesztekben 0)
+    SEARCH_GRACE_MS: 1500,              // ennyivel korábban is elfogadjuk a befejezést (hálózati késés)
     POSITION_MAX_AGE_SECONDS: 120,      // ennél régebbi GPS pozícióval nem lehet lootolni
     LOOT_COOLDOWN_MS: 1500,             // két lootolási kérés között legalább ennyi idő (az OSM-lekérdezések védelme)
     OVERPASS_URLS: [                    // OSM (Overpass) szerverek sorrendben; ha az egyik nem válaszol időben, jön a következő
