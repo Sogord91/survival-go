@@ -49,7 +49,7 @@ const itemDatabase = {
     'cookies': { name: 'Mogyoróvajas Keksz', type: 'food', icon: '🍪', img: 'SURV-0197_peanut_butter_cookies', desc: '+15 Éhség, -5 Fáradtság', effects: { hunger: 15, fatigue: -5 }, weight: 0.15, stackable: true, loot: { smallgoods: 6, grocery: 4, office: 2 } },
     'muffin': { name: 'Csokis Muffin', type: 'food', icon: '🧁', img: 'SURV-0198_chocolate_chip_muffins', desc: '+20 Éhség', effects: { hunger: 20 }, weight: 0.15, stackable: true, loot: { kitchen: 5, smallgoods: 3 } },
     'chili_pot': { name: 'Csilis Bab (adag)', type: 'food', icon: '🍲', img: 'SURV-0195_campfire_chili', desc: '+60 Éhség', effects: { hunger: 60 }, weight: 0.6, stackable: true, loot: { kitchen: 4 } },
-    'fish_and_chips': { name: 'Hal és Sült Krumpli', type: 'food', icon: '🍟', img: 'SURV-0137_fish_and_chips_box', desc: '+45 Éhség', effects: { hunger: 45 }, weight: 0.4, stackable: true, loot: { kitchen: 5 } },
+    'fish_and_chips': { name: 'Hal és Sült Krumpli', type: 'food', icon: '🍟', img: 'SURV-0137_fish_and_chips_box', desc: '+90 Éhség', effects: { hunger: 90 }, weight: 0.4, stackable: true, loot: { kitchen: 5 } },
     'sausages': { name: 'Grillkolbász', type: 'food', icon: '🌭', img: 'SURV-0120_barbecue_sausages', desc: '+35 Éhség', effects: { hunger: 35 }, weight: 0.3, stackable: true, loot: { kitchen: 4, grocery: 2 } },
 
     // --- ITAL ---
@@ -61,7 +61,7 @@ const itemDatabase = {
     'moonshine': { name: 'Házi Főzésű Szesz (Pálinka)', type: 'drink', icon: '🧪', img: 'SURV-0216_corked_clay_bottle', desc: '+35 Szomjúság, de nagyon elálmosít (-15 Energia)', effects: { thirst: 35, fatigue: 15 }, weight: 0.5, stackable: true, loot: { household: 2, farm: 3, drinks: 1 } },
     'dirty_water': { name: 'Szennyezett Csapvíz', type: 'drink', icon: '🚰', img: 'SURV-0242_murky_water_bottle', desc: '+25 Szomjúság', effects: { thirst: 25 }, weight: 1, stackable: true, loot: { household: 4, utility: 4, industrial: 2 } },
     'mineral_water': { name: 'Ásványvíz', type: 'drink', icon: '💧', img: 'SURV-0244_mineral_water_flask', desc: '+45 Szomjúság', effects: { thirst: 45 }, weight: 1, stackable: true, loot: { drinks: 8, grocery: 4, sport: 4 } },
-    'distilled_water': { name: 'Desztillált Víz', type: 'drink', icon: '🧴', img: 'SURV-0250_distilled_water_flask', desc: '+40 Szomjúság', effects: { thirst: 40 }, weight: 1, stackable: true, loot: { hospital: 3, hazmat: 2 } },
+    'distilled_water': { name: 'Desztillált Víz', type: 'drink', icon: '🧴', img: 'SURV-0250_distilled_water_flask', desc: '+70 Szomjúság', effects: { thirst: 70 }, weight: 1, stackable: true, loot: { hospital: 3, hazmat: 2 } },
     'cranberry_juice': { name: 'Áfonyalé', type: 'drink', icon: '🧃', img: 'SURV-0290_cranberry_juice', desc: '+5 Éhség, +35 Szomjúság', effects: { hunger: 5, thirst: 35 }, weight: 0.6, stackable: true, loot: { drinks: 5, grocery: 4 } },
     'pineapple_juice': { name: 'Ananászlé', type: 'drink', icon: '🍍', img: 'SURV-0291_pineapple_juice', desc: '+5 Éhség, +35 Szomjúság', effects: { hunger: 5, thirst: 35 }, weight: 0.6, stackable: true, loot: { drinks: 4, grocery: 3 } },
     'coconut_water': { name: 'Kókuszvíz', type: 'drink', icon: '🥥', img: 'SURV-0292_coconut_water', desc: '+40 Szomjúság', effects: { thirst: 40 }, weight: 0.5, stackable: true, loot: { drinks: 3, sport: 3 } },
@@ -70,16 +70,16 @@ const itemDatabase = {
     'honey_water': { name: 'Mézes Víz', type: 'drink', icon: '🍯', img: 'SURV-0285_warm_honey_water', desc: '+5 Éhség, +25 Szomjúság', effects: { hunger: 5, thirst: 25 }, weight: 0.5, stackable: true, loot: { household: 2, farm: 2 } },
 
     // --- GYÓGYSZER ---
-    'rag_bandage': { name: 'Rongy Kötés', type: 'medicine', icon: '📜', img: 'SURV-0306_triangular_bandage', desc: '+25 Élet', effects: { hp: 25 }, weight: 0.1, stackable: true, loot: { household: 4, medical: 2 } },
+    'rag_bandage': { name: 'Rongy Kötés', type: 'medicine', icon: '📜', img: 'SURV-0306_triangular_bandage', desc: '+15 Élet', effects: { hp: 15 }, weight: 0.1, stackable: true, loot: { household: 4, medical: 2 } },
     'bandage': { name: 'Steril Kötszer', type: 'medicine', icon: '🩹', img: 'SURV-0301_rolled_gauze_bandage', desc: '+50 Élet', effects: { hp: 50 }, weight: 0.2, stackable: true, loot: { medical: 10, hospital: 6, police: 2, fire: 4, military: 3, sport: 1 } },
     'painkillers': { name: 'Ibuprofen', type: 'medicine', icon: '💊', img: 'SURV-1372_medicine_storage_bottle', desc: '+30 Élet', effects: { hp: 30 }, weight: 0.1, stackable: true, loot: { medical: 10, hospital: 4, household: 2, office: 1 } },
     'morphine': { name: 'Morfin Injekció', type: 'medicine', icon: '💉', img: 'SURV-0338_oral_syringe', desc: '+70 Élet', effects: { hp: 70 }, weight: 0.2, stackable: true, loot: { hospital: 3, medical: 1, military: 2 } },
     'medkit': { name: 'Katonai Trauma Csomag', type: 'medicine', icon: '🧰', img: 'SURV-0383_trauma_response_bag', desc: '+100 Élet', effects: { hp: 100 }, weight: 1.2, stackable: false, loot: { hospital: 1.5, military: 1.5, fire: 1 } },
     'antibiotics': { name: 'Antibiotikum', type: 'medicine', icon: '💊', img: 'drawn_antibiotics', desc: '+40 Élet', effects: { hp: 40 }, weight: 0.1, stackable: true, loot: { medical: 6, hospital: 4 } },
     'antirad_pills': { name: 'Anti-Rad Sugárzás elleni Tabletta', type: 'medicine', icon: '☣️', img: 'drawn_antirad_pills', desc: 'Sugárzás ellen (a sugárzás egy későbbi frissítésben jön, addig nem használható)', weight: 0.1, stackable: true, loot: { hazmat: 4, military: 1, hospital: 1 } },
-    'gauze_pad': { name: 'Steril Gézlap', type: 'medicine', icon: '🩹', img: 'SURV-0302_sterile_gauze_pad', desc: '+15 Élet', effects: { hp: 15 }, weight: 0.05, stackable: true, lootCount: [1, 3], loot: { medical: 8, hospital: 4, household: 3, office: 1 } },
+    'gauze_pad': { name: 'Steril Gézlap', type: 'medicine', icon: '🩹', img: 'SURV-0302_sterile_gauze_pad', desc: '+25 Élet', effects: { hp: 25 }, weight: 0.05, stackable: true, lootCount: [1, 3], loot: { medical: 8, hospital: 4, household: 3, office: 1 } },
     'band_aid': { name: 'Ragtapasz', type: 'medicine', icon: '🩹', img: 'SURV-0303_adhesive_bandage_strip', desc: '+8 Élet', effects: { hp: 8 }, weight: 0.02, stackable: true, lootCount: [1, 4], loot: { medical: 8, household: 5, office: 3, sport: 2, smallgoods: 2 } },
-    'compression_bandage': { name: 'Nyomókötés', type: 'medicine', icon: '🩹', img: 'SURV-0304_compression_bandage', desc: '+40 Élet', effects: { hp: 40 }, weight: 0.15, stackable: true, loot: { medical: 4, hospital: 4, police: 2, fire: 2 } },
+    'compression_bandage': { name: 'Nyomókötés', type: 'medicine', icon: '🩹', img: 'SURV-0304_compression_bandage', desc: '+55 Élet', effects: { hp: 55 }, weight: 0.15, stackable: true, loot: { medical: 4, hospital: 4, police: 2, fire: 2 } },
     'hemostatic_gauze': { name: 'Vérzéscsillapító Géz', type: 'medicine', icon: '🩸', img: 'SURV-0307_hemostatic_gauze', desc: '+60 Élet', effects: { hp: 60 }, weight: 0.1, stackable: true, loot: { hospital: 3, military: 2, police: 1 } },
     'antiseptic_wipes': { name: 'Fertőtlenítő Kendő', type: 'medicine', icon: '🧻', img: 'SURV-0321_antiseptic_wipes', desc: '+10 Élet', effects: { hp: 10 }, weight: 0.05, stackable: true, loot: { medical: 6, hospital: 4, household: 2, smallgoods: 2 } },
     'iodine': { name: 'Jódoldat', type: 'medicine', icon: '🧪', img: 'SURV-0322_iodine_dropper_bottle', desc: '+15 Élet', effects: { hp: 15 }, weight: 0.1, stackable: true, loot: { medical: 5, hospital: 3 } },
@@ -124,7 +124,7 @@ const itemDatabase = {
 
     // --- FEJFEDŐK ---
     'cap': { name: 'Baseball Sapka', type: 'helmet', tier: 1, icon: '🧢', img: 'SURV-1154_canvas_field_cap', desc: 'Tier 1 - Alap fejfedő (+1 Véd.)', def: 1, hpBonus: 2, weight: 0.2, stackable: false, loot: { household: 3, sport: 2 } },
-    'beanie': { name: 'Kötött Sínmaszk / Sapka', type: 'helmet', tier: 2, icon: '🧶', img: 'SURV-1152_wool_beanie', desc: 'Tier 2 - Meleg fejfedő (+2 Véd.)', def: 2, hpBonus: 5, weight: 0.2, stackable: false, loot: { household: 2, smallgoods: 1 } },
+    'beanie': { name: 'Kötött Símaszk / Sapka', type: 'helmet', tier: 2, icon: '🧶', img: 'SURV-1152_wool_beanie', desc: 'Tier 2 - Meleg fejfedő (+2 Véd.)', def: 2, hpBonus: 5, weight: 0.2, stackable: false, loot: { household: 2, smallgoods: 1 } },
     'ushanka': { name: 'Usanka Orosz Sapka', type: 'helmet', tier: 3, icon: '🎩', img: 'SURV-1153_fur_trapper_hat', desc: 'Tier 3 - Vastag sapka (+3 Véd.)', def: 3, hpBonus: 8, weight: 0.4, stackable: false, loot: { household: 1, military: 1 } },
     'motorcycle_helmet': { name: 'Bukósisak', type: 'helmet', tier: 3, icon: '🪖', img: 'SURV-1206_rescue_helmet', desc: 'Tier 3 - Kemény sisak (+5 Véd.)', def: 5, hpBonus: 10, weight: 2, stackable: false, loot: { auto: 2, household: 0.5 } },
     'gp5_mask': { name: 'GP-5 Gázálarc', type: 'helmet', tier: 4, icon: '🪖', img: 'SURV-1218_full_face_respirator', desc: 'Tier 4 - Vegyvédelmi álarc (+5 Véd.)', def: 5, hpBonus: 10, weight: 1.5, stackable: false, loot: { hazmat: 3, military: 1.5 } },

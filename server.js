@@ -1570,12 +1570,19 @@ io.on('connection', (socket) => {
                 }
             }
 
+            // Szétszedés a tárgy lapjáról: a kiválasztott leltárhely darabja fogy (pl. épp a tönkrement póló)
+            let chosen = null;
+            if (Number.isInteger(data.index) && recipe.cat === 'Szétszerelés') {
+                const sl = p.inventory[data.index];
+                if (sl && recipe.req[sl.key] && sl.count >= recipe.req[sl.key]) chosen = sl;
+            }
+
             // Szerszámok: nem fogynak el, de kopnak. Több lehetőségnél a legkopottabbat használjuk el előbb,
             // a szerszámosládát (ami mindent pótol) csak akkor, ha nincs más.
             const usedTools = [];
             for (const entry of recipe.tools || []) {
                 const options = RecipeTools.toolOptions(entry);
-                const candidates = p.inventory.filter(s => options.includes(s.key) && s.count > 0 && !usedTools.includes(s));
+                const candidates = p.inventory.filter(s => options.includes(s.key) && s.count > 0 && !usedTools.includes(s) && s !== chosen);
                 if (candidates.length === 0) {
                     return { save: false, error: `Hiányzó szerszám: ${options.map(itemName).join(' vagy ')}` };
                 }
@@ -1604,7 +1611,12 @@ io.on('connection', (socket) => {
 
             // Előbb elvesszük az alapanyagokat (ez helyet szabadíthat fel), aztán megnézzük, elfér-e a termék.
             // Ha nem fér el, semmi nem mentődik (save: false), így az alapanyagok sem vesznek el.
-            for (const [matKey, reqQty] of Object.entries(recipe.req)) removeItem(p, matKey, reqQty);
+            for (const [matKey, reqQty] of Object.entries(recipe.req)) {
+                if (chosen && chosen.key === matKey) {
+                    chosen.count -= reqQty;
+                    if (chosen.count <= 0) p.inventory = p.inventory.filter(s => s !== chosen);
+                } else removeItem(p, matKey, reqQty);
+            }
             if (fireMatch) removeItem(p, RecipeTools.FIRE_STARTERS[0], 1);
             if (waterKey) removeItem(p, waterKey, recipe.water);
             const result = recipe.result || recipe.key;

@@ -625,7 +625,8 @@ function renderItemSheet() {
             : `<span class="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-[10px] font-bold text-emerald-200">${escapeAttr(line)}</span>`).join('');
     document.getElementById('item-sheet-dur').innerHTML = durabilityHtml(durSlot, item)
         + (broken ? `<div class="text-[10px] font-bold text-red-400 mt-1">💥 Tönkrement: amíg meg nem javítod, nem ad bónuszt.</div>` : '')
-        + (repairInfo ? `<div class="text-[9px] mt-0.5 ${repairInfo.ok ? 'text-sky-300/90' : 'text-red-400/90'}">🔧 Javítás (+${repairInfo.percent}%): ${escapeAttr(repairInfo.text)}</div>` : '');
+        + (repairInfo ? `<div class="text-[9px] mt-0.5 ${repairInfo.ok ? 'text-sky-300/90' : 'text-red-400/90'}">🔧 Javítás (+${repairInfo.percent}%): ${escapeAttr(repairInfo.text)}</div>` : '')
+        + (ref.source === 'inv' ? scrapInfoHtml(ref.key) : '');
     const usesBox = document.getElementById('item-sheet-uses');
     if (usesBox) {
         const html = itemUsesHtml(ref.key);
@@ -649,6 +650,10 @@ function renderItemSheet() {
         }
         else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
         if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
+        scrapRecipesFor(ref.key).forEach(r => {
+            const st = scrapStatus(r);
+            actions += btn('🔧 Szétszed', `bg-amber-900 hover:bg-amber-800${st.ok ? '' : ' opacity-50'}`, `scrapItem('${r.key}')`);
+        });
         actions += btn(count > 1 ? 'Eldob 1 db' : 'Eldob', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('drop')`);
     } else {
         if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
@@ -676,6 +681,42 @@ function inventoryAction(index) {
     const item = itemDatabase[slot.key];
     if (SurvivalStats.isConsumable(item)) useItem(slot.key);
     else if (SurvivalStats.isEquippable(item)) equipItem(slot.key, SurvivalStats.equipSlot(item), index);
+}
+
+// ===== SZÉTSZEDÉS A TÁRGY LAPJÁN (v0.1.11) =====
+// A "Szétszerelés" receptek nem a barkácslistában vannak, hanem a tárgy lapján egy gombbal.
+const SCRAP_CAT = 'Szétszerelés';
+function scrapRecipesFor(key) {
+    return (window.craftingRecipes || []).filter(r => r.cat === SCRAP_CAT && !r.station && r.req && r.req[key]);
+}
+function scrapStatus(r) {
+    const have = (k) => (player.inventory || []).filter(s => s.key === k).reduce((n, s) => n + (s.count || 0), 0);
+    const name = (k) => (itemDatabase[k] ? itemDatabase[k].name : k);
+    const options = (entry) => (window.RecipeTools ? RecipeTools.toolOptions(entry) : (Array.isArray(entry) ? entry : [entry]));
+    const missing = [];
+    Object.entries(r.req).forEach(([k, q]) => { if (have(k) < q) missing.push(`${q} db ${name(k)}`); });
+    (r.tools || []).forEach(entry => { const o = options(entry); if (!o.some(k => have(k) > 0)) missing.push(o.map(name).join(' / ')); });
+    const result = itemDatabase[r.result || r.key] || {};
+    return { ok: missing.length === 0, missing, gives: `${r.count || 1} db ${result.name || ''}` };
+}
+function scrapItem(recipeKey) {
+    const r = (window.craftingRecipes || []).find(x => x.key === recipeKey);
+    if (!r) return;
+    const st = scrapStatus(r);
+    if (!st.ok) { logMessage(`Szétszedéshez kell: ${st.missing.join(', ')}`); playSound('hit'); return; }
+    const ref = itemSheetRef;
+    if (typeof socket !== 'undefined' && socket) {
+        socket.emit('craft_item', { recipeKey, ...(ref && ref.source === 'inv' ? { index: ref.index } : {}) });
+    }
+    closeItemSheet();
+}
+function scrapInfoHtml(key) {
+    return scrapRecipesFor(key).map(r => {
+        const st = scrapStatus(r);
+        const tools = (r.tools || []).map(e => (window.RecipeTools ? RecipeTools.toolOptions(e) : [].concat(e)).map(k => (itemDatabase[k] || {}).name || k).join(' / ')).join(', ');
+        const need = Object.entries(r.req).filter(([, q]) => q > 1).map(([k, q]) => `${q} db kell`).join('');
+        return `<div class="text-[10px] mt-1 ${st.ok ? 'text-amber-200/90' : 'text-red-400/90'}">🔧 Szétszedve: <b>${escapeAttr(st.gives)}</b>${need ? ` (${escapeAttr(need)})` : ''}${tools ? ` · szerszám: ${escapeAttr(tools)}` : ''}</div>`;
+    }).join('');
 }
 
 // ===== GYORSSÁV (v0.1.10) =====
@@ -876,7 +917,7 @@ function renderCraftList() {
     const hasTools = (recipe) => hasFire(recipe) && (recipe.tools || []).every(entry => toolOptions(entry).some(k => have(k) > 0));
     const hasMaterials = (recipe) => Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty);
 
-    const recipes = craftingRecipes.filter(recipe => !recipe.station);
+    const recipes = craftingRecipes.filter(recipe => !recipe.station && recipe.cat !== SCRAP_CAT); // a szétszedés a tárgy lapján van
     const categories = (window.CRAFT_CATEGORIES || []).slice();
     recipes.forEach(r => { const c = r.cat || 'Egyéb'; if (!categories.includes(c)) categories.push(c); });
 

@@ -38,7 +38,7 @@ const craftingRecipes = [
     { key: 'filter_water', cat: 'Víz és étel', result: 'water_bottle', name: 'Vízszűrés', desc: 'Szennyezett víz átszűrése palackba', req: { dirty_water: 1, plastic_bottle: 1 }, tools: ['straw_filter'] },
     { key: 'boil_water', cat: 'Víz és étel', result: 'water_bottle', name: 'Vízforralás', desc: 'Szennyezett víz felforralása konzervdobozban', req: { dirty_water: 1, plastic_bottle: 1 }, fire: true, tools: ['empty_can'] },
     { key: 'distill_water', cat: 'Víz és étel', result: 'distilled_water', name: 'Lepárolt Víz', desc: 'Két adag koszos víz lepárlása befőttesüvegbe', req: { dirty_water: 2, empty_jar: 1 }, fire: true, tools: ['empty_can'] },
-    { key: 'chili_pot', cat: 'Víz és étel', name: 'Csilis Bab', desc: 'Babkonzerv paradicsommal összefőzve', req: { canned_food: 2, tomato: 1 }, fire: true, tools: ['empty_can'] },
+    { key: 'chili_pot', cat: 'Víz és étel', count: 2, name: 'Csilis Bab', desc: 'Babkonzerv paradicsommal összefőzve (2 adag)', req: { canned_food: 2, tomato: 1 }, fire: true, tools: ['empty_can'] },
     { key: 'fish_and_chips', cat: 'Víz és étel', name: 'Hal és Sült Krumpli', desc: 'Tonhal krumplival, tűzön sütve', req: { tuna_can: 1, potato: 2 }, fire: true, tools: ['empty_can'] },
 
     // --- FEGYVEREK ---
@@ -97,7 +97,7 @@ const craftingRecipes = [
     { key: 'cut_jeans', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Kopott Farmernadrág Szétvágása', desc: 'Rongynak vágva', req: { jeans: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
     { key: 'cut_windbreaker', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Széldzseki Szétvágása', desc: 'Rongynak vágva', req: { windbreaker: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
     { key: 'cut_wool_trousers', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Gyapjú Nadrág Szétvágása', desc: 'Rongynak vágva', req: { wool_trousers: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
-    { key: 'cut_beanie', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Kötött Sínmaszk / Sapka Szétvágása', desc: 'Rongynak vágva', req: { beanie: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
+    { key: 'cut_beanie', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Kötött Símaszk / Sapka Szétvágása', desc: 'Rongynak vágva', req: { beanie: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
     { key: 'cut_earflap_cap', cat: 'Szétszerelés', result: 'rag', count: 2, name: 'Füles Téli Sapka Szétvágása', desc: 'Rongynak vágva', req: { earflap_cap: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
     { key: 'cut_parka', cat: 'Szétszerelés', result: 'rag', count: 4, name: 'Bélelt Parka Szétvágása', desc: 'Rongynak vágva', req: { parka: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
     { key: 'cut_military_jacket', cat: 'Szétszerelés', result: 'canvas_roll', name: 'Flora Katonai Zubbony Szétvágása', desc: 'Az erős katonai vászon kivágva', req: { military_jacket: 1 }, tools: [['multitool', 'sewing_kit', 'tin_snips']] },
