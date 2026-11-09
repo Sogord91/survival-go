@@ -723,7 +723,8 @@ function scrapInfoHtml(key) {
 // 3 hely a térkép alján: egy koppintással használod a kitűzött tárgyat (kötszer, víz, étel...).
 const QUICKBAR_SIZE = 3;
 function quickbarList() {
-    const bar = Array.isArray(player.quickbar) ? player.quickbar.slice(0, QUICKBAR_SIZE) : [];
+    const owned = (k) => (player.inventory || []).some(s => s.key === k && s.count > 0);
+    const bar = Array.isArray(player.quickbar) ? player.quickbar.slice(0, QUICKBAR_SIZE).map(k => (k && owned(k) ? k : null)) : [];
     while (bar.length < QUICKBAR_SIZE) bar.push(null);
     return bar;
 }

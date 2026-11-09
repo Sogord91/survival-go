@@ -458,6 +458,8 @@ function playerStats(p) {
 // Mentés előtt: a max HP mindig a szintből és a felszerelésből jön, a HP nem lépheti túl.
 // (Felszereléskor a HP NEM nő automatikusan, különben fel-le vevéssel lehetne gyógyulni.)
 function finalizePlayer(p) {
+    // Gyorssáv: ami elfogyott, lekerül róla (v0.1.10.2)
+    if (Array.isArray(p.quickbar)) p.quickbar = p.quickbar.map(k => (k && countItem(p, k) > 0 ? k : null));
     const stats = playerStats(p);
     p.maxHp = stats.maxHp;
     p.hp = clamp(p.hp, 0, p.maxHp);
