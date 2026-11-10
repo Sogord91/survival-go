@@ -167,10 +167,10 @@
         return haversine(point.lat, point.lng, building.lat, building.lng);
     }
 
-    // Átkutatási idő (másodperc) épülettípusonként: a kis házak gyorsak, a nagy létesítmények lassúak (v0.1.10)
-    const SEARCH_SECONDS_SMALL = 15;
-    const SEARCH_SECONDS_MEDIUM = 30;
-    const SEARCH_SECONDS_LARGE = 60;
+    // Átkutatási idő (másodperc) épülettípusonként: a kis házak gyorsak, a nagy létesítmények lassúak (v0.1.10, v0.1.10.3: felezve)
+    const SEARCH_SECONDS_SMALL = 8;
+    const SEARCH_SECONDS_MEDIUM = 15;
+    const SEARCH_SECONDS_LARGE = 30;
     const SMALL_TYPES = ['Romos ház', 'Garázs', 'Kisbolt / Trafik', 'Temető'];
     const LARGE_TYPES = ['Kórház', 'Rendőrség', 'Tűzoltóság', 'Katonai bázis', 'Kormányzati Bunker / Óvóhely',
         'Elhagyatott Katonai Ellenőrzőpont / Blokád', 'Katasztrófavédelmi / Vegyvédelmi Központ', 'Elhagyatott raktár',

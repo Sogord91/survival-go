@@ -565,7 +565,7 @@ function cancelSearch(message) {
 // A folyamatban lévő átkutatás (a szerver válaszáig). Ha válasz nem jön (pl. megszakadt a kapcsolat),
 // a megadott idő után újra lehet próbálkozni.
 let lootPending = null;
-const LOOT_PENDING_TIMEOUT_MS = 75000; // a leghosszabb kutatás (60 mp) + a szerver válasza
+const LOOT_PENDING_TIMEOUT_MS = 45000; // a leghosszabb kutatás (30 mp) + a szerver válasza
 
 
 

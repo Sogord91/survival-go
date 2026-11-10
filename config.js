@@ -69,7 +69,7 @@ module.exports = {
                                         // aki nem a megtalálója, annak a kinyitás egy kutatásnyi fáradtság)
     LOOT_RANGE_METERS: 30,              // ennyire kell megközelíteni az épületet
     LOOT_RANGE_TOLERANCE_METERS: 15,    // + GPS-pontatlanság tűrése (a szerver 45 m-ig fogadja el)
-    SEARCH_TIME_SCALE: 1,               // átkutatási idő szorzója (épülettípusonként 15/30/60 mp; a tesztekben 0)
+    SEARCH_TIME_SCALE: 1,               // átkutatási idő szorzója (épülettípusonként 8/15/30 mp; a tesztekben 0)
     SEARCH_GRACE_MS: 1500,              // ennyivel korábban is elfogadjuk a befejezést (hálózati késés)
     POSITION_MAX_AGE_SECONDS: 120,      // ennél régebbi GPS pozícióval nem lehet lootolni
     LOOT_COOLDOWN_MS: 1500,             // két lootolási kérés között legalább ennyi idő (az OSM-lekérdezések védelme)
