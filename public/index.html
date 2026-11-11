@@ -24,7 +24,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Google Fonts betöltése egy vagány, katonai/technikai betűtípushoz */
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&display=swap');
 
         body { margin: 0; padding: 0; background: #050b05; color: #a3e635; font-family: 'Share Tech Mono', monospace; }
         
@@ -40,8 +40,8 @@
         }
         /* a térkép forrásjelölése kicsi és a képernyő aljához tapad (a Stadia és az OSM megköveteli) */
         .leaflet-control-attribution { font-size: 9px !important; line-height: 1.3 !important; opacity: 0.75; }
-        /* a menüsor 1rem-rel a képernyő alja fölött van, a felirat alatta, a legalján fér el */
-        .leaflet-bottom { bottom: env(safe-area-inset-bottom, 0px) !important; }
+                /* v0.1.11: a menüsor a képernyő aljáig ér, a felirat közvetlenül fölötte látszik */
+        .leaflet-bottom { bottom: calc(env(safe-area-inset-bottom, 0px) + 64px) !important; }
 
         .hud-panel { 
             z-index: 1000; 
@@ -51,13 +51,6 @@
             box-shadow: 0 0 15px rgba(34, 197, 94, 0.25), inset 0 0 10px rgba(20, 83, 45, 0.5);
         }
         .modal { z-index: 2000; background: rgba(0, 0, 0, 0.88); }
-        /* Rövid értesítések: a HUD alatt, egymás alatt, egyenként néhány másodpercig (main.js: logMessage) */
-        #toast-stack { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 9.25rem);
-            width: min(92vw, 24rem); z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-        .toast-item { background: rgba(17, 24, 39, 0.95); border: 1px solid rgba(245, 158, 11, 0.8); color: #fcd34d; border-radius: 12px;
-            padding: 8px 14px; font-size: 12px; font-weight: 700; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-            transition: opacity 0.4s ease, transform 0.4s ease; }
-        .toast-item.leaving { opacity: 0; transform: translateY(-6px); }
         /* Ikonos tárgymezők (készlet és felszerelés) */
         .inv-tile, .eq-tile { position: relative; aspect-ratio: 1 / 1; width: 100%; display: flex; align-items: center; justify-content: center;
             background: rgba(2, 20, 12, 0.75); border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 10px; overflow: hidden; }
@@ -69,14 +62,6 @@
         .tile-count { position: absolute; right: 3px; bottom: 2px; font-size: 10px; font-weight: 800; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
         .tile-dur { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 3px; background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden; pointer-events: none; }
         .tile-dur > div { height: 100%; }
-        .qb-slot { position: relative; width: 52px; height: 52px; border-radius: 14px; border: 2px solid rgba(52, 211, 153, 0.75);
-            background: linear-gradient(180deg, rgba(10, 32, 18, 0.95), rgba(3, 12, 7, 0.95)); display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 6px 18px rgba(0,0,0,.5); -webkit-tap-highlight-color: transparent; transition: transform .1s; overflow: hidden; }
-        .qb-slot:active { transform: scale(0.93); }
-        .qb-slot img { width: 80%; height: 80%; object-fit: contain; }
-        .qb-slot .qb-count { position: absolute; right: 3px; bottom: 1px; font: 700 11px ui-monospace, monospace; color: #ecfdf5; text-shadow: 0 1px 2px #000; }
-        .qb-empty { color: rgba(110, 231, 183, 0.6); font-size: 24px; font-weight: 700; border-style: dashed; border-color: rgba(52, 211, 153, 0.4); }
-        .qb-out { filter: grayscale(1); opacity: 0.55; }
         .inv-tile.selected { border-color: rgba(248, 113, 113, 0.95); background: rgba(127, 29, 29, 0.55); box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.5) inset; }
         .inv-tile .tile-check { position: absolute; top: 2px; left: 3px; font-size: 11px; line-height: 1; pointer-events: none; }
         .inv-tool-btn { font-size: 10px; font-weight: 700; color: #a7f3d0; background: rgba(6, 78, 59, 0.6); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 6px; padding: 3px 7px; }
@@ -104,21 +89,6 @@
         .stat-val { font-size: 10px; font-weight: 800; text-align: right; line-height: 1.2; margin-top: 1px; color: var(--c); text-shadow: 0 1px 2px #000; white-space: nowrap; }
         .stat-row.crit { animation: stat-crit 1s infinite; }
         @keyframes stat-crit { 50% { filter: brightness(1.6) drop-shadow(0 0 5px #ef4444); } }
-        /* Alsó menüsor */
-        .nav-bar { position: absolute; left: 50%; transform: translateX(-50%); width: calc(100% - 1rem); max-width: 30rem;
-            display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px 2px 5px;
-            background: linear-gradient(180deg, rgba(10, 32, 18, 0.96), rgba(3, 12, 7, 0.97)); border-top: 2px solid rgba(74, 222, 128, 0.75); }
-        .nav-btn { position: relative; background: transparent; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 0; border-radius: 8px;
-            transition: transform 0.1s, background 0.15s; -webkit-tap-highlight-color: transparent; }
-        .nav-btn img { width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7)); pointer-events: none; }
-        .nav-btn span { font-size: 8.5px; font-weight: 800; letter-spacing: 0.01em; color: #a7f3d0; text-transform: uppercase; text-shadow: 0 1px 2px #000; white-space: nowrap; }
-        .nav-btn:hover { background: rgba(16, 185, 129, 0.12); }
-        .nav-btn:active { transform: scale(0.92); }
-        .nav-btn.soon img { opacity: 0.55; filter: grayscale(0.6) drop-shadow(0 2px 2px rgba(0,0,0,0.7)); }
-        .nav-btn.soon span { color: rgba(167, 243, 208, 0.5); }
-        .nav-badge { position: absolute; top: -2px; right: calc(50% - 24px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px;
-            background: #dc2626; border: 1.5px solid #fff; color: #fff; font-size: 10px; font-weight: 800; line-height: 14px; text-align: center; }
-        @media (max-width: 370px) { .nav-btn img { width: 28px; height: 28px; } .nav-btn span { font-size: 7.5px; letter-spacing: 0; } }
         
         /* Térképstílus: a szűrő CSAK a csempékre hat, a jelölőkre nem (lásd map.js, MAP_STYLES) */
         .zone-tiles { filter: var(--zone-tile-filter, none); }
@@ -139,6 +109,148 @@
             100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
         .combat-pulse { animation: pulse-green 1.5s infinite; }
+        /* ===== ÚJ HUD (v0.1.11): vászon, cérna, karóra-LCD. Neon és izzás nélkül. ===== */
+        :root { --sg-canvas: #3a3f2c; --sg-thread: #e9e3cf; --sg-dark: #15170f; --sg-pocket: #2a2e20; --sg-muted: #c9c4b4; --sg-gold: #d9c58a;
+            --sg-font: 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', 'DejaVu Sans Condensed', sans-serif;
+            --sg-mono: 'Share Tech Mono', 'DejaVu Sans Mono', ui-monospace, monospace;
+            --sg-safe-b: env(safe-area-inset-bottom, 0px); --sg-safe-t: env(safe-area-inset-top, 0px); }
+        .sg-canvas { background-color: var(--sg-canvas);
+            background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 4px); }
+        .sg-shade-top, .sg-shade-bottom { position: absolute; left: 0; right: 0; pointer-events: none; z-index: 900; }
+        .sg-shade-top { top: 0; height: calc(var(--sg-safe-t) + 120px); background: linear-gradient(180deg, rgba(0,0,0,.75), rgba(0,0,0,0)); }
+        .sg-shade-bottom { bottom: 0; height: calc(var(--sg-safe-b) + 230px); background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0)); }
+
+        .sg-top { position: absolute; z-index: 1000; left: 12px; right: 12px; top: calc(var(--sg-safe-t) + 12px); display: flex; align-items: flex-start; gap: 10px; pointer-events: none; }
+        .sg-id { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; }
+        .sg-ava { position: relative; width: 64px; height: 64px; flex: none; }
+        .sg-ava-ring { position: absolute; inset: 0; width: 64px; height: 64px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+        .sg-ava-img { position: absolute; left: 9px; top: 9px; width: 46px; height: 46px; border-radius: 50%; overflow: hidden; background: #0d0f0a; }
+        .sg-ava-img img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(.45) sepia(.2) contrast(1.08); }
+        .sg-rank-patch { position: absolute; right: -8px; bottom: -8px; width: 26px; height: 30px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.7)); }
+        .sg-rank-patch svg { width: 100%; height: 100%; display: block; }
+        .sg-idtext { min-width: 0; }
+        .sg-nameline { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .sg-tape { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 9px; border: 2px solid var(--sg-dark);
+            font: 800 13px var(--sg-font); letter-spacing: .24em; text-transform: uppercase; color: var(--sg-thread); box-shadow: 0 2px 3px rgba(0,0,0,.5);
+            background-color: var(--sg-canvas); background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px);
+            outline: 1px dashed rgba(233,227,207,.35); outline-offset: -5px; }
+        .sg-early { font-size: 13px; line-height: 1; }
+        .sg-sub { font: 700 11px var(--sg-font); letter-spacing: .12em; color: var(--sg-muted); margin-top: 3px; white-space: nowrap; text-shadow: 0 1px 2px #000; }
+        .sg-sub b { color: #e9d9a0; font-weight: 800; }
+        .sg-xp { margin-top: 1px; }
+        .sg-xpline { display: none; }
+
+        .sg-watch { position: relative; flex: none; width: 150px; padding: 6px; border-radius: 16px; background: linear-gradient(160deg, #3a3a36, #191917);
+            box-shadow: 0 6px 14px rgba(0,0,0,.7), inset 0 1px 1px rgba(255,255,255,.12), inset 0 -2px 2px rgba(0,0,0,.6); }
+        .sg-watch:before, .sg-watch:after { content: ''; position: absolute; right: -4px; width: 5px; height: 12px; border-radius: 2px; background: linear-gradient(90deg, #555, #222); }
+        .sg-watch:before { top: 14px; } .sg-watch:after { top: 34px; }
+        .sg-watch-brand { display: flex; justify-content: space-between; align-items: center; font: 800 8px var(--sg-font); letter-spacing: .25em; color: #8d8d84; margin: 0 4px 3px; }
+        .sg-watch-brand b { width: 5px; height: 5px; border-radius: 50%; background: #c2402f; }
+        .sg-lcd { border-radius: 7px; padding: 4px 7px 5px; background: linear-gradient(180deg, #a6ad8f, #8f977a); color: #1d2218;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,.45), inset 0 0 0 1.5px #50553f; }
+        .sg-lcd-time { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; font: 400 25px/1 var(--sg-mono); }
+        .sg-lcd-time small { display: flex; align-items: center; gap: 4px; font: 400 11px var(--sg-mono); margin-bottom: 2px; white-space: nowrap; }
+        .sg-ico { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+        .sg-moon { box-shadow: inset -3px -1px 0 0 #1d2218; transform: rotate(-20deg); }
+        .sg-sun { background: #1d2218; box-shadow: 0 0 0 2px #a6ad8f, 0 0 0 3px #1d2218; width: 6px; height: 6px; margin: 0 2px; }
+        .sg-lcd-row { display: flex; justify-content: space-between; gap: 6px; font: 400 10px var(--sg-mono); margin-top: 3px; white-space: nowrap; }
+        #hud-weight.sg-over { color: #8e1b14; animation: sg-blink 1s steps(2) infinite; }
+        @keyframes sg-blink { 50% { opacity: .25; } }
+        .sg-night { position: absolute; right: 2px; top: calc(100% + 6px); padding: 2px 7px; background: rgba(21,23,15,.92); border: 1px solid #3f4433;
+            font: 700 10px var(--sg-font); letter-spacing: .1em; color: var(--sg-thread); white-space: nowrap; }
+
+        .sg-bottom { position: absolute; z-index: 1000; left: 14px; right: 14px; bottom: calc(var(--sg-safe-b) + 84px); pointer-events: none; }
+        .sg-chips { display: flex; gap: 14px; margin-bottom: 8px; font: 700 11px var(--sg-font); letter-spacing: .14em; color: #bdb8a8; text-shadow: 0 1px 2px #000; }
+        .sg-chips b { color: #f5f5f4; }
+        .sg-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .sg-stat { --c: #e9e3cf; min-width: 0; }
+        .sg-k { display: flex; justify-content: space-between; gap: 4px; font: 700 11px var(--sg-font); letter-spacing: .14em; color: #d6d3d1; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+        .sg-k span:last-child { color: #fafaf9; font-weight: 800; letter-spacing: .02em; }
+        .sg-line { height: 4px; background: rgba(255,255,255,.14); margin-top: 4px; }
+        .sg-line i { display: block; height: 100%; width: 100%; background: var(--c); transition: width .4s; }
+        .sg-stat.crit .sg-line i { animation: sg-blink .8s steps(2) infinite; }
+        .sg-stat.crit .sg-k span:last-child { color: #ff8a7a; }
+
+        .sg-quickbar { position: absolute; z-index: 1000; left: 14px; bottom: calc(var(--sg-safe-b) + 146px); display: flex; gap: 8px; }
+        .sg-recenter { position: absolute; z-index: 1000; right: 14px; bottom: calc(var(--sg-safe-b) + 146px); width: 50px; height: 50px; border-radius: 50%;
+            border: 2px solid var(--sg-dark); box-shadow: 0 3px 6px rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .sg-recenter:active { transform: scale(.93); }
+        .sg-loading { position: absolute; z-index: 1000; left: 50%; transform: translateX(-50%); bottom: calc(var(--sg-safe-b) + 158px); padding: 5px 10px; border: 2px solid var(--sg-dark);
+            font: 800 10px var(--sg-font); letter-spacing: .18em; color: var(--sg-thread); pointer-events: none; animation: sg-blink 1.6s steps(2) infinite; }
+        .sg-log { position: absolute; z-index: 950; left: 14px; right: 80px; bottom: calc(var(--sg-safe-b) + 206px); max-height: 56px; overflow: hidden; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: flex-end; font: 400 11.5px/1.5 var(--sg-mono); color: #d8d2bd; text-shadow: 0 1px 2px #000, 0 0 2px #000; }
+        .sg-log > div { flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sg-log > div:nth-last-child(3) { opacity: .45; } .sg-log > div:nth-last-child(2) { opacity: .72; }
+        .sg-log > div:nth-last-child(n+4) { display: none; }
+        body:has(#search-panel:not(.hidden)) .sg-log { visibility: hidden; }
+        .sg-gps { position: absolute; z-index: 1100; left: 12px; right: 12px; bottom: calc(var(--sg-safe-b) + 206px); padding: 12px; border: 2px solid var(--sg-dark);
+            box-shadow: 0 8px 20px rgba(0,0,0,.7); font: 600 12px/1.4 var(--sg-font); letter-spacing: .03em; color: var(--sg-thread); }
+        .sg-gps-title { font-weight: 800; letter-spacing: .12em; color: #e9c45a; margin-bottom: 4px; }
+        .sg-btn { display: block; width: 100%; margin-top: 8px; padding: 9px 6px; border: 2px solid var(--sg-dark); font: 800 11px var(--sg-font); letter-spacing: .2em; color: var(--sg-thread);
+            background: var(--sg-pocket); box-shadow: 0 2px 3px rgba(0,0,0,.5); cursor: pointer; }
+        .sg-btn-amber { background: #6b4a1c; }
+
+        .sg-search { position: fixed; z-index: 2500; left: 12px; right: 12px; bottom: calc(var(--sg-safe-b) + 206px); padding: 10px 12px 8px; border: 2px solid var(--sg-dark);
+            box-shadow: 0 6px 14px rgba(0,0,0,.6); outline: 1px dashed rgba(233,227,207,.35); outline-offset: -6px; }
+        .sg-search-head { display: flex; justify-content: space-between; gap: 8px; font: 800 12px var(--sg-font); letter-spacing: .16em; text-transform: uppercase; color: var(--sg-thread); }
+        .sg-search-head span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sg-search-head span:last-child { font: 400 12px var(--sg-mono); letter-spacing: 0; text-transform: none; flex: none; }
+        .sg-search-bar { position: relative; height: 9px; margin-top: 7px; background: var(--sg-dark); overflow: hidden; }
+        .sg-search-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--sg-gold); }
+        .sg-search-bar:after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 5px, rgba(0,0,0,.45) 5px 7px); }
+        .sg-search-cancel { margin-top: 6px; padding: 2px 0; background: none; border: 0; border-bottom: 1px dashed #8f8a7a; font: 800 10px var(--sg-font); letter-spacing: .18em; color: var(--sg-muted); cursor: pointer; }
+
+        .sg-promo { position: fixed; z-index: 9000; left: 50%; top: 34%; transform: translate(-50%, -50%); width: min(80vw, 260px); padding: 16px 14px 14px; text-align: center;
+            background: rgba(14,15,12,.96); border: 1px solid #3a3f2c; box-shadow: 0 14px 40px rgba(0,0,0,.8); cursor: pointer; animation: sg-pop .35s ease-out; }
+        @keyframes sg-pop { from { opacity: 0; transform: translate(-50%, -45%) scale(.9); } }
+        .sg-promo-h { font: 800 11px var(--sg-font); letter-spacing: .32em; color: var(--sg-gold); }
+        .sg-promo-patch { width: 64px; height: 72px; margin: 10px auto 0; }
+        .sg-promo-patch svg { width: 100%; height: 100%; display: block; }
+        .sg-promo-name { font: 800 22px var(--sg-font); letter-spacing: .16em; color: #f5efd9; margin-top: 6px; }
+        .sg-promo-text { font: 500 12px var(--sg-font); letter-spacing: .04em; color: #a8a29e; margin-top: 3px; }
+
+        /* Gyorssáv: varrott zsebek */
+        .qb-slot { position: relative; width: 52px; height: 52px; border: 2px solid var(--sg-dark); display: flex; align-items: center; justify-content: center;
+            background-color: var(--sg-canvas); background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px);
+            box-shadow: 0 3px 5px rgba(0,0,0,.6); -webkit-tap-highlight-color: transparent; transition: transform .1s; overflow: hidden; cursor: pointer; }
+        .qb-slot:active { transform: scale(0.93); }
+        .qb-slot img { width: 72%; height: 72%; object-fit: contain; }
+        .qb-slot .qb-count { position: absolute; right: 3px; bottom: 1px; font: 800 11px var(--sg-font); color: var(--sg-thread); text-shadow: 0 1px 1px #000, 0 0 2px #000; }
+        .qb-empty { color: rgba(233,227,207,.45); font: 600 24px var(--sg-font); background-color: rgba(42,46,32,.75); background-image: none; outline: 1px dashed rgba(233,227,207,.3); outline-offset: -6px; }
+        .qb-out { filter: grayscale(1); opacity: 0.55; }
+
+        /* Értesítések: sötét cetli, cérnaszínű szöveg */
+        #toast-stack { position: fixed; left: 50%; transform: translateX(-50%); top: calc(var(--sg-safe-t) + 104px);
+            width: min(92vw, 24rem); z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+        .toast-item { background: rgba(21, 23, 15, 0.94); border: 1px solid #4a503a; border-left: 4px solid var(--sg-gold); color: var(--sg-thread);
+            padding: 7px 12px; font: 700 13px/1.35 var(--sg-font); letter-spacing: .03em; text-align: left; box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            transition: opacity 0.4s ease, transform 0.4s ease; }
+        .toast-item.leaving { opacity: 0; transform: translateY(-6px); }
+
+        /* Alsó menüsor: teljes szélességű vászoncsík, varrással */
+        .nav-bar { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(7, 1fr);
+            padding: 8px 2px calc(var(--sg-safe-b) + 6px); border-top: 2px solid var(--sg-dark); box-shadow: 0 -4px 12px rgba(0,0,0,.5); }
+        .nav-bar:before { content: ''; position: absolute; left: 0; right: 0; top: 4px; border-top: 1px dashed rgba(233,227,207,.32); pointer-events: none; }
+        .nav-btn { position: relative; background: transparent; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px 0;
+            transition: transform 0.1s; -webkit-tap-highlight-color: transparent; }
+        .nav-btn img { width: 28px; height: 28px; filter: grayscale(1) sepia(.35) brightness(1.25) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); pointer-events: none; }
+        .nav-btn { min-width: 0; }
+        .nav-btn span { max-width: 100%; overflow: hidden; text-overflow: clip; font: 700 9.5px var(--sg-font); letter-spacing: .05em; color: #cfc9b6; text-transform: uppercase; white-space: nowrap; }
+        .nav-btn:active { transform: scale(0.92); }
+        .nav-btn.soon img { opacity: 0.45; }
+        .nav-btn.soon span { color: rgba(207, 201, 182, 0.45); }
+        .nav-badge { position: absolute; top: -3px; right: calc(50% - 20px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+            background: #9b2a20; border: 1.5px solid var(--sg-dark); color: #fff; font: 800 9px/13px var(--sg-font); text-align: center; }
+        /* Játékosjelölők a térképen: hímzett foltok */
+        .sg-marker { position: relative; width: 40px; height: 40px; border-radius: 50%; padding: 5px; background: #3a3f2c; border: 2px solid #15170f; box-shadow: 0 3px 6px rgba(0,0,0,.7); }
+        .sg-marker:before { content: ''; position: absolute; inset: 2px; border-radius: 50%; border: 1px dashed rgba(233,227,207,.55); pointer-events: none; }
+        .sg-marker img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; filter: grayscale(.4) sepia(.15); }
+        .sg-marker-me { background: #d9c58a; }
+        .sg-marker-me:before { border-color: rgba(21,23,15,.6); }
+        .sg-marker-other { background: #6b2a1f; }
+        .sg-marker-rank { position: absolute; right: -7px; bottom: -8px; width: 17px; height: 20px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.8)); }
+        .sg-marker-rank svg { width: 100%; height: 100%; display: block; }
+        @media (max-width: 370px) { .nav-btn img { width: 24px; height: 24px; } .nav-btn span { font-size: 8px; letter-spacing: .02em; } .sg-watch { width: 136px; } .sg-lcd-time { font-size: 22px; } .sg-wd { display: none; } }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -319,127 +431,113 @@
  <!-- JÁTÉK HUD KONTÉNER (Minden benne van, és alapból rejtett a hud-hidden miatt) -->
     <div id="game-hud-container" class="hud-hidden">
 
-        <!-- FELSŐ HUD (Tiszta, mobilbarát kártyás stílus) -->
-        <div id="top-hud" class="absolute top-3 left-3 right-3 flex flex-col gap-2 hud-panel p-2.5 clipped-panel shadow-2xl">
-            
-            <!-- 1. Sor: Avatár, Név és Főbb adatok -->
-            <div class="flex items-center justify-between border-b border-emerald-900 pb-2">
-                <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                    <!-- Avatár -->
-                    <div class="relative flex-shrink-0">
-                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-900 p-0.5 clipped-badge shadow-lg flex items-center justify-center">
-                            <div id="hud-avatar" class="w-full h-full bg-slate-950 clipped-badge overflow-hidden flex items-center justify-center">
-                                <!-- Ide jön az avatár kép -->
-                            </div>
-                        </div>
-                        <div class="absolute -bottom-1 -right-1 bg-emerald-600 text-slate-950 font-black text-[9px] px-1 clipped-badge shadow">
-                            L<span id="hud-level">1</span>
-                        </div>
-                    </div>
+        <!-- ÚJ HUD (v0.1.11): felvarrós avatar + rang, karóra, színes csíkok lent. Stílus: .sg-* (vászon, cérna, LCD) -->
+        <div class="sg-shade-top" aria-hidden="true"></div>
+        <div class="sg-shade-bottom" aria-hidden="true"></div>
 
-                    <!-- Név, szint-csík és statok -->
-                    <div class="flex flex-col flex-1 min-w-0 gap-1">
-                        <div class="flex items-center gap-1.5 min-w-0">
-                            <div id="hud-name" class="text-xs font-black tracking-wider text-emerald-400 uppercase drop-shadow truncate">Túlélő</div>
-                            <span id="hud-badge" class="hidden text-[11px] leading-none" title="Korai túlélő">🎖️</span>
-                            <span id="night-indicator" class="hidden ml-auto text-[10px] text-sky-300 font-bold whitespace-nowrap"></span>
-                        </div>
-                        <!-- Tapasztalat a következő szintig, pl. 40 / 300 XP -->
-                        <div class="hud-xpbar" title="Tapasztalat a következő szintig">
-                            <div id="bar-xp" class="hud-xpbar-fill" style="width:0%"></div>
-                            <span class="hud-xpbar-text"><span><span id="hud-xp">0</span> / <span id="hud-xp-next">100</span> XP</span></span>
-                        </div>
-                        <div class="hud-chips">
-                            <span>🛡️ <span id="hud-defense" class="text-emerald-300 font-bold">0</span></span>
-                            <span>💰 <span id="hud-money" class="text-yellow-300 font-bold">0</span></span>
-                            <span>⚖️ <span id="hud-weight" class="text-amber-300 font-bold">0/30kg</span></span>
-                        </div>
-                    </div>
+        <div id="top-hud" class="sg-top">
+            <div class="sg-id">
+                <!-- Avatar hímzett foltban; a körülötte lévő öltés-gyűrű az XP, a sarkában a rang felvarrója -->
+                <div class="sg-ava">
+                    <svg class="sg-ava-ring" viewBox="0 0 64 64" aria-hidden="true">
+                        <circle cx="32" cy="32" r="31.5" fill="#15170f"/><circle cx="32" cy="32" r="30" fill="#3a3f2c"/>
+                        <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,.4)" stroke-width="4"/>
+                        <circle id="hud-xp-ring" cx="32" cy="32" r="28" fill="none" stroke="#d9c58a" stroke-width="4" stroke-dasharray="0 176" transform="rotate(-90 32 32)"/>
+                        <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="4" stroke-dasharray=".8 2.2"/>
+                        <circle cx="32" cy="32" r="24.5" fill="#15170f"/>
+                    </svg>
+                    <div id="hud-avatar" class="sg-ava-img"></div>
+                    <span id="hud-rank-patch" class="sg-rank-patch" title="Rang"></span>
+                </div>
+                <div class="sg-idtext">
+                    <div class="sg-nameline"><span id="hud-name" class="sg-tape">Túlélő</span><span id="hud-badge" class="hidden sg-early" title="Korai túlélő">🎖️</span></div>
+                    <div class="sg-sub"><b id="hud-rank">ÚJONC</b> · <span id="hud-level">1</span>. SZINT</div>
+                    <div class="sg-sub sg-xp" title="Tapasztalat a következő szintig"><span id="hud-xp">0</span> / <span id="hud-xp-next">100</span> XP</div>
+                    <div class="sg-xpline"><i id="bar-xp" style="width:0%"></i></div>
                 </div>
             </div>
 
-            <!-- 2. Sor: 4 állapotjelző, rajzolt ikon + 10 szegmenses csík (main.js: renderStatSegments) -->
-            <div class="grid grid-cols-4 gap-1.5">
-                <div id="stat-row-hp" class="stat-row" style="--c:#ef4444" title="Élet">
-                    <img src="/images/ui/stat-hp.svg" alt="">
-                    <div class="stat-body">
-                        <div id="bar-hp" class="stat-segs" data-value="100"></div>
-                        <div id="stat-hp" class="stat-val">100</div>
-                    </div>
+            <!-- Karóra: valódi idő, nappal/éjszaka, dátum és a cipelt súly -->
+            <div class="sg-watch" aria-label="Óra">
+                <div class="sg-watch-brand"><span>ZÓNA</span><b></b></div>
+                <div class="sg-lcd">
+                    <div class="sg-lcd-time"><span id="hud-clock">--:--</span><small id="hud-daynight">NAP</small></div>
+                    <div class="sg-lcd-row"><span id="hud-date">--</span><span id="hud-weight">0/30 kg</span></div>
                 </div>
-                <div id="stat-row-hunger" class="stat-row" style="--c:#f59e0b" title="Éhség">
-                    <img src="/images/ui/stat-hunger.svg" alt="">
-                    <div class="stat-body">
-                        <div id="bar-hunger" class="stat-segs" data-value="100"></div>
-                        <div id="stat-hunger" class="stat-val">100%</div>
-                    </div>
-                </div>
-                <div id="stat-row-thirst" class="stat-row" style="--c:#3b82f6" title="Szomjúság">
-                    <img src="/images/ui/stat-thirst.svg" alt="">
-                    <div class="stat-body">
-                        <div id="bar-thirst" class="stat-segs" data-value="100"></div>
-                        <div id="stat-thirst" class="stat-val">100%</div>
-                    </div>
-                </div>
-                <div id="stat-row-fatigue" class="stat-row" style="--c:#84cc16" title="Energia (ha elfogy, nem tudsz kutatni)">
-                    <img src="/images/ui/stat-fatigue.svg" alt="">
-                    <div class="stat-body">
-                        <div id="bar-fatigue" class="stat-segs" data-value="100"></div>
-                        <div id="stat-fatigue" class="stat-val">100%</div>
-                    </div>
-                </div>
+                <span id="night-indicator" class="hidden sg-night"></span>
             </div>
-
         </div>
-       
+
+        <!-- ÁLLAPOTJELZŐK a menüsor fölött (main.js: updateHUD, renderStatSegments) -->
+        <div id="hud-bottom" class="sg-bottom">
+            <div class="sg-chips"><span>VÉD <b id="hud-defense">0</b></span><span>PÉNZ <b id="hud-money">0</b> $</span></div>
+            <div class="sg-bars">
+                <div id="stat-row-hp" class="sg-stat" style="--c:#d6453a" title="Élet">
+                    <div class="sg-k"><span>ÉLET</span><span id="stat-hp">100</span></div>
+                    <div class="sg-line"><i id="bar-hp" data-value="100"></i></div>
+                </div>
+                <div id="stat-row-hunger" class="sg-stat" style="--c:#e0a238" title="Étel">
+                    <div class="sg-k"><span>ÉTEL</span><span id="stat-hunger">100%</span></div>
+                    <div class="sg-line"><i id="bar-hunger" data-value="100"></i></div>
+                </div>
+                <div id="stat-row-thirst" class="sg-stat" style="--c:#5b9bd0" title="Víz">
+                    <div class="sg-k"><span>VÍZ</span><span id="stat-thirst">100%</span></div>
+                    <div class="sg-line"><i id="bar-thirst" data-value="100"></i></div>
+                </div>
+                <div id="stat-row-fatigue" class="sg-stat" style="--c:#b5c25a" title="Energia (ha elfogy, nem tudsz kutatni)">
+                    <div class="sg-k"><span>ERŐ</span><span id="stat-fatigue">100%</span></div>
+                    <div class="sg-line"><i id="bar-fatigue" data-value="100"></i></div>
+                </div>
+            </div>
+        </div>
+
         <!-- GPS-HIBA JELZÉS (map.js: showGpsProblem) -->
-        <div id="gps-banner" class="hidden absolute left-3 right-3 bottom-40 hud-panel border-2 border-amber-500/80 rounded-xl p-3 text-[11px] text-amber-100 shadow-2xl z-[1100]">
-            <div id="gps-banner-title" class="font-bold text-amber-300 mb-1">📡 Nincs GPS-jel</div>
+        <div id="gps-banner" class="hidden sg-canvas sg-gps">
+            <div id="gps-banner-title" class="sg-gps-title">📡 Nincs GPS-jel</div>
             <div id="gps-banner-text"></div>
-            <button id="gps-retry" onclick="retryGps()" class="mt-2 w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded-lg font-bold">Újrapróbálás</button>
+            <button id="gps-retry" onclick="retryGps()" class="sg-btn sg-btn-amber">ÚJRAPRÓBÁLÁS</button>
         </div>
 
         <!-- UGRÁS A KARAKTERRE (map.js: recenterOnPlayer) -->
-        <button id="btn-recenter" onclick="recenterOnPlayer()" title="Ugrás a karakterre" aria-label="Ugrás a karakterre"
-            class="absolute bottom-28 right-4 w-12 h-12 rounded-full hud-panel border-2 border-emerald-500/80 flex items-center justify-center shadow-2xl z-[1000] active:scale-95 transition">
-            <span class="block w-4 h-4 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] ring-4 ring-emerald-400/30"></span>
+        <button id="btn-recenter" onclick="recenterOnPlayer()" title="Ugrás a karakterre" aria-label="Ugrás a karakterre" class="sg-canvas sg-recenter">
+            <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="8" fill="none" stroke="#e9e3cf" stroke-width="2"/><circle cx="13" cy="13" r="2.5" fill="#e9e3cf"/><path d="M13 1v5M13 20v5M1 13h5M20 13h5" stroke="#e9e3cf" stroke-width="2"/></svg>
         </button>
 
         <!-- GYORSSÁV (main.js: renderQuickbar) -->
-        <div id="quickbar" class="absolute bottom-28 left-4 flex gap-2 z-[1000]"></div>
+        <div id="quickbar" class="sg-quickbar"></div>
 
         <!-- ÉPÜLETEK BETÖLTÉSE JELZÉS (map.js: updateAreaIndicator) -->
-        <div id="area-loading" class="hidden absolute bottom-28 left-1/2 -translate-x-1/2 hud-panel px-3 py-1.5 clipped-panel text-[11px] font-bold text-emerald-300 shadow-2xl pointer-events-none animate-pulse">📡 Épületek betöltése…</div>
+        <div id="area-loading" class="hidden sg-canvas sg-loading">ÉPÜLETEK BETÖLTÉSE…</div>
 
-        <!-- JÁTÉK NAPLÓ -->
-        <div id="game-log" class="absolute bottom-44 left-4 w-80 hud-panel p-3 clipped-panel text-xs text-emerald-300/90 max-h-28 overflow-y-auto shadow-2xl pointer-events-none hidden sm:block">
-            <div>[Rendszer] Üdv a Zónában! A sugárzás szintje alacsony.</div>
+        <!-- JÁTÉK NAPLÓ: az utolsó sorok halványodva (a teljes lista a Napló ablakban) -->
+        <div id="game-log" class="sg-log">
+            <div>Üdv a Zónában!</div>
         </div>
 
-
-    <!-- ALSÓ MENÜSOR: rajzolt ikonok felirattal (képek: public/images/ui/nav-*.svg) -->
-        <nav id="nav-bar" class="nav-bar hud-panel clipped-panel" style="bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))">
+    <!-- ALSÓ MENÜSOR: vászoncsík, cérnaszínű ikonok (képek: public/images/ui/nav-*.svg) -->
+        <nav id="nav-bar" class="nav-bar sg-canvas">
             <button id="btn-open-equipment" class="nav-btn"><img src="/images/ui/nav-backpack.svg" alt=""><span>Készlet</span></button>
-            <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Craft</span></button>
+            <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Barkács</span></button>
             <button id="btn-open-skills" class="nav-btn soon"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span></button>
             <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
-            <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Csevegés</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
+            <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Rádió</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-journal" class="nav-btn"><img src="/images/ui/nav-journal.svg" alt=""><span>Napló</span></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span></button>
         </nav>
 
-    <!-- ZSÁKMÁNY: a talált holmi; amit nem teszel el, 30 percig az épületben marad (main.js: openLootWindow) -->
-    <div id="search-panel" class="hidden fixed left-3 right-3 z-[2500] rounded-2xl border-2 border-amber-400/80 bg-[#071a10]/95 px-4 py-3 shadow-2xl" style="bottom:180px">
-        <div class="flex items-center gap-3">
-            <div class="flex-1 min-w-0">
-                <div id="search-panel-name" class="text-sm font-bold text-amber-200 truncate font-mono">Átkutatod…</div>
-                <div class="mt-2 h-3 rounded-full bg-gray-800 overflow-hidden"><div id="search-panel-bar" class="h-full rounded-full" style="width:0%;background:linear-gradient(90deg,#4d7c0f,#a3e635)"></div></div>
-            </div>
-            <div class="text-right">
-                <div id="search-panel-left" class="text-xs font-mono text-emerald-300 mb-1">0 mp</div>
-                <button onclick="cancelSearch()" class="bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Megszakít</button>
-            </div>
-        </div>
+    <!-- ÁTKUTATÁS FOLYAMATBAN (map.js: startSearchProgress) -->
+    <div id="search-panel" class="hidden sg-canvas sg-search">
+        <div class="sg-search-head"><span id="search-panel-name">Átkutatod…</span><span id="search-panel-left">0 mp</span></div>
+        <div class="sg-search-bar"><i id="search-panel-bar" style="width:0%"></i></div>
+        <button onclick="cancelSearch()" class="sg-search-cancel">MÉGSE</button>
+    </div>
+
+    <!-- ELŐLÉPTETÉS: rangemelkedéskor felugró kártya (main.js: showPromotion) -->
+    <div id="promotion-card" class="hidden sg-promo" onclick="hidePromotion()">
+        <div class="sg-promo-h">ELŐLÉPTETÉS</div>
+        <div id="promotion-patch" class="sg-promo-patch"></div>
+        <div id="promotion-name" class="sg-promo-name">KADÉT</div>
+        <div id="promotion-text" class="sg-promo-text"></div>
     </div>
 
     <div id="loot-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]" onclick="if (event.target === this) closeLootWindow()">

@@ -20,6 +20,8 @@ socket.on('player_state', (data) => {
     if (data.leveledUp) {
         logMessage(`🎉 SZINTLÉPÉS! Elérted a(z) ${player.level}. szintet a Zónában!`);
         playSound('win');
+        // Új rang: előléptetés kártya (a rang 5 szintenként változik)
+        if (shownRankIndex !== null && rankIndexForLevel(player.level) > shownRankIndex) showPromotion(player.level);
     }
     (data.notices || []).forEach(n => logMessage('🔦 ' + n));
     (data.warnings || []).forEach(w => {
@@ -179,19 +181,28 @@ function updateHUD() {
     let currentWeight = player.weight || 0;
 
     const avatarFile = player.avatar;
-    document.getElementById('hud-avatar').innerHTML = `<img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; border-radius: 12px; object-fit: cover;">`;
+    const avaBox = document.getElementById('hud-avatar');
+    if (avaBox && avaBox.dataset.file !== String(avatarFile)) {
+        avaBox.dataset.file = String(avatarFile);
+        avaBox.innerHTML = `<img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">`;
+    }
     document.getElementById('hud-name').textContent = player.username || player.name || "Túlélő";
     const badge = document.getElementById('hud-badge');
     if (badge) badge.classList.toggle('hidden', !player.earlySurvivor);
-    document.getElementById('hud-level').textContent = player.level || 1;
+    const level = player.level || 1;
+    document.getElementById('hud-level').textContent = level;
+    renderRank(level);
     // A szerver szabálya: a következő szinthez szint × 100 XP kell (server.js, szintlépés)
     const xpNow = Math.max(0, Math.floor(Number(player.xp) || 0));
-    const xpNext = Math.max(1, (player.level || 1) * 100);
+    const xpNext = Math.max(1, level * 100);
+    const xpPct = Math.min(1, xpNow / xpNext);
     document.getElementById('hud-xp').textContent = xpNow;
     const xpNextEl = document.getElementById('hud-xp-next');
     if (xpNextEl) xpNextEl.textContent = xpNext;
     const xpBar = document.getElementById('bar-xp');
-    if (xpBar) xpBar.style.width = Math.min(100, (xpNow / xpNext) * 100) + '%';
+    if (xpBar) xpBar.style.width = (xpPct * 100) + '%';
+    const xpRing = document.getElementById('hud-xp-ring');
+    if (xpRing) { const c = 2 * Math.PI * 28; xpRing.setAttribute('stroke-dasharray', `${(c * xpPct).toFixed(1)} ${c.toFixed(1)}`); }
     document.getElementById('hud-defense').textContent = player.defense || 0;
     const moneyEl = document.getElementById('hud-money');
     if (moneyEl) moneyEl.textContent = Math.max(0, Math.floor(Number(player.money) || 0));
@@ -199,8 +210,9 @@ function updateHUD() {
     const weightEl = document.getElementById('hud-weight');
     if (weightEl) {
         weightEl.textContent = `${Math.round(currentWeight * 10) / 10}/${player.maxWeight} kg`;
-        weightEl.className = currentWeight > player.maxWeight ? "text-red-500 font-bold animate-pulse" : "text-amber-300 font-bold";
+        weightEl.classList.toggle('sg-over', currentWeight > player.maxWeight);
     }
+    updateWatch();
 
     // ?? : a 0 is valódi érték (a || 0-nál a 100-as alapértéket mutatta volna)
     const hp = player.hp ?? 100;
@@ -225,25 +237,113 @@ function updateHUD() {
     document.getElementById('stat-fatigue').textContent = Math.round(energy) + '%';
     // A szín a büntetési fokozatokat követi: zöld, 40% energia alatt narancs (gyengébb ütés), 15% alatt piros
     const fatigueRow = document.getElementById('stat-row-fatigue');
-    if (fatigueRow) fatigueRow.style.setProperty('--c', fatigue >= 85 ? '#ef4444' : fatigue >= 60 ? '#f97316' : '#84cc16');
+    if (fatigueRow) fatigueRow.style.setProperty('--c', fatigue >= 85 ? '#d6453a' : fatigue >= 60 ? '#e0a238' : '#b5c25a');
     renderStatSegments('fatigue', energy, fatigue >= 85);
 }
 
-// 10 szegmenses csík: minden szegmens 10%; a félig telt szegmens részben színes (--f)
+// Állapotcsík: vékony, színes vonal (a régi 10 szegmenses helyett, v0.1.11)
 function renderStatSegments(key, percent, critical) {
     const bar = document.getElementById('bar-' + key);
     if (!bar) return;
     const value = Math.max(0, Math.min(100, Number(percent) || 0));
-    if (bar.children.length !== 10) bar.innerHTML = '<i></i>'.repeat(10);
-    [...bar.children].forEach((seg, i) => {
-        const fill = Math.max(0, Math.min(1, value / 10 - i));
-        seg.style.setProperty('--f', Math.round(fill * 100) + '%');
-        seg.classList.toggle('on', fill > 0);
-    });
+    bar.style.width = value + '%';
     bar.dataset.value = String(Math.round(value));
     const row = document.getElementById('stat-row-' + key);
     if (row) row.classList.toggle('crit', !!critical);
 }
+
+// ===== RANGOK (v0.1.11): 5 szintenként új rang, hímzett felvarróval =====
+// [név, ettől a szinttől, jelzés típusa, darabszám]
+const RANKS = [
+    ['Újonc', 1, 'blank', 0], ['Kadét', 5, 'chev', 1], ['Őrvezető', 10, 'chev', 2], ['Tizedes', 15, 'chev', 3],
+    ['Őrmester', 20, 'rocker', 3], ['Törzsőrmester', 25, 'rocker', 4], ['Zászlós', 30, 'bar', 1],
+    ['Hadnagy', 35, 'star', 1], ['Főhadnagy', 40, 'star', 2], ['Százados', 45, 'star', 3],
+    ['Őrnagy', 50, 'bigstar', 1], ['Ezredes', 60, 'bigstar', 3], ['Zóna-parancsnok', 75, 'gold', 1]
+];
+function rankIndexForLevel(level) {
+    let idx = 0;
+    RANKS.forEach((r, i) => { if ((Number(level) || 1) >= r[1]) idx = i; });
+    return idx;
+}
+function rankForLevel(level) { return RANKS[rankIndexForLevel(level)][0]; }
+
+// A rang felvarrója SVG-ként (pajzs alakú, hímzett szegéllyel)
+function rankPatchSvg(index) {
+    const [, , type, n] = RANKS[index] || RANKS[0];
+    const gold = type === 'gold';
+    const officer = type === 'star' || type === 'bigstar';
+    const bg = gold ? '#3b2f16' : officer ? '#2a2e3a' : '#3a3f2c';
+    const th = gold ? '#e9c45a' : '#e9e3cf';
+    const rim = gold ? '#7a5a1c' : '#15170f';
+    const chev = y => `<path d="M15 ${y}L30 ${y + 9}L45 ${y}V${y + 6}L30 ${y + 15}L15 ${y + 6}Z" fill="${th}"/>`;
+    const star = (cx, cy, r) => {
+        let p = '';
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.42 : r; p += `${(cx + rr * Math.cos(a)).toFixed(1)},${(cy + rr * Math.sin(a)).toFixed(1)} `; }
+        return `<polygon points="${p}" fill="${th}"/>`;
+    };
+    let body = '';
+    if (type === 'blank') body = `<text x="30" y="40" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="11" fill="${th}" opacity=".6">ÚJ</text>`;
+    if (type === 'chev') for (let i = 0; i < n; i++) body += chev(16 + i * 10 + (3 - n) * 5);
+    if (type === 'rocker') {
+        for (let i = 0; i < 3; i++) body += chev(12 + i * 9);
+        body += `<path d="M15 44Q30 53 45 44V49Q30 58 15 49Z" fill="${th}"/>`;
+        if (n > 3) body += `<path d="M19 50Q30 56 41 50V53Q30 59 19 53Z" fill="${th}"/>`;
+    }
+    if (type === 'bar') body = `<rect x="14" y="26" width="32" height="7" rx="1" fill="${th}"/><circle cx="30" cy="43" r="4" fill="none" stroke="${th}" stroke-width="2"/>`;
+    if (type === 'star') (n === 1 ? [[30, 32]] : n === 2 ? [[21, 32], [39, 32]] : [[18, 36], [30, 24], [42, 36]]).forEach(([x, y]) => body += star(x, y, 7));
+    if (type === 'bigstar') {
+        body = `<path d="M12 46Q30 54 48 46" stroke="${th}" stroke-width="2" fill="none"/>`;
+        (n === 1 ? [[30, 29]] : [[18, 34], [30, 22], [42, 34]]).forEach(([x, y]) => body += star(x, y, n === 1 ? 11 : 7.5));
+    }
+    if (type === 'gold') body = star(30, 27, 12) + `<path d="M12 42Q30 52 48 42M14 47Q30 56 46 47" stroke="${th}" stroke-width="2.4" fill="none"/>`;
+    return `<svg viewBox="0 0 60 68" aria-hidden="true"><path d="M4 4H56V46Q56 60 30 66Q4 60 4 46Z" fill="${rim}"/><path d="M7 7H53V45Q53 57 30 62.5Q7 57 7 45Z" fill="${bg}"/>`
+        + `<path d="M10 10H50V44Q50 54 30 59Q10 54 10 44Z" fill="none" stroke="${th}" stroke-opacity=".45" stroke-width="1" stroke-dasharray="1.5 1.8"/>${body}</svg>`;
+}
+
+let shownRankIndex = null; // a HUD-on látható rang (az előléptetés felismeréséhez)
+function renderRank(level) {
+    const idx = rankIndexForLevel(level);
+    const nameEl = document.getElementById('hud-rank');
+    if (nameEl) nameEl.textContent = RANKS[idx][0].toUpperCase();
+    const patch = document.getElementById('hud-rank-patch');
+    if (patch && patch.dataset.rank !== String(idx)) { patch.dataset.rank = String(idx); patch.innerHTML = rankPatchSvg(idx); patch.title = RANKS[idx][0]; }
+    shownRankIndex = idx;
+}
+
+let promotionTimer = null;
+function showPromotion(level) {
+    const idx = rankIndexForLevel(level);
+    const card = document.getElementById('promotion-card');
+    if (!card) return;
+    document.getElementById('promotion-patch').innerHTML = rankPatchSvg(idx);
+    document.getElementById('promotion-name').textContent = RANKS[idx][0].toUpperCase();
+    document.getElementById('promotion-text').textContent = `Elérted a(z) ${level}. szintet. Varrd fel büszkén!`;
+    card.classList.remove('hidden');
+    clearTimeout(promotionTimer);
+    promotionTimer = setTimeout(hidePromotion, 5000);
+}
+function hidePromotion() {
+    clearTimeout(promotionTimer);
+    const card = document.getElementById('promotion-card');
+    if (card) card.classList.add('hidden');
+}
+
+// ===== KARÓRA: valódi idő, nappal/éjszaka, dátum =====
+const WATCH_DAYS = ['VA', 'HÉ', 'KE', 'SZE', 'CS', 'PÉ', 'SZO'];
+function updateWatch() {
+    const now = new Date();
+    const clock = document.getElementById('hud-clock');
+    if (clock) clock.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    const date = document.getElementById('hud-date');
+    if (date) date.innerHTML = `<span class="sg-wd">${WATCH_DAYS[now.getDay()]} </span>${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+    const dn = document.getElementById('hud-daynight');
+    if (dn) {
+        // A hold/nap jel CSS-sel rajzolva, hogy minden telefonon látszódjon (a ☾ karaktert nem minden betűtípus ismeri)
+        const night = typeof nightState !== 'undefined' && nightState.night;
+        dn.innerHTML = night ? 'ÉJ<i class="sg-ico sg-moon"></i>' : 'NAP<i class="sg-ico sg-sun"></i>';
+    }
+}
+setInterval(updateWatch, 15000);
 
 // A tárgy ikonja: ha van képe az ikoncsomagból (img), azt mutatjuk; ha a kép még nincs feltöltve
 // vagy nem töltődik be, az emoji jelenik meg helyette.

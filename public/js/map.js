@@ -117,6 +117,7 @@ function updateNightState() {
         indicator.classList.toggle('hidden', !night);
         indicator.textContent = night ? (light ? '🌙🔦' : `🌙 ${NIGHT_VISIBILITY_METERS} m`) : '';
     }
+    if (typeof updateWatch === 'function') updateWatch(); // a karórán NAP / ÉJ
 }
 
 // Látszik-e az épület (éjszaka fény nélkül csak a közelben)
@@ -140,13 +141,10 @@ function initMap(lat, lng, realPosition) {
     const avatarFile = player.avatar || 'avatar1.png';
     const icon = L.divIcon({
         className: 'custom-player-icon',
-        html: `
-            <div style="width: 36px; height: 36px; background: #1e293b; border: 3px solid #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(16,185,129,0.7); overflow: hidden;">
-                <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
-            </div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
+        // Hímzett folt: vászon perem, varrás, benne az avatar (v0.1.11)
+        html: `<div class="sg-marker sg-marker-me"><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'"></div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
     });
     playerMarker = L.marker([lat, lng], {icon: icon}).addTo(map);
 
@@ -661,16 +659,15 @@ function otherPlayerIcon(pData) {
     const avatarFile = SAFE_AVATAR.test(pData.avatar || '') ? pData.avatar : 'avatar1.png';
     return L.divIcon({
         className: 'other-player-icon',
+        // Hímzett folt rozsdabarna peremmel; a sarkában a játékos rangja (v0.1.11)
         html: `
-            <div style="position: relative; width: 36px; height: 36px;">
-                <div style="width: 36px; height: 36px; background: #1e293b; border: 2px solid #940e0e; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); overflow: hidden;">
-                    <img src="/images/avatars/${avatarFile}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/avatars/avatar1.png'">
-                </div>
-                ${pData.early === true ? '<span class="early-badge" style="position: absolute; right: -6px; bottom: -4px; font-size: 13px; line-height: 1; filter: drop-shadow(0 0 2px #000);">🎖️</span>' : ''}
+            <div class="sg-marker sg-marker-other"><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
+                ${typeof rankPatchSvg === 'function' ? `<span class="sg-marker-rank">${rankPatchSvg(rankIndexForLevel(Number(pData.level) || 1))}</span>` : ''}
+                ${pData.early === true ? '<span class="early-badge" style="position: absolute; left: -6px; bottom: -4px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 2px #000);">🎖️</span>' : ''}
             </div>
         `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
     });
 }
 
