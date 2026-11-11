@@ -169,7 +169,15 @@ function logMessage(text) {
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    showToast(text);
+    // A napló a térkép alján látszik; felül csak akkor jön értesítés, ha a napló épp nem látható
+    // (nyitott ablak, tárgylap vagy átkutatás közben)
+    if (!gameLogVisible()) showToast(text);
+}
+
+function gameLogVisible() {
+    const open = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
+    if (open('search-panel') || open('item-sheet') || open('promotion-card')) return false;
+    return ![...document.querySelectorAll('.modal')].some(m => !m.classList.contains('hidden'));
 }
 
 function updateHUD() {
@@ -1126,6 +1134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     safeAddEvent('btn-open-journal', 'click', () => {
+        // a Napló a Menüből nyílik (v0.1.11); a menü bezárul alatta
+        const settings = document.getElementById('settings-modal');
+        if (settings) settings.classList.add('hidden');
         renderJournal();
         const modal = document.getElementById('journal-modal');
         if (modal) modal.classList.remove('hidden');
@@ -1134,6 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeAddEvent('btn-open-skills', 'click', () => showToast('⭐ A képességek hamarosan érkeznek! Szintlépéskor választhatsz majd.'));
     safeAddEvent('btn-open-leaderboard', 'click', () => showToast('🏆 A ranglista hamarosan érkezik!'));
     safeAddEvent('btn-open-chat', 'click', () => showToast('📻 A csevegés hamarosan érkezik!'));
+    safeAddEvent('btn-open-quests', 'click', () => showToast('📜 A küldetések hamarosan érkeznek!'));
 
     safeAddEvent('btn-open-settings', 'click', () => { 
         const modal = document.getElementById('settings-modal');

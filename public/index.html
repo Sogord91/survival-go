@@ -24,7 +24,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Google Fonts betöltése egy vagány, katonai/technikai betűtípushoz */
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&family=Special+Elite&display=swap');
 
         body { margin: 0; padding: 0; background: #050b05; color: #a3e635; font-family: 'Share Tech Mono', monospace; }
         
@@ -251,6 +251,85 @@
         .sg-marker-rank { position: absolute; right: -7px; bottom: -8px; width: 17px; height: 20px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.8)); }
         .sg-marker-rank svg { width: 100%; height: 100%; display: block; }
         @media (max-width: 370px) { .nav-btn img { width: 24px; height: 24px; } .nav-btn span { font-size: 8px; letter-spacing: .02em; } .sg-watch { width: 136px; } .sg-lcd-time { font-size: 22px; } .sg-wd { display: none; } }
+        /* ===== ABLAKOK (v0.1.11): ugyanaz a vászon anyag, mint a HUD. A régi zöld Tailwind-színeket itt képezzük át,
+           így a JS-ben generált tartalom is egységes lesz anélkül, hogy minden sort át kellene írni. ===== */
+        .hud-panel { background-color: var(--sg-canvas) !important; backdrop-filter: none;
+            background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 4px);
+            border: 2px solid var(--sg-dark) !important; border-radius: 4px !important; box-shadow: 0 14px 34px rgba(0,0,0,.8) !important;
+            outline: 1px dashed rgba(233,227,207,.32); outline-offset: -7px; color: var(--sg-thread); font-family: var(--sg-font); letter-spacing: .02em; }
+        .hud-panel.clipped-panel { clip-path: none; }
+        .clipped-badge { clip-path: none; }
+        .combat-pulse { animation: none; }
+        .modal { background: rgba(8, 9, 6, 0.86); }
+        #item-sheet-panel { border-radius: 4px 4px 0 0 !important; border-bottom: 0 !important; outline-offset: -7px; }
+
+        /* Címsorok: névszalag */
+        .hud-panel h2, .hud-panel h3 { display: inline-block; padding: 3px 10px; border: 2px solid var(--sg-dark); background: var(--sg-pocket);
+            font: 800 13px var(--sg-font) !important; letter-spacing: .2em !important; text-transform: uppercase; color: var(--sg-thread) !important;
+            box-shadow: 0 2px 3px rgba(0,0,0,.45); outline: 1px dashed rgba(233,227,207,.32); outline-offset: -5px; filter: none !important; text-shadow: none; }
+        #gameover-modal h2 { background: #4a1f1a; }
+        #combat-modal h2#enemy-name { background: #4a1f1a; }
+
+        /* Szöveg: zöld -> cérna / fakó; borostyán -> arany; piros -> téglavörös */
+        .hud-panel [class*="text-emerald-"], .hud-panel [class*="text-green-"], .hud-panel [class*="text-lime-"] { color: var(--sg-muted) !important; }
+        .hud-panel [class*="text-emerald-1"], .hud-panel [class*="text-emerald-2"], .hud-panel .text-white, .hud-panel [class*="text-gray-1"], .hud-panel [class*="text-gray-2"] { color: var(--sg-thread) !important; }
+        .hud-panel [class*="text-gray-3"], .hud-panel [class*="text-gray-4"], .hud-panel [class*="text-slate-"] { color: #bdb8a8 !important; }
+        .hud-panel [class*="text-gray-5"], .hud-panel [class*="text-gray-6"] { color: #8f8a7a !important; }
+        .hud-panel [class*="text-amber-"], .hud-panel [class*="text-yellow-"], .hud-panel [class*="text-orange-"] { color: #e9c45a !important; }
+        .hud-panel [class*="text-red-"] { color: #ec8f80 !important; }
+        .hud-panel [class*="text-sky-"], .hud-panel [class*="text-blue-"] { color: #9cc3e0 !important; }
+
+        /* Hátterek: zöld foltok -> sötét zseb; gombok -> vászon foltok */
+        .hud-panel [class*="bg-emerald-9"], .hud-panel [class*="bg-black/"], .hud-panel [class*="bg-slate-"], .hud-panel [class*="bg-gray-9"] { background: rgba(21,23,15,.42) !important; }
+        .hud-panel [class*="bg-emerald-5"], .hud-panel [class*="bg-emerald-6"], .hud-panel [class*="bg-emerald-7"], .hud-panel [class*="bg-emerald-8"], .hud-panel [class*="bg-green-"] { background: #59652f !important; color: var(--sg-thread) !important; }
+        .hud-panel [class*="bg-gray-7"], .hud-panel [class*="bg-gray-8"] { background: var(--sg-pocket) !important; color: var(--sg-thread) !important; }
+        .hud-panel [class*="bg-red-"] { background: #5a221b !important; }
+        .hud-panel [class*="bg-amber-"], .hud-panel [class*="bg-orange-"] { background: #5e4419 !important; }
+        .hud-panel [class*="bg-sky-"], .hud-panel [class*="bg-blue-"] { background: #24384a !important; }
+        /* A csíkok kitöltése maradjon színes (élet, ellenfél élete) */
+        .hud-panel #enemy-bar-hp { background: #d6453a !important; box-shadow: none !important; }
+        .hud-panel #combat-bar-hp { background: #b5c25a !important; box-shadow: none !important; }
+
+        /* Keretek és lekerekítés: varrott, szögletes */
+        .hud-panel [class*="border-emerald-"], .hud-panel [class*="border-gray-"], .hud-panel [class*="border-green-"] { border-color: rgba(21,23,15,.85) !important; }
+        .hud-panel [class*="border-amber-"] { border-color: #7a5a1c !important; }
+        .hud-panel [class*="border-red-"] { border-color: #7a2a20 !important; }
+        .hud-panel [class*="rounded"]:not(.rounded-full) { border-radius: 3px !important; }
+        .hud-panel [class*="shadow-"] { box-shadow: 0 2px 3px rgba(0,0,0,.4) !important; }
+        .hud-panel button { font-family: var(--sg-font); letter-spacing: .06em; }
+        .hud-panel .font-mono { font-family: var(--sg-mono) !important; letter-spacing: 0; }
+        .hud-panel input, .hud-panel select { background: var(--sg-pocket) !important; border: 2px solid var(--sg-dark) !important; color: var(--sg-thread) !important; border-radius: 2px !important; font-family: var(--sg-mono); }
+        .hud-panel input::placeholder { color: rgba(233,227,207,.35); }
+
+        /* Bezárás gomb: kis varrott folt */
+        .hud-panel button[id^="btn-close"], .hud-panel button[onclick*="close"]:not([class*="bg-"]), .hud-panel button[onclick*="classList.add('hidden')"] {
+            width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0 !important;
+            background: var(--sg-pocket); border: 2px solid var(--sg-dark); color: var(--sg-thread) !important; font-size: 15px !important; }
+
+        /* Tárgyhelyek: varrott zsebek */
+        .inv-tile, .eq-tile { background: var(--sg-pocket); border: 1.5px solid var(--sg-dark); border-radius: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+        .inv-tile:before, .eq-tile:before { content: ''; position: absolute; inset: 3px; border: 1px dashed rgba(233,227,207,.16); pointer-events: none; }
+        .inv-tile.empty, .eq-tile.empty { background: rgba(42,46,32,.55); border-style: solid; border-color: rgba(21,23,15,.7); }
+        .eq-summary { color: var(--sg-thread); font-family: var(--sg-font); font-weight: 700; letter-spacing: .06em; }
+        .tile-count { font-family: var(--sg-font); font-size: 11px; color: var(--sg-thread); }
+        .inv-tool-btn { font: 700 10px var(--sg-font); letter-spacing: .1em; text-transform: uppercase; color: var(--sg-thread); background: var(--sg-pocket); border: 1.5px solid var(--sg-dark); border-radius: 2px; padding: 4px 8px; }
+        .inv-tool-btn.active { color: #fff; background: #5a221b; border-color: #2a0f0b; }
+        .inv-tile.selected { border-color: #ec8f80; background: #4a1f1a; box-shadow: inset 0 0 0 2px rgba(236,143,128,.5); }
+
+        /* Harc: barnás vászon, a napló papírcetli */
+        #combat-box { background-color: #3d3529 !important; }
+        #enemy-avatar { border-radius: 2px !important; background: #ece6d6 !important; padding: 3px; transform: rotate(-3deg); border: 0 !important; box-shadow: 0 3px 6px rgba(0,0,0,.6) !important; }
+        #enemy-avatar img { filter: grayscale(.6) sepia(.25) contrast(1.15); }
+        #combat-log { background: #ece6d6 !important; border: 0 !important; color: #2a2620 !important; font: 12.5px/1.5 'Special Elite', 'Courier New', var(--sg-mono); box-shadow: 0 3px 6px rgba(0,0,0,.5) !important; }
+        #combat-log > div { color: #2a2620 !important; }
+        #combat-log > div[class*="text-red-"] { color: #9b1c1c !important; }
+        #combat-log > div[class*="text-emerald-"], #combat-log > div[class*="text-green-"] { color: #2f5a1c !important; }
+        #combat-log > div[class*="text-amber-"], #combat-log > div[class*="text-yellow-"] { color: #7a4a0c !important; }
+        #combat-log > div[class*="text-gray-"] { color: #2a2620 !important; }
+
+        /* Belépés: vászonlap, nagy névszalag */
+        #auth-modal { background: rgba(8, 9, 6, 0.94); }
+        #auth-modal .hud-panel h2 { display: block; text-align: center; }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -317,6 +396,9 @@
             <p class="text-[11px] text-emerald-300/80 mb-4">A karaktered adatai, pozíciója és a zóna állapota folyamatosan szinkronban van a központi szerverrel.</p>
             
             <div class="space-y-2.5">
+                <button id="btn-open-journal" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
+                    📓 Napló (az utolsó események)
+                </button>
                 <button onclick="location.reload()" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     🔄 Oldal Frissítése / Újratöltés
                 </button>
@@ -521,7 +603,7 @@
             <button id="btn-open-skills" class="nav-btn soon"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span></button>
             <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
             <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Rádió</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
-            <button id="btn-open-journal" class="nav-btn"><img src="/images/ui/nav-journal.svg" alt=""><span>Napló</span></button>
+            <button id="btn-open-quests" class="nav-btn soon"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span></button>
         </nav>
 
