@@ -1145,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     safeAddEvent('btn-open-skills', 'click', () => showToast('⭐ A képességek hamarosan érkeznek! Szintlépéskor választhatsz majd.'));
     safeAddEvent('btn-open-leaderboard', 'click', () => showToast('🏆 A ranglista hamarosan érkezik!'));
     safeAddEvent('btn-open-chat', 'click', () => showToast('📻 A csevegés hamarosan érkezik!'));
-    safeAddEvent('btn-open-quests', 'click', () => showToast('📜 A küldetések hamarosan érkeznek!'));
+    safeAddEvent('btn-open-quests', 'click', () => openQuestModal());
 
     safeAddEvent('btn-open-settings', 'click', () => { 
         const modal = document.getElementById('settings-modal');

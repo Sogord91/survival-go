@@ -330,6 +330,61 @@
         /* Belépés: vászonlap, nagy névszalag */
         #auth-modal { background: rgba(8, 9, 6, 0.94); }
         #auth-modal .hud-panel h2 { display: block; text-align: center; }
+        /* ===== ELSŐ LÉPÉSEK (v0.1.11) ===== */
+        #intro-modal, #quest-modal { position: fixed; inset: 0; }
+        #intro-modal { z-index: 3200; } #quest-modal { z-index: 3000; }
+        #quest-modal > .hud-panel { max-height: 90vh; display: flex; flex-direction: column; }
+        #quest-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+        .sg-age { display: flex; align-items: center; gap: 8px; margin-top: 12px; font: 600 12px var(--sg-font); color: var(--sg-thread); cursor: pointer; }
+        .sg-age input { width: 18px; height: 18px; accent-color: #59652f; }
+        .sg-intro-art { height: 150px; margin: -4px -4px 12px; border: 2px solid var(--sg-dark); background: #1b1f1a; position: relative; overflow: hidden; }
+        .sg-intro-art svg { width: 100%; height: 100%; display: block; }
+        .sg-intro h3.sg-intro-t { display: block !important; background: none !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; padding: 0 !important;
+            font: 800 20px var(--sg-font) !important; letter-spacing: .08em !important; color: #f5efd9 !important; text-transform: uppercase; }
+        .sg-intro p { font: 500 14px/1.45 var(--sg-font); color: var(--sg-thread); margin-top: 8px; }
+        .sg-intro-dots { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+        .sg-intro-dots i { width: 18px; height: 4px; background: rgba(0,0,0,.45); }
+        .sg-intro-dots i.on { background: var(--sg-gold); }
+        .sg-q-head { font: 800 11px var(--sg-font); letter-spacing: .2em; color: var(--sg-muted); display: flex; justify-content: space-between; margin: 6px 0 4px; }
+        .sg-q-prog { height: 6px; background: rgba(0,0,0,.45); margin-bottom: 10px; }
+        .sg-q-prog i { display: block; height: 100%; background: var(--sg-gold); }
+        .sg-q-step { display: flex; gap: 10px; padding: 9px; margin-top: 6px; background: rgba(21,23,15,.42); border: 1px solid rgba(21,23,15,.85); }
+        .sg-q-check { width: 24px; height: 24px; flex: none; border: 2px solid var(--sg-dark); background: var(--sg-pocket); display: flex; align-items: center; justify-content: center;
+            font: 800 15px var(--sg-font); color: var(--sg-gold); }
+        .sg-q-step.done { opacity: .6; }
+        .sg-q-step.next { outline: 1px dashed var(--sg-gold); outline-offset: -4px; }
+        .sg-q-t { font: 800 13px var(--sg-font); letter-spacing: .06em; color: var(--sg-thread); }
+        .sg-q-step.done .sg-q-t { text-decoration: line-through; }
+        .sg-q-h { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; margin-top: 3px; }
+        .sg-q-xp { flex: none; margin-left: auto; font: 800 11px var(--sg-mono); color: #e9d9a0; }
+        .sg-q-reward { margin-top: 12px; padding: 10px; border: 2px dashed rgba(217,197,138,.6); text-align: center; }
+        .sg-q-reward .sg-q-items { display: flex; justify-content: center; gap: 6px; margin: 8px 0; }
+        .sg-q-reward .sg-q-items span { position: relative; width: 44px; height: 44px; border: 1.5px solid var(--sg-dark); background: var(--sg-pocket); display: flex; align-items: center; justify-content: center; }
+        .sg-q-reward .sg-q-items img { width: 34px; height: 34px; object-fit: contain; }
+        .sg-q-reward .sg-q-items b { position: absolute; right: 2px; bottom: 0; font: 800 10px var(--sg-font); color: var(--sg-thread); text-shadow: 0 1px 1px #000; }
+        .sg-q-soon { margin-top: 14px; padding: 10px; background: #ece6d6; color: #2a2620; font: 12px/1.5 'Special Elite', 'Courier New', var(--sg-mono); transform: rotate(-.4deg); box-shadow: 0 3px 6px rgba(0,0,0,.5); }
+        .sg-tip { border-left-color: #b5c25a !important; }
+        .sg-tu-big { display: block; width: 100%; margin-top: 6px; padding: 11px 6px; border: 2px solid var(--sg-dark); background: #59652f; font: 800 12px var(--sg-font); letter-spacing: .18em;
+            color: var(--sg-thread); box-shadow: 0 2px 3px rgba(0,0,0,.5); cursor: pointer; }
+        .sg-tu-ghost { background: var(--sg-pocket); }
+        #daily-modal { position: fixed; inset: 0; z-index: 3100; }
+        .sg-d-p { font: 500 13px/1.45 var(--sg-font); color: var(--sg-thread); margin-bottom: 10px; }
+        .sg-d-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+        .sg-d-day { position: relative; padding: 6px 4px 5px; text-align: center; background: rgba(21,23,15,.42); border: 1.5px solid rgba(21,23,15,.85); }
+        .sg-d-day.big { grid-column: span 2; background: rgba(94,68,25,.5); }
+        .sg-d-day.today { outline: 2px solid var(--sg-gold); outline-offset: -2px; background: rgba(89,101,47,.55); }
+        .sg-d-day.got { opacity: .55; }
+        .sg-d-n { font: 800 10px var(--sg-font); letter-spacing: .14em; color: var(--sg-muted); }
+        .sg-d-day.today .sg-d-n { color: var(--sg-gold); }
+        .sg-d-items { display: flex; justify-content: center; gap: 3px; margin: 4px 0 2px; flex-wrap: wrap; }
+        .sg-d-items span { position: relative; width: 34px; height: 34px; background: var(--sg-pocket); border: 1px solid var(--sg-dark); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .sg-d-items img { width: 28px; height: 28px; object-fit: contain; }
+        .sg-d-items b { position: absolute; right: 1px; bottom: -1px; font: 800 9px var(--sg-font); color: var(--sg-thread); text-shadow: 0 1px 1px #000; }
+        .sg-d-xp { font: 700 9.5px var(--sg-mono); color: #e9d9a0; }
+        .sg-d-ok { position: absolute; right: 3px; top: 1px; font: 800 13px var(--sg-font); font-style: normal; color: var(--sg-gold); }
+        .sg-d-small .sg-d-items span { width: 28px; height: 28px; }
+        .sg-d-small .sg-d-items img { width: 22px; height: 22px; }
+        .sg-tu-big:disabled { color: #8f8a7a; cursor: default; }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -375,6 +430,8 @@
                         <img src="/images/avatars/avatar2.png" width="48" height="48" class="avatar-option rounded-full border-2 border-emerald-900 cursor-pointer hover:border-emerald-400 transition" onclick="selectAvatar('avatar2.png', this)" data-avatar="avatar2.png">
                         <img src="/images/avatars/avatar3.png" width="48" height="48" class="avatar-option rounded-full border-2 border-emerald-900 cursor-pointer hover:border-emerald-400 transition" onclick="selectAvatar('avatar3.png', this)" data-avatar="avatar3.png">
                     </div>
+                    <!-- Korellenőrzés (v0.1.11): a játék 16 éven felülieknek szól -->
+                    <label class="sg-age"><input type="checkbox" id="auth-age"> <span>Elmúltam 16 éves.</span></label>
                 </div>
 
                 <!-- Gombok -->
@@ -603,7 +660,7 @@
             <button id="btn-open-skills" class="nav-btn soon"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span></button>
             <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
             <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Rádió</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
-            <button id="btn-open-quests" class="nav-btn soon"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span></button>
+            <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span></button>
         </nav>
 
@@ -700,6 +757,36 @@
             </div>
 
     <!-- BÁRKÁCSOLÁSI ABLAK (Egységes Zóna stílus) -->
+
+    <!-- ELSŐ LÉPÉSEK (v0.1.11): bevezető kártyák és küldetéslista (js/tutorial-ui.js) -->
+    <div id="intro-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3200]">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-5 clipped-panel shadow-2xl sg-intro">
+            <div id="intro-card"></div>
+            <div id="intro-dots" class="sg-intro-dots"></div>
+            <div class="flex gap-2 mt-4">
+                <button onclick="introSkip()" class="sg-tu-big sg-tu-ghost flex-1">ÁTUGROM</button>
+                <button id="intro-next" onclick="introNext()" class="sg-tu-big flex-1">TOVÁBB</button>
+            </div>
+        </div>
+    </div>
+    <div id="daily-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3100]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🎁 NAPI BÓNUSZ</h2>
+                <button onclick="closeDailyModal()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="daily-body"></div>
+        </div>
+    </div>
+    <div id="quest-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 flex flex-col max-h-[90vh] clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">📜 KÜLDETÉSEK</h2>
+                <button onclick="closeQuestModal()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="quest-body" class="overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
     <div id="crafting-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
         <div class="hud-panel w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh] clipped-panel shadow-2xl">
             <div class="flex justify-between items-center mb-4 border-b border-emerald-500/30 pb-2">
@@ -741,9 +828,12 @@
     <script src="js/stats.js"></script>
     <script src="js/buildings.js"></script>
     <script src="js/sun.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script src="js/daily.js"></script>
     <script src="js/combat.js"></script>
     <script src="js/map.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/tutorial-ui.js"></script>
     <script src="/js/auth.js"></script>
 </body>
 </html>

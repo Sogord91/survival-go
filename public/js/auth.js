@@ -131,9 +131,16 @@ async function handleAuthSubmit() {
         return;
     }
 
+    const ageBox = document.getElementById('auth-age');
+    const ageConfirmed = !!(ageBox && ageBox.checked);
+    if (isRegisterMode && !ageConfirmed) {
+        setAuthMessage('A játék 16 éven felülieknek szól: jelöld be, hogy elmúltál 16 éves.', false);
+        return;
+    }
+
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     const payload = isRegisterMode
-        ? { username, email, password, avatar: selectedAvatar, inviteCode }
+        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed }
         : { username, password };
 
     try {

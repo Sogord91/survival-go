@@ -14,6 +14,8 @@ const SurvivalStats = require('./public/js/stats'); // közös számítások (a 
 const SurvivalBuildings = require('./public/js/buildings'); // közös épülettípusok és loot-sorsolás
 const Combat = require('./combat-engine'); // körös harc szabályai
 const SurvivalSun = require('./public/js/sun'); // napkelte / napnyugta (éjszaka)
+const SurvivalTutorial = require('./public/js/tutorial'); // Első lépések (v0.1.11)
+const SurvivalDaily = require('./public/js/daily'); // napi bónusz (v0.1.11)
 
 const app = express();
 const server = http.createServer(app);
@@ -87,7 +89,9 @@ const userSchema = new mongoose.Schema({
         dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} },  // személyes zárak menekülés után: { épület-azonosító: lejárat }
         stats: { type: mongoose.Schema.Types.Mixed, default: {} },        // életre szóló statisztika (a halál után is megmarad; v0.1.10)
         lifeStartedAt: { type: Number, default: null },                   // a mostani túlélő mikor indult (a leghosszabb élethez)
-        quickbar: { type: Array, default: [] }                            // gyorssáv: 3 kitűzött fogyasztható tárgy kulcsa (vagy null)
+        quickbar: { type: Array, default: [] },                           // gyorssáv: 3 kitűzött fogyasztható tárgy kulcsa (vagy null)
+        tutorial: { type: mongoose.Schema.Types.Mixed, default: null },   // Első lépések: { introSeen, done: { lépés: időpont }, finalClaimed }
+        daily: { type: mongoose.Schema.Types.Mixed, default: null }       // napi bónusz: { lastDay: 'ÉÉÉÉ-HH-NN', streak }
     }
 });
 
@@ -158,7 +162,7 @@ app.get('/api/registration', (req, res) => {
 // --- REGISZTRÁCIÓS VÉGPONT ---
 app.post('/api/register', async (req, res) => {
     try {
-        const { username, email, password, avatar, inviteCode } = req.body || {};
+        const { username, email, password, avatar, inviteCode, ageConfirmed } = req.body || {};
         // Zárt teszt: meghívókód nélkül nem lehet regisztrálni (a találgatást a belépési korlát fogja meg)
         if (config.REGISTRATION_CODE) {
             const ip = req.ip || 'unknown';
@@ -173,6 +177,8 @@ app.post('/api/register', async (req, res) => {
         if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !username || !email || !password) {
             return res.status(400).json({ success: false, message: 'Minden mezőt ki kell tölteni!' });
         }
+        // A játék 16 éven felülieknek szól (v0.1.11)
+        if (ageConfirmed !== true) return res.status(400).json({ success: false, message: 'A regisztrációhoz igazolnod kell, hogy elmúltál 16 éves.' });
         const invalid = validateRegistration(username, email, password);
         if (invalid) return res.status(400).json({ success: false, message: invalid });
 
@@ -388,6 +394,8 @@ function normalizePlayer(raw) {
         dangerUntil: activeDangerLocks(p.dangerUntil),
         stats: normalizeStats(p.stats),
         quickbar: normalizeQuickbar(p.quickbar),
+        tutorial: normalizeTutorial(p.tutorial),
+        daily: normalizeDaily(p.daily),
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
     };
 }
@@ -538,6 +546,31 @@ function normalizeStats(raw) {
     out.since = Number(s.since) || Date.now(); // mióta gyűjtjük
     return out;
 }
+// ===== ELSŐ LÉPÉSEK (v0.1.11) =====
+function normalizeTutorial(raw) {
+    const t = raw && typeof raw === 'object' ? raw : {};
+    const done = {};
+    SurvivalTutorial.STEPS.forEach(s => { if (t.done && Number.isFinite(Number(t.done[s.key]))) done[s.key] = Number(t.done[s.key]); });
+    return { introSeen: !!t.introSeen, done, finalClaimed: !!t.finalClaimed };
+}
+function normalizeDaily(raw) {
+    const d = raw && typeof raw === 'object' ? raw : {};
+    return {
+        lastDay: typeof d.lastDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.lastDay) ? d.lastDay : null,
+        streak: clamp(Math.floor(num(d.streak, 0)), 0, SurvivalDaily.REWARDS.length)
+    };
+}
+
+// Egy lépés kipipálása (egyszer jár érte XP). A kliens a player_state-ből látja és jelzi.
+function markTutorial(p, key) {
+    if (!p.tutorial) p.tutorial = normalizeTutorial(null);
+    if (p.tutorial.done[key]) return 0;
+    const step = SurvivalTutorial.STEPS.find(s => s.key === key);
+    if (!step) return 0;
+    p.tutorial.done[key] = Date.now();
+    return grantXp(p, step.xp);
+}
+
 function bumpStat(p, key, amount) {
     if (!p.stats) p.stats = normalizeStats(null);
     p.stats[key] = (p.stats[key] || 0) + (amount === undefined ? 1 : amount);
@@ -1298,6 +1331,7 @@ io.on('connection', (socket) => {
             if (Object.keys(changes).length === 0) return { save: false, error: 'Most nincs rá szükséged.' };
 
             removeItem(p, data.itemKey, 1);
+            markTutorial(p, 'use');
             const verb = itemConfig.type === 'food' ? 'Megetted' : itemConfig.type === 'drink' ? 'Megittad' : 'Használtad';
             return { message: `${verb}: ${itemConfig.name} (${describeChanges(changes)})` };
         })).then(reply('item_use_result')).catch(logError("Hiba tárgy használat során:"));
@@ -1339,6 +1373,7 @@ io.on('connection', (socket) => {
             const problem = capacityProblem(p);
             if (problem === 'slots') return { save: false, error: 'A csere után nem férne el minden a hátizsákodban!' };
             if (problem === 'weight') return { save: false, error: 'A csere után túl nehéz lenne a csomagod!' };
+            markTutorial(p, 'equip');
             return { message: `Felszerelve: ${item.name}` };
         })).then(reply('equip_result')).catch(logError("Hiba felszerelés során:"));
     });
@@ -1638,6 +1673,7 @@ io.on('connection', (socket) => {
             });
 
             bumpStat(p, 'itemsCrafted', count);
+            markTutorial(p, 'craft');
             let message = `Sikeresen megbarkácsoltad: ${recipe.name}${count > 1 ? ` (${count} db)` : ''}!`;
             if (broken.length > 0) message += ` Eltört: ${broken.join(', ')}.`;
             return { message, payload: { broken } };
@@ -1723,6 +1759,7 @@ io.on('connection', (socket) => {
             if (key !== null) { const i = bar.indexOf(key); if (i >= 0) bar[i] = null; }
             bar[data.slot] = key;
             p.quickbar = bar;
+            if (key) markTutorial(p, 'pin');
             return { message: key ? `Kitűzve a gyorssávra: ${itemDatabase[key].name}` : 'Levetted a gyorssávról.' };
         }).then(reply('quickbar_result')).catch(logError("Hiba a gyorssáv beállításakor:"));
     });
@@ -1777,6 +1814,7 @@ io.on('connection', (socket) => {
             const found = rollBuildingLoot(building, pick.factor);
             addFatigue(p, config.FATIGUE_LOOT);
             bumpStat(p, 'buildingsLooted');
+            markTutorial(p, 'loot');
             const pickNote = pick.broke ? ` Eltört: ${itemDatabase.lockpick.name}.` : '';
 
             if (found.length === 0) {
@@ -2006,6 +2044,7 @@ io.on('connection', (socket) => {
                 p.combat = null;
                 bumpStat(p, 'combatsWon');
                 bumpStat(p, 'killsTotal');
+                markTutorial(p, 'combat');
                 const enemyKey = (combat.enemy && (combat.enemy.key || combat.enemy.name)) || 'ismeretlen';
                 p.stats.kills[enemyKey] = (p.stats.kills[enemyKey] || 0) + 1;
                 addFatigue(p, config.FATIGUE_COMBAT + config.FATIGUE_LOOT);
@@ -2037,6 +2076,7 @@ io.on('connection', (socket) => {
                 // Nincs loot; az épület csak NEKED zárul FLEE_LOCK_MINUTES percre, másoknak feloldjuk
                 p.combat = null;
                 addFatigue(p, config.FATIGUE_COMBAT);
+                markTutorial(p, 'combat');
                 p.dangerUntil[combat.buildingId] = Date.now() + config.FLEE_LOCK_MINUTES * 60000;
                 release = { id: combat.buildingId, lockedUntil: combat.lockedUntil };
                 return { message: `Sikerült elmenekülnöd! Ide ${config.FLEE_LOCK_MINUTES} percig nem érdemes visszamenni.`, payload };
@@ -2056,13 +2096,60 @@ io.on('connection', (socket) => {
         }).catch(logError("Hiba a harc során:"));
     });
 
+    // ===== ELSŐ LÉPÉSEK (v0.1.11) =====
+    socket.on('tutorial_intro_seen', () => {
+        withPlayer(username, (p) => {
+            if (p.tutorial.introSeen) return { save: false };
+            p.tutorial.introSeen = true;
+            return {};
+        }).then(reply('tutorial_result')).catch(logError('Hiba a bevezetőnél:'));
+    });
+    // A végső jutalom átvétele: csak ha minden lépés kész, és minden elfér a hátizsákban
+    socket.on('tutorial_claim', () => {
+        withPlayer(username, freeOnly((p) => {
+            if (p.tutorial.finalClaimed) return { save: false, error: 'Ezt a jutalmat már átvetted.' };
+            if (!SurvivalTutorial.allDone(p.tutorial)) return { save: false, error: 'Előbb teljesítsd az összes lépést!' };
+            const trial = JSON.parse(JSON.stringify(p));
+            for (const r of SurvivalTutorial.FINAL_REWARD) {
+                const res = addItem(trial, r.key, r.count);
+                if (!res.ok) return { save: false, error: `${CAPACITY_MESSAGES[res.reason]} Csinálj helyet a jutalomnak!` };
+            }
+            SurvivalTutorial.FINAL_REWARD.forEach(r => addItem(p, r.key, r.count));
+            const levels = grantXp(p, SurvivalTutorial.FINAL_XP);
+            p.tutorial.finalClaimed = true;
+            return { leveledUp: levels > 0, message: `Teljesítetted az Első lépéseket! Megkaptad a túlélőcsomagot és +${SurvivalTutorial.FINAL_XP} XP-t. Sok szerencsét a Zónában!` };
+        })).then(reply('tutorial_result')).catch(logError('Hiba a bevezető jutalmánál:'));
+    });
+
+    // ===== NAPI BÓNUSZ (v0.1.11) =====
+    socket.on('daily_claim', () => {
+        withPlayer(username, freeOnly((p) => {
+            const st = SurvivalDaily.status(p.daily, Date.now());
+            if (!st.available) return { save: false, error: 'A mai bónuszt már átvetted. Holnap jön a következő!' };
+            const reward = SurvivalDaily.REWARDS[st.day - 1];
+            const trial = JSON.parse(JSON.stringify(p));
+            for (const r of reward.items) {
+                const res = addItem(trial, r.key, r.count);
+                if (!res.ok) return { save: false, error: `${CAPACITY_MESSAGES[res.reason]} Csinálj helyet a napi bónusznak!` };
+            }
+            reward.items.forEach(r => addItem(p, r.key, r.count));
+            if (reward.money) p.money += reward.money;
+            const levels = grantXp(p, reward.xp);
+            p.daily = { lastDay: st.today, streak: st.day };
+            const names = reward.items.map(r => `${r.count > 1 ? r.count + ' ' : ''}${itemDatabase[r.key].name}`).join(', ');
+            return { leveledUp: levels > 0, message: `Napi bónusz (${st.day}. nap): ${names}, +${reward.xp} XP${reward.money ? `, +${reward.money} pénz` : ''}.`, payload: { day: st.day } };
+        })).then(reply('daily_result')).catch(logError('Hiba a napi bónusznál:'));
+    });
+
     // --- ÚJ TÚLÉLŐ INDÍTÁSA (csak halott karakterrel) ---
     // Minden elvész: szint, XP, pénz, leltár, felszerelés. A fiók (név, jelszó, avatar) megmarad.
     socket.on('respawn', () => {
         withPlayer(username, (p) => {
             if (!p.dead) return { save: false, error: 'A karaktered még él.' };
             const keepStats = p.stats; // a statisztika életre szól, az újrakezdés nem törli
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, lifeStartedAt: Date.now() });
+            const keepTutorial = p.tutorial; // az Első lépések a fiókhoz tartozik
+            const keepDaily = p.daily;       // a napi bónusz sorozata is
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };
