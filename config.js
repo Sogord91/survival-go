@@ -39,6 +39,7 @@ module.exports = {
     // Amíg a Renderen az EARLY_SURVIVOR környezeti változó értéke "on", minden új regisztráló
     // végleges "Korai túlélő" jelvényt és egyszeri, bővebb kezdőcsomagot kap. Lezárás: a változó törlése.
     EARLY_SURVIVOR_OPEN: process.env.EARLY_SURVIVOR === 'on',
+    EARLY_SURVIVOR_LIMIT: Number(process.env.EARLY_SURVIVOR_LIMIT) || 100, // ennyi korai túlélő lehet összesen
     EARLY_SURVIVOR_KIT: [               // csak az ELSŐ indulásnál (halál után a sima kezdőcsomag jár)
         { key: 'knife', count: 1 },
         { key: 'bandage', count: 2 },

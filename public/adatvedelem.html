@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adatkezelési tájékoztató – Survival GO</title>
+<style>
+    :root { --canvas: #3a3f2c; --thread: #e9e3cf; --dark: #15170f; --muted: #c9c4b4; --gold: #d9c58a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #14160f; color: var(--thread); font: 15px/1.6 'Barlow', 'Segoe UI', Roboto, Arial, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+    .sheet { background-color: var(--canvas); background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px);
+        border: 2px solid var(--dark); outline: 1px dashed rgba(233,227,207,.3); outline-offset: -7px; padding: 22px 20px; }
+    h1 { display: inline-block; margin: 0 0 6px; padding: 4px 12px; border: 2px solid var(--dark); background: #2a2e20; font-size: 17px; letter-spacing: .14em; text-transform: uppercase; }
+    h2 { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin: 26px 0 6px; }
+    p, li { color: var(--thread); }
+    .muted { color: var(--muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+    th, td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid rgba(21,23,15,.8); }
+    th { color: var(--gold); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    a { color: var(--gold); }
+    .back { display: inline-block; margin-top: 22px; padding: 9px 14px; border: 2px solid var(--dark); background: #59652f; color: var(--thread); text-decoration: none; font-weight: 700; letter-spacing: .1em; }
+    @media (max-width: 560px) { table, thead, tbody, tr, th, td { display: block; } thead { display: none; } td { border: 0; padding: 2px 0; } tr { border-bottom: 1px solid rgba(21,23,15,.8); padding: 8px 0; } td:first-child { font-weight: 700; color: var(--gold); } }
+</style>
+</head>
+<body>
+<main>
+<div class="sheet">
+    <h1>Adatkezelési tájékoztató</h1>
+    <p class="muted">Survival GO (survivalgo.hu) · Hatályos: 2026. november 21-től</p>
+
+    <h2>1. Ki kezeli az adataidat?</h2>
+    <p><b>Adatkezelő:</b> Szalai Roland, a Survival GO fejlesztője (magánszemély)<br>
+    <b>Kapcsolat:</b> <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a></p>
+    <p>Bármilyen kérdéssel, kéréssel (például a fiókod törlésével) ezen az e-mail-címen fordulhatsz hozzám. 30 napon belül válaszolok.</p>
+
+    <h2>2. Milyen adatokat kezelek, és miért?</h2>
+    <table>
+        <thead><tr><th>Adat</th><th>Mire kell</th><th>Meddig tárolom</th></tr></thead>
+        <tbody>
+            <tr><td>Felhasználónév, avatar</td><td>A fiókod azonosítása; a többi játékos ezt látja rólad.</td><td>A fiókod törléséig.</td></tr>
+            <tr><td>E-mail-cím</td><td>Kapcsolattartás a fiókoddal kapcsolatban (pl. jelszógond, fióktörlés). Hírlevelet nem küldök.</td><td>A fiókod törléséig.</td></tr>
+            <tr><td>Jelszó</td><td>Belépés. Csak titkosított (bcrypt-tel „hash”-elt) formában tárolom, én sem látom.</td><td>A fiókod törléséig.</td></tr>
+            <tr><td>Pontos helyadat (GPS)</td><td>A játék lényege: a valódi környezeted a pálya. A helyedet a játék működése közben használja a szerver (melyik épületet kutathatod át, kik vannak a közeledben).</td><td>A pillanatnyi helyedet csak a memóriában tartom, amíg játszol; helyelőzményt nem mentek. Az adatbázisba csak az kerül, amit te jelölsz meg (pl. a menedéked helye), illetve a megtett távolság összege a statisztikádban.</td></tr>
+            <tr><td>Játékadatok</td><td>A karaktered, tárgyaid, szinted, statisztikáid, napi bónusz, küldetések.</td><td>A fiókod törléséig.</td></tr>
+            <tr><td>IP-cím, technikai naplók</td><td>A szerver biztonsága (pl. a jelszótalálgatás korlátozása) és hibakeresés.</td><td>Legfeljebb 30 napig.</td></tr>
+        </tbody>
+    </table>
+    <p><b>Jogalap:</b> a játék szolgáltatásának nyújtása, amit a regisztrációval kérsz (GDPR 6. cikk (1) b) pont), a biztonsági naplóknál az üzemeltető jogos érdeke (6. cikk (1) f) pont).</p>
+
+    <h2>3. Ki láthatja a helyedet?</h2>
+    <ul>
+        <li>A <b>közeledben lévő, épp online játékosok</b> a térképen látják a karakteredet (nappal kb. 150 méteren belül), amíg játszol. Amint kilépsz, eltűnsz a térképről.</li>
+        <li>Ha <b>menedéket</b> választasz, annak helyét és a felhasználónevedet a térképen <b>minden játékos látja</b>. Ne a saját otthonodat vagy annak közvetlen környékét válaszd, ha ezt nem szeretnéd.</li>
+    </ul>
+
+    <h2>4. Kik dolgoznak még az adatokkal (adatfeldolgozók)?</h2>
+    <ul>
+        <li><b>Rackhost Zrt.</b> (Magyarország) – a szerver és a domain üzemeltetése.</li>
+        <li><b>MongoDB, Inc.</b> (MongoDB Atlas) – az adatbázis tárhelye.</li>
+        <li><b>Stadia Maps</b> – a térkép háttérképei. A térkép betöltésekor a böngésződ közvetlenül tőlük kéri le a képeket, így látják az IP-címedet és a nagyjából megjelenített területet.</li>
+        <li>Betűtípusok és programkönyvtárak betöltése: <b>Google Fonts</b>, <b>unpkg</b>, <b>Tailwind CDN</b> – ezek is látják az IP-címedet a letöltéskor.</li>
+        <li>Az épületek adatait az <b>OpenStreetMap</b> nyílt térképéből a szerver kéri le; ehhez a te adataidat nem küldöm el.</li>
+    </ul>
+    <p>Ha valamelyik szolgáltató az Európai Unión kívül tárol adatot, az az uniós előírások szerinti garanciákkal (pl. általános szerződési feltételekkel) történik.</p>
+
+    <h2>5. Sütik és helyi tárolás</h2>
+    <p>Reklám- vagy követő sütit nem használok. A böngésződ helyi tárolójába csak a működéshez szükséges dolgok kerülnek: a bejelentkezési azonosító (token), hogy ne kelljen mindig belépned, és néhány beállítás (pl. melyik tippet láttad már).</p>
+
+    <h2>6. Életkor</h2>
+    <p>A Survival GO <b>16 éven felülieknek</b> szól. Regisztrációkor ezt igazolnod kell. Ha kiderül, hogy egy fiók 16 év alatti személyé, törlöm.</p>
+
+    <h2>7. Jogaid</h2>
+    <ul>
+        <li><b>Hozzáférés:</b> megkérdezheted, milyen adatot tárolok rólad, és másolatot kérhetsz.</li>
+        <li><b>Helyesbítés:</b> kérheted a hibás adat javítását.</li>
+        <li><b>Törlés:</b> kérheted a fiókod és minden adatod törlését.</li>
+        <li><b>Adathordozhatóság</b> és <b>tiltakozás</b> az adatkezelés ellen.</li>
+    </ul>
+    <p>Ezeket a fenti e-mail-címen kérheted. Ha úgy érzed, megsértettem a jogaidat, panaszt tehetsz a <b>Nemzeti Adatvédelmi és Információszabadság Hatóságnál</b> (NAIH, 1055 Budapest, Falk Miksa utca 9–11., <a href="https://naih.hu">naih.hu</a>, ugyfelszolgalat@naih.hu), vagy bírósághoz fordulhatsz.</p>
+
+    <h2>8. Biztonság</h2>
+    <p>A kapcsolat titkosított (HTTPS), a jelszavak titkosítva tárolódnak, a szerverhez csak én férek hozzá. Ha mégis adatvédelmi incidens történne, a jogszabály szerint értesítem az érintetteket és a hatóságot.</p>
+
+    <h2>9. Változások</h2>
+    <p>Ha ez a tájékoztató változik, a játékban és a Discordon jelzem.</p>
+
+    <a class="back" href="/">← VISSZA A JÁTÉKHOZ</a>
+</div>
+</main>
+</body>
+</html>

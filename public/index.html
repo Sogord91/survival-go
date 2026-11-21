@@ -336,7 +336,10 @@
         #quest-modal > .hud-panel { max-height: 90vh; display: flex; flex-direction: column; }
         #quest-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
         .sg-age { display: flex; align-items: center; gap: 8px; margin-top: 12px; font: 600 12px var(--sg-font); color: var(--sg-thread); cursor: pointer; }
-        .sg-age input { width: 18px; height: 18px; accent-color: #59652f; }
+        .sg-age input { width: 18px; height: 18px; accent-color: #59652f; flex: none; }
+        .sg-privacy-link { color: var(--sg-gold); text-decoration: underline; }
+        .sg-auth-foot { margin-top: 10px; text-align: center; font: 500 11px var(--sg-font); color: #8f8a7a; }
+        .sg-auth-foot a { color: var(--sg-muted); text-decoration: underline; }
         .sg-intro-art { height: 150px; margin: -4px -4px 12px; border: 2px solid var(--sg-dark); background: #1b1f1a; position: relative; overflow: hidden; }
         .sg-intro-art svg { width: 100%; height: 100%; display: block; }
         .sg-intro h3.sg-intro-t { display: block !important; background: none !important; border: 0 !important; outline: 0 !important; box-shadow: none !important; padding: 0 !important;
@@ -432,6 +435,7 @@
                     </div>
                     <!-- Korellenőrzés (v0.1.11): a játék 16 éven felülieknek szól -->
                     <label class="sg-age"><input type="checkbox" id="auth-age"> <span>Elmúltam 16 éves.</span></label>
+                    <label class="sg-age"><input type="checkbox" id="auth-privacy"> <span>Elolvastam és elfogadom az <a href="/adatvedelem.html" target="_blank" rel="noopener" class="sg-privacy-link">adatkezelési tájékoztatót</a>.</span></label>
                 </div>
 
                 <!-- Gombok -->
@@ -440,6 +444,7 @@
                 <div class="text-center mt-3">
                     <button id="auth-switch-btn" onclick="toggleAuthMode()" class="text-xs text-emerald-400 hover:text-emerald-300 underline font-mono">Még nincs fiókod? Regisztráció</button>
                 </div>
+                <div class="sg-auth-foot">Elfelejtetted a jelszavad? Írj a <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre vagy Discordon.<br><a href="/adatvedelem.html" target="_blank" rel="noopener">Adatkezelési tájékoztató</a></div>
             </div>
         </div>
     </div>
@@ -456,6 +461,7 @@
                 <button id="btn-open-journal" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     📓 Napló (az utolsó események)
                 </button>
+                <a href="/adatvedelem.html" target="_blank" rel="noopener" class="sg-auth-foot" style="display:block">Adatkezelési tájékoztató · fióktörlés: info@survivalgo.hu</a>
                 <button onclick="location.reload()" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     🔄 Oldal Frissítése / Újratöltés
                 </button>

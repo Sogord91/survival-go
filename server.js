@@ -59,6 +59,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     avatar: { type: String, default: 'avatar1.png' },
     earlySurvivor: { type: Boolean, default: false }, // "Korai túlélő" jelvény (végleges, a halál után is megmarad)
+    privacyAcceptedAt: { type: Number, default: null }, // mikor fogadta el az adatkezelési tájékoztatót (v0.1.12)
     playerData: {
         hp: { type: Number, default: 100 },
         maxHp: { type: Number, default: 100 },
@@ -162,7 +163,7 @@ app.get('/api/registration', (req, res) => {
 // --- REGISZTRÁCIÓS VÉGPONT ---
 app.post('/api/register', async (req, res) => {
     try {
-        const { username, email, password, avatar, inviteCode, ageConfirmed } = req.body || {};
+        const { username, email, password, avatar, inviteCode, ageConfirmed, privacyAccepted } = req.body || {};
         // Zárt teszt: meghívókód nélkül nem lehet regisztrálni (a találgatást a belépési korlát fogja meg)
         if (config.REGISTRATION_CODE) {
             const ip = req.ip || 'unknown';
@@ -179,6 +180,7 @@ app.post('/api/register', async (req, res) => {
         }
         // A játék 16 éven felülieknek szól (v0.1.11)
         if (ageConfirmed !== true) return res.status(400).json({ success: false, message: 'A regisztrációhoz igazolnod kell, hogy elmúltál 16 éves.' });
+        if (privacyAccepted !== true) return res.status(400).json({ success: false, message: 'A regisztrációhoz el kell fogadnod az adatkezelési tájékoztatót.' });
         const invalid = validateRegistration(username, email, password);
         if (invalid) return res.status(400).json({ success: false, message: invalid });
 
@@ -191,7 +193,8 @@ app.post('/api/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const early = config.EARLY_SURVIVOR_OPEN;
+        // Korai túlélő: amíg be van kapcsolva, az első EARLY_SURVIVOR_LIMIT regisztráló kapja meg
+        const early = config.EARLY_SURVIVOR_OPEN && (await PlayerModel.countDocuments({ earlySurvivor: true })) < config.EARLY_SURVIVOR_LIMIT;
         const newUser = new PlayerModel({
             username,
             usernameLower,
@@ -199,6 +202,7 @@ app.post('/api/register', async (req, res) => {
             password: hashedPassword,
             avatar: safeAvatar(avatar),
             earlySurvivor: early,
+            privacyAcceptedAt: Date.now(),
             playerData: newPlayerData(early)
         });
 

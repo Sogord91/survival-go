@@ -137,10 +137,16 @@ async function handleAuthSubmit() {
         setAuthMessage('A játék 16 éven felülieknek szól: jelöld be, hogy elmúltál 16 éves.', false);
         return;
     }
+    const privacyBox = document.getElementById('auth-privacy');
+    const privacyAccepted = !!(privacyBox && privacyBox.checked);
+    if (isRegisterMode && !privacyAccepted) {
+        setAuthMessage('A regisztrációhoz el kell fogadnod az adatkezelési tájékoztatót.', false);
+        return;
+    }
 
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     const payload = isRegisterMode
-        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed }
+        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed, privacyAccepted }
         : { username, password };
 
     try {
