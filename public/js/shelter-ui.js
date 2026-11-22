@@ -98,27 +98,101 @@ function showShelterInfo(sh) {
 
 // ---------- Elfoglalás ----------
 function startShelterClaim() {
-    const kit = itemDatabase[SurvivalShelter.CLAIM_ITEM];
-    if (invCountClient(SurvivalShelter.CLAIM_ITEM) < 1) {
-        logMessage(`🏚 Az elfoglaláshoz kell egy ${kit.name}. Barkácsolhatod (Barkács → Menedék), vagy találhatsz is.`);
-        return;
-    }
-    shelterClaimMode = true;
     closeShelterModal();
-    logMessage('🏚 Koppints arra az épületre, amelyik a menedéked legyen (legfeljebb 45 m-re légy tőle).');
+    shelterClaimMode = true; // egy sima koppintás is jó (régi út), de a hosszú nyomás a fő mód
+    logMessage('🏚 Tartsd hosszan az ujjad (gépen: jobb klikk) egy épületen a térképen, és ott elfoglalhatod.');
 }
 function cancelShelterClaim() { shelterClaimMode = false; shelterClaimTarget = null; }
 
 // A map.js hívja: ha épp menedéket választunk, az épület-koppintás ide fut be (true = elkaptuk)
 function shelterClaimIntercept(b) {
     if (!shelterClaimMode) return false;
-    shelterClaimTarget = b;
-    const modal = document.getElementById('shelter-claim-modal');
-    const sh = myShelter();
-    document.getElementById('shelter-claim-name').textContent = b.name || 'Épület';
-    document.getElementById('shelter-claim-move').classList.toggle('hidden', !sh);
-    modal.classList.remove('hidden');
+    openShelterClaimFor(b);
     return true;
+}
+
+// ---------- Hosszú nyomás egy épületen -> menedék kártya ----------
+// A Leaflet a setIcon-nál lecseréli a jelölő elemét, ezért nem az elemre kötünk, hanem a térképre (delegálás).
+const shelterPress = { timer: null, x: 0, y: 0, swallowUntil: 0 };
+function shelterSwallowClick() { return Date.now() < shelterPress.swallowUntil; }
+function buildingFromEl(el) {
+    const icon = el && el.closest && el.closest('.leaflet-marker-icon');
+    if (!icon || typeof markerById === 'undefined') return null;
+    for (const obj of markerById.values()) if (obj.marker && obj.marker.getElement && obj.marker.getElement() === icon) return obj;
+    return null;
+}
+function shelterPressStart(target, x, y) {
+    clearTimeout(shelterPress.timer);
+    const b = buildingFromEl(target);
+    if (!b) return;
+    shelterPress.x = x; shelterPress.y = y;
+    shelterPress.timer = setTimeout(() => {
+        shelterPress.timer = null;
+        shelterPress.swallowUntil = Date.now() + 700; // az elengedés utáni "click" ne kutasson át
+        if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+        openShelterClaimFor(b);
+    }, 550);
+}
+function shelterPressMove(x, y) { if (shelterPress.timer && Math.hypot(x - shelterPress.x, y - shelterPress.y) > 10) { clearTimeout(shelterPress.timer); shelterPress.timer = null; } }
+function shelterPressEnd() { clearTimeout(shelterPress.timer); shelterPress.timer = null; }
+(function bindShelterPress() {
+    const el = document.getElementById('map');
+    if (!el) return;
+    el.addEventListener('touchstart', (e) => { if (e.touches.length === 1) shelterPressStart(e.target, e.touches[0].clientX, e.touches[0].clientY); else shelterPressEnd(); }, { passive: true });
+    el.addEventListener('touchmove', (e) => { if (e.touches[0]) shelterPressMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+    el.addEventListener('touchend', shelterPressEnd, { passive: true });
+    el.addEventListener('touchcancel', shelterPressEnd, { passive: true });
+    el.addEventListener('mousedown', (e) => { if (e.button === 0) shelterPressStart(e.target, e.clientX, e.clientY); });
+    el.addEventListener('mousemove', (e) => shelterPressMove(e.clientX, e.clientY));
+    el.addEventListener('mouseup', shelterPressEnd);
+    el.addEventListener('contextmenu', (e) => { // gépen jobb klikk, telefonon a hosszú nyomás menüje helyett
+        const b = buildingFromEl(e.target);
+        if (!b) return;
+        e.preventDefault();
+        if (shelterPress.swallowUntil > Date.now()) return; // a hosszú nyomás már megnyitotta
+        shelterPressEnd();
+        shelterPress.swallowUntil = Date.now() + 400;
+        openShelterClaimFor(b);
+    });
+})();
+
+// A kártya: az épület, a távolság, a csomag, és mit kapsz
+function openShelterClaimFor(b) {
+    const sh = myShelter();
+    if (sh && sh.buildingId === b.id) { cancelShelterClaim(); openShelterModal(); return; } // ez már a tiéd
+    shelterClaimTarget = b;
+    const S = SurvivalShelter, kit = itemDatabase[S.CLAIM_ITEM];
+    const t = (window.SurvivalBuildings && SurvivalBuildings.BUILDING_TYPES && SurvivalBuildings.BUILDING_TYPES[b.type]) || {};
+    let dist = null;
+    if (typeof playerMarker !== 'undefined' && playerMarker) { const ll = playerMarker.getLatLng(); dist = Math.round(SurvivalBuildings.distanceToBuilding({ lat: ll.lat, lng: ll.lng }, b)); }
+    const near = dist !== null && dist <= S.RANGE_METERS;
+    const kits = invCountClient(S.CLAIM_ITEM);
+    const cooldownUntil = sh ? (sh.claimedAt || 0) + S.MOVE_COOLDOWN_DAYS * 86400000 : 0;
+    const coolLeft = cooldownUntil - Date.now();
+    const row = (ok, txt) => `<div class="sg-shc-req ${ok ? 'ok' : 'no'}"><i>${ok ? '✔' : '✕'}</i><span>${txt}</span></div>`;
+    const kitImg = kit && kit.img ? `<img src="/images/items/${kit.img}.webp" alt="">` : '🏚';
+    document.getElementById('shelter-claim-body').innerHTML = `
+        <div class="sg-shc-head" style="--bc:${t.color || '#d9c58a'}">
+            <div class="sg-shc-ic">${t.icon || '🏠'}</div>
+            <div><b>${escapeAttr(b.name || 'Épület')}</b><small>${escapeAttr(b.type || '')}</small></div>
+        </div>
+        <div class="sg-shc-title">${sh ? 'KÖLTÖZÉS IDE?' : 'LEGYEN EZ A MENEDÉKED?'}</div>
+        <div class="sg-shc-perks">
+            <div><span>📦</span><b>Raktár</b><small>${S.STASH_SLOTS[0]} hely, halál után is megmarad</small></div>
+            <div><span>🛏</span><b>Fekhely</b><small>${S.BED_REST_MULTIPLIER}× gyorsabb pihenés</small></div>
+            <div><span>🔥</span><b>Tűzhely</b><small>főzés gyufa nélkül</small></div>
+            <div><span>🧱</span><b>Falak</b><small>fa, majd fém védelem</small></div>
+        </div>
+        ${row(near, dist === null ? 'Várd meg a GPS-t' : near ? `Itt vagy (${dist} m)` : `Túl messze: ${dist} m (legfeljebb ${S.RANGE_METERS} m)`)}
+        ${row(kits > 0, `<span class="sg-shc-kit">${kitImg}</span>${escapeAttr(kit ? kit.name : 'Menedékalapító Csomag')}: ${kits} db ${kits > 0 ? '(1 elfogy)' : '– barkácsolható: Barkács → Menedék'}`)}
+        ${sh ? row(coolLeft <= 0, coolLeft <= 0 ? 'Költözhetsz: a raktár és az építmények veled jönnek' : `Költözni ${Math.ceil(coolLeft / 86400000)} nap múlva lehet`) : ''}
+        <p class="sg-sh-dim" style="margin-top:6px">A menedékedet a térképen mindenki látja, a neveddel együtt.</p>`;
+    const ok = near && kits > 0 && (!sh || coolLeft <= 0);
+    const yes = document.getElementById('shelter-claim-yes');
+    yes.disabled = !ok;
+    yes.textContent = ok ? (sh ? 'IDE KÖLTÖZÖM' : 'IGEN, EZ LESZ') : 'MÉG NEM LEHET';
+    document.getElementById('shelter-claim-craft').classList.toggle('hidden', kits > 0);
+    document.getElementById('shelter-claim-modal').classList.remove('hidden');
 }
 function confirmShelterClaim() {
     document.getElementById('shelter-claim-modal').classList.add('hidden');
@@ -128,6 +202,12 @@ function confirmShelterClaim() {
 function abortShelterClaim() {
     document.getElementById('shelter-claim-modal').classList.add('hidden');
     cancelShelterClaim();
+}
+function shelterClaimToCraft() {
+    abortShelterClaim();
+    closeShelterModal();
+    const b = document.getElementById('btn-open-crafting');
+    if (b) b.click();
 }
 
 // ---------- A menedék ablaka ----------
@@ -199,12 +279,24 @@ function renderShelterModal() {
     if (!sh) {
         sub.textContent = 'Még nincs menedéked';
         tabs.classList.add('hidden');
+        const kits = invCountClient(SurvivalShelter.CLAIM_ITEM);
         body.innerHTML = `
             <div class="sg-sh-empty">
-                <p>Válassz egy valódi épületet a térképen, ami a menedéked lesz. Itt <b>halálbiztos raktárad</b> lesz (70 hely, bővíthető), és megépítheted a falakat, a barikádot, a fekhelyet és a tűzhelyet.</p>
-                <p>Az elfoglaláshoz kell egy <b>Menedékalapító Csomag</b> (elfogy). Barkácsolható: 2 deszkacsomag, 6 szög, 1 tolózár, kalapáccsal. Néha raktárakban és katonai helyeken is akad.</p>
-                <p>A menedékedet <b>mindenki látja a térképen</b>. Költözni hetente egyszer lehet; a raktár és az építmények veled jönnek.</p>
-                <button class="sg-sh-big" onclick="startShelterClaim()">🏚 MENEDÉK KIVÁLASZTÁSA</button>
+                <div class="sg-sh-hero">🏚</div>
+                <p class="sg-sh-lead">Tegyél egy valódi épületet a saját menedékeddé.</p>
+                <div class="sg-sh-steps">
+                    <div class="${kits ? 'done' : ''}"><i>1</i><span><b>Menedékalapító Csomag</b>${kits ? `nálad: ${kits} db ✔` : 'Barkács → Menedék (deszka, szög, tolózár)'}</span></div>
+                    <div><i>2</i><span><b>Menj egy épülethez</b>legfeljebb ${SurvivalShelter.RANGE_METERS} m-re</span></div>
+                    <div><i>3</i><span><b>Tartsd rajta hosszan az ujjad</b>a térképen (gépen: jobb klikk)</span></div>
+                </div>
+                <div class="sg-shc-perks">
+                    <div><span>📦</span><b>Raktár</b><small>${SurvivalShelter.STASH_SLOTS[0]} hely, halál után is megmarad</small></div>
+                    <div><span>🛏</span><b>Fekhely</b><small>${SurvivalShelter.BED_REST_MULTIPLIER}× gyorsabb pihenés</small></div>
+                    <div><span>🔥</span><b>Tűzhely</b><small>főzés gyufa nélkül</small></div>
+                    <div><span>🧱</span><b>Falak</b><small>fa, majd fém védelem</small></div>
+                </div>
+                ${kits ? '<button class="sg-sh-big" onclick="startShelterClaim()">RENDBEN, KIVÁLASZTOM A TÉRKÉPEN</button>' : '<button class="sg-sh-big" onclick="shelterClaimToCraft()">CSOMAG BARKÁCSOLÁSA</button>'}
+                <p class="sg-sh-dim" style="margin-top:8px;text-align:center">A menedéket mindenki látja a térképen. Költözni hetente egyszer lehet.</p>
             </div>`;
         return;
     }

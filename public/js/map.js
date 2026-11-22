@@ -401,7 +401,7 @@ function refreshMapMarkers() {
         if (!obj) {
             const marker = L.marker([bData.lat, bData.lng], { icon: buildingMarkerIcon(bData, state) }).addTo(map);
             obj = { id: bData.id, lat: bData.lat, lng: bData.lng, bounds: bData.bounds, name: bData.name, type: bData.type, looted: locked, state, lockedUntil: bData.lockedUntil, marker };
-            marker.on('click', () => interactWithBuilding(obj));
+            marker.on('click', () => { if (typeof shelterSwallowClick === 'function' && shelterSwallowClick()) return; interactWithBuilding(obj); });
             markerById.set(bData.id, obj);
         } else if (obj.state !== state) {
             obj.marker.setIcon(buildingMarkerIcon(bData, state));
