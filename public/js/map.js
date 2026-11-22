@@ -448,6 +448,9 @@ function interactWithBuilding(b) {
         return;
     }
 
+    // Menedék kiválasztása (v0.1.12): ilyenkor a koppintás nem átkutat, hanem elfoglal
+    if (typeof shelterClaimIntercept === 'function' && shelterClaimIntercept(b)) return;
+
     // Otthagyott zsákmány: a Zsákmány ablak nyílik (a megtalálójának ingyenes, másnak egy kutatásnyi fáradtság)
     if (cacheUntilFor(b.id)) {
         if (player.combat) { logMessage("Harc közben ezt nem teheted!"); return; }

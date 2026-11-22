@@ -28,13 +28,14 @@ socket.on('premium_result', (data) => {
 });
 socket.on('premium_order_result', (data) => {
     if (!data || !data.success) {
-        const m = document.getElementById('premium-msg');
+        const m = document.getElementById('prem-pop-msg') || document.getElementById('premium-msg');
         if (m) { m.textContent = (data && data.message) || 'Hiba.'; m.style.color = '#f0a090'; }
         const b = document.getElementById('premium-order-btn'); if (b) b.disabled = false;
         return;
     }
     premiumLastOrder = data.order;
-    renderPremium();
+    premiumPop('UTALD EL AZ ÖSSZEGET', transferHtml(data.order), '#e8c35a');
+    socket.emit('premium_state');
 });
 
 function openPremium() {
@@ -43,8 +44,8 @@ function openPremium() {
     socket.emit('premium_state');
     renderPremium();
 }
-function closePremium() { document.getElementById('premium-modal').classList.add('hidden'); }
-document.querySelectorAll('#premium-tabs button').forEach(b => b.addEventListener('click', () => { premiumTab = b.dataset.pt; premiumLastOrder = premiumTab === 'buy' ? premiumLastOrder : null; renderPremium(); }));
+function closePremium() { closePremiumPop(); document.getElementById('premium-modal').classList.add('hidden'); }
+document.querySelectorAll('#premium-tabs button').forEach(b => b.addEventListener('click', () => { premiumTab = b.dataset.pt; renderPremium(); }));
 
 function rarityOf(def) { return PS().RARITY[def.rarity] || { name: '', color: '#b9b29c' }; }
 function cosmeticPreview(def) {
@@ -87,22 +88,22 @@ function renderPremium() {
     } else if (premiumTab === 'crates') {
         const found = S.CRATES.filter(c => premium.crates[c.key] > 0);
         const keys = premium.keys.key_basic || 0;
-        const foundHtml = found.length ? `<div class="sg-found">${found.map(c => `<div class="sg-found-row" style="--tc:${c.color}"><img src="${pImg(c.img)}" alt=""><div><b>${pEsc(c.name)} ×${premium.crates[c.key]}</b><small>Talált láda · ${c.keyItem ? `kulcs kell (nálad: ${keys})` : 'nyitható'}</small></div>
+        const foundHtml = found.length ? `<div class="sg-found">${found.map(c => `<div class="sg-found-row" style="--tc:${c.color}"><img src="${pImg(c.img)}" alt="" onclick="showCrateContents('${c.key}')"><div onclick="showCrateContents('${c.key}')"><b>${pEsc(c.name)} ×${premium.crates[c.key]}</b><small>Talált láda · ${c.keyItem ? `kulcs kell (nálad: ${keys})` : 'nyitható'}</small></div>
             <button class="sg-pill" ${!c.keyItem || keys ? '' : 'disabled'} onclick="socket.emit('premium_open_crate',{key:'${c.key}'})">KINYITÁS</button></div>`).join('')}
             <div class="sg-found-row" style="--tc:#d9c58a"><img src="${pImg('key')}" alt=""><div><b>Láda kulcs ×${keys}</b><small>A talált Kis ládához</small></div><button class="sg-pill" ${premium.credits < S.BY_KEY.key_basic.price ? 'disabled' : ''} onclick="premiumBuy('key_basic')">${priceHtml(S.BY_KEY.key_basic.price)}</button></div></div>` : '';
         body.innerHTML = msg + foundHtml + `<div class="sg-showcase">${S.CRATES.map(c => {
             const rc = S.rarityChances(c.key);
             return `<div class="sg-crate" style="--tc:${c.color}">
                 ${c.popular ? '<span class="sg-badge">NÉPSZERŰ</span>' : ''}
-                <div class="sg-crate-stage"><img src="${pImg(c.img)}" alt=""></div>
-                <div class="sg-crate-name">${pEsc(c.name).toUpperCase()}</div>
+                <div class="sg-crate-stage" onclick="showCrateContents('${c.key}')"><img src="${pImg(c.img)}" alt=""></div>
+                <div class="sg-crate-name" onclick="showCrateContents('${c.key}')">${pEsc(c.name).toUpperCase()}</div>
+                <div class="sg-crate-cat">${pEsc(c.cat || '')}</div>
                 <div class="sg-crate-bars">${Object.keys(S.RARITY).map(r => rc[r] ? `<i style="flex:${rc[r]};background:${S.RARITY[r].color}" title="${S.RARITY[r].name}: ${(rc[r] * 100).toFixed(0)}%"></i>` : '').join('')}</div>
                 <button class="sg-pill big" ${premium.credits < c.price ? 'disabled' : ''} onclick="premiumBuy('${c.key}')"><span>MEGVESZEM</span><b>${GEM}${c.price}</b><small>≈ ${S.fmtHuf(S.huf(c.price))}</small></button>
-                <button class="sg-odds-link" onclick="const t=this.nextElementSibling;t.classList.toggle('hidden')">ESÉLYEK ▾</button>
-                <table class="sg-odds hidden">${S.crateOdds(c.key).map(o => { const d = S.BY_KEY[o.key], r = rarityOf(d); return `<tr><td style="color:${r.color}">${r.name}</td><td>${pEsc(d.name)}${premium.owned.includes(d.key) ? ' ✔' : ''}</td><td class="n">${(o.chance * 100).toFixed(2).replace('.', ',')}%</td></tr>`; }).join('')}</table>
+                <button class="sg-odds-link" onclick="showCrateContents('${c.key}')">TARTALOM ÉS ESÉLYEK ▸</button>
             </div>`;
         }).join('')}</div>
-        <p class="sg-ann-from" style="margin-top:8px">Minden láda egy kinézeti tárgyat ad (keret vagy cím). Ha olyat kapsz, ami már megvan, helyette creditet: ${Object.values(S.RARITY).map(r => `${r.name.toLowerCase()} ${r.dupRefund}`).join(', ')}. A Kis ládát épületekben is megtalálhatod.</p>`;
+        <p class="sg-ann-from" style="margin-top:8px">Minden láda egy kinézeti tárgyat ad; a láda neve alatt látod, milyen fajtát. Koppints egy ládára a teljes tartalmáért. Ha olyat kapsz, ami már megvan, helyette creditet: ${Object.values(S.RARITY).map(r => `${r.name.toLowerCase()} ${r.dupRefund}`).join(', ')}. A Kis ládát épületekben is megtalálhatod.</p>`;
     } else if (premiumTab === 'mine') {
         const mine = S.COSMETICS.filter(c => premium.owned.includes(c.key));
         const eqBtn = (c) => { const on = premium[c.kind] === c.key; return `<button class="${on ? '' : 'eq'}" onclick="socket.emit('premium_equip',{kind:'${c.kind}',key:'${on ? '' : c.key}'})">${on ? 'LEVÉTEL' : 'FELVÉTEL'}</button>`; };
@@ -114,26 +115,80 @@ function renderPremium() {
             (renames ? `<div class="sg-prem-card"><b>🏷 Névváltoztatás (${renames})</b><small>Az új neveddel kell majd belépned. 3–16 betű vagy szám.</small><input id="premium-newname" maxlength="16" style="width:100%;padding:6px;margin-bottom:5px;background:#ece6d6;color:#2a2620;border:2px solid #15170f"><button onclick="const n=document.getElementById('premium-newname').value.trim(); if(n && confirm('Biztos? Az új neved: '+n)) socket.emit('premium_rename',{newName:n})">NÉV MEGVÁLTOZTATÁSA</button></div>` : '') +
             `<div class="sg-prem-h">RENDELÉSEIM</div>` + (premium.orders.length ? `<table class="sg-odds">${premium.orders.map(o => `<tr><td>${pEsc(o.code)}</td><td>${S.fmtHuf(o.huf)} → ◆ ${o.credits}</td><td class="n">${{ pending: '⏳ utalásra vár', paid: '✔ jóváírva', cancelled: '✕ törölve', expired: '⌛ lejárt' }[o.status] || o.status}</td></tr>`).join('')}</table>` : '<p class="sg-ann-from">Még nincs rendelésed.</p>');
     } else if (premiumTab === 'buy') {
-        if (premiumLastOrder) { body.innerHTML = transferHtml(premiumLastOrder); return; }
         body.innerHTML = msg +
-            `<div class="sg-prem-h">1. VÁLASSZ CSOMAGOT</div><div class="sg-pkgs">` + S.PACKAGES.map((p, i) => `<button class="sg-pkg ${premiumPkg === p.key ? 'on' : ''}" onclick="premiumPkg='${p.key}';renderPremium()">${p.popular ? '<span class="sg-badge">NÉPSZERŰ</span>' : ''}
+            `<div class="sg-prem-h">VÁLASSZ CSOMAGOT</div><div class="sg-pkgs">` + S.PACKAGES.map((p, i) => `<button class="sg-pkg" onclick="openPackage('${p.key}')">${p.popular ? '<span class="sg-badge">NÉPSZERŰ</span>' : ''}
                 <span class="sg-pkg-gems">${Array.from({ length: i + 1 }, (_, k) => `<img src="${pImg(p.img)}" alt="" style="--k:${k}">`).join('')}</span>
                 <b>${GEM}${p.credits}</b><small>${pEsc(p.name)}</small><span class="sg-pkg-price">${S.fmtHuf(p.huf)}</span></button>`).join('') + `</div>` +
-            `<div class="sg-prem-form"><div class="sg-prem-h">2. SZÁMLÁZÁSI ADATOK</div>
-                <input id="pb-name" placeholder="Név (a számlára)" maxlength="80">
-                <div style="display:flex;gap:5px"><input id="pb-zip" placeholder="Irsz." maxlength="10" style="width:32%"><input id="pb-city" placeholder="Település" maxlength="60"></div>
-                <input id="pb-address" placeholder="Utca, házszám" maxlength="120">
-                <input id="pb-email" placeholder="E-mail (a számlához, nem kötelező)" maxlength="120">
-                <label class="chk"><input type="checkbox" id="pb-terms"> <span>Elolvastam és elfogadom a <a href="/aszf" target="_blank" rel="noopener">vásárlási feltételeket (ÁSZF)</a> és az <a href="/adatvedelem.html" target="_blank" rel="noopener">adatkezelési tájékoztatót</a>.</span></label>
-                <label class="chk"><input type="checkbox" id="pb-immediate"> <span>Kérem, hogy a credit az utalás beérkezése után azonnal jóváírásra kerüljön, és tudomásul veszem, hogy a jóváírással elveszítem a 14 napos elállási jogomat.</span></label>
-                <button id="premium-order-btn" class="sg-tu-big" style="margin-top:10px" onclick="premiumOrder()">RENDELÉS – ÁTUTALÁSI ADATOK KÉRÉSE</button>
-                <p class="sg-ann-from">Fizetés banki átutalással. A credit akkor kerül jóváírásra, amikor az utalás megérkezett (általában 1–2 munkanap). A számlát e-mailben vagy kérésre küldjük.</p></div>`;
-        const me = player && player.email; if (me) { const e = document.getElementById('pb-email'); if (e) e.value = me; }
+            `<p class="sg-ann-from" style="margin-top:10px">Koppints egy csomagra. Fizetés banki átutalással; a credit akkor kerül jóváírásra, amikor az utalás megérkezett (általában 1–2 munkanap). A rendeléseidet a Gyűjteményem fülön látod.</p>`;
     }
+}
+
+// ---------- felugró ablak (láda tartalma, csomag vásárlás) ----------
+function premiumPop(title, html, accent) {
+    let pop = document.getElementById('prem-pop');
+    if (!pop) {
+        pop = document.createElement('div');
+        pop.id = 'prem-pop';
+        pop.innerHTML = '<div class="sg-pop-box"><div class="sg-pop-head"><span id="prem-pop-title"></span><button onclick="closePremiumPop()">✕</button></div><div id="prem-pop-body" class="sg-pop-body"></div></div>';
+        pop.addEventListener('click', (e) => { if (e.target === pop) closePremiumPop(); });
+        document.body.appendChild(pop);
+    }
+    pop.style.setProperty('--tc', accent || '#d9c58a');
+    document.getElementById('prem-pop-title').innerHTML = title;
+    document.getElementById('prem-pop-body').innerHTML = html;
+    pop.classList.remove('hidden');
+}
+function closePremiumPop() { const p = document.getElementById('prem-pop'); if (p) p.classList.add('hidden'); premiumPkg = null; }
+
+// A láda tartalma kis rácsban: minden tárgy a ritkaság színével, mellette az esély
+function showCrateContents(crateKey) {
+    const S = PS(), c = S.CRATES.find(x => x.key === crateKey);
+    if (!c) return;
+    const odds = S.crateOdds(c.key).slice().sort((a, b) => a.chance - b.chance);
+    const rc = S.rarityChances(c.key);
+    const tile = (o) => {
+        const d = S.BY_KEY[o.key], r = rarityOf(d), own = premium.owned.includes(d.key);
+        const prev = d.kind === 'frame'
+            ? `<span class="sg-ct-frame" style="--cc:${d.color};${d.glow ? `box-shadow:0 0 0 3px ${d.color},0 0 10px ${d.color}` : ''}"></span>`
+            : `<span class="sg-ct-title" style="color:${d.color}">${pEsc(d.name.toUpperCase())}</span>`;
+        return `<div class="sg-ct ${own ? 'own' : ''}" style="--rc:${r.color}" title="${pEsc(d.name)} – ${pEsc(d.desc || '')}">${own ? '<i class="sg-ct-own">✔</i>' : ''}${prev}<b>${pEsc(d.name)}</b><small>${(o.chance * 100).toFixed(2).replace('.', ',')}%</small></div>`;
+    };
+    const legend = Object.keys(S.RARITY).filter(r => rc[r]).map(r => `<span style="color:${S.RARITY[r].color}">■ ${S.RARITY[r].name} ${(rc[r] * 100).toFixed(0)}%</span>`).join(' ');
+    const canOpen = premium.crates[c.key] > 0 && (!c.keyItem || (premium.keys.key_basic || 0) > 0);
+    const action = premium.crates[c.key] > 0
+        ? `<button class="sg-pill big" ${canOpen ? '' : 'disabled'} onclick="closePremiumPop();socket.emit('premium_open_crate',{key:'${c.key}'})"><span>NÁLAD: ${premium.crates[c.key]} DB</span><b>KINYITÁS</b>${c.keyItem ? '<small>kulcs kell</small>' : ''}</button>`
+        : c.price ? `<button class="sg-pill big" ${premium.credits < c.price ? 'disabled' : ''} onclick="closePremiumPop();premiumBuy('${c.key}')"><span>MEGVESZEM</span><b>${GEM}${c.price}</b><small>≈ ${S.fmtHuf(S.huf(c.price))}</small></button>` : '';
+    premiumPop(`${pEsc(c.name).toUpperCase()} <small class="sg-pop-cat">${pEsc((c.cat || '').toUpperCase())}</small>`, `
+        <div class="sg-ct-hero"><img src="${pImg(c.img)}" alt=""></div>
+        <div class="sg-crate-bars" style="margin:0 auto 4px">${Object.keys(S.RARITY).map(r => rc[r] ? `<i style="flex:${rc[r]};background:${S.RARITY[r].color}"></i>` : '').join('')}</div>
+        <div class="sg-ct-legend">${legend}</div>
+        <div class="sg-ct-grid">${odds.map(tile).join('')}</div>
+        <p class="sg-ann-from" style="margin:8px 0">${pEsc(c.desc || '')} Egy nyitás egy tárgyat ad. Ha már megvan, helyette creditet kapsz. A ✔ jelűek már a tieid.</p>
+        <div style="text-align:center">${action}</div>`, c.color);
+}
+
+// Csomag kiválasztása: a számlázási adatok és az átutalás külön ablakban
+function openPackage(key) {
+    const S = PS(), p = S.PACKAGES.find(x => x.key === key);
+    if (!p) return;
+    premiumPkg = key;
+    premiumPop(`${GEM} ${p.credits} CREDIT – ${pEsc(p.name).toUpperCase()}`, `
+        <div class="sg-pop-sum"><img src="${pImg(p.img)}" alt=""><div><b>${GEM}${p.credits} credit</b><small>Fizetendő: ${S.fmtHuf(p.huf)}</small></div></div>
+        <div id="prem-pop-msg" class="sg-ann-from" style="min-height:14px"></div>
+        <div class="sg-prem-form"><div class="sg-prem-h">SZÁMLÁZÁSI ADATOK</div>
+            <input id="pb-name" placeholder="Név (a számlára)" maxlength="80">
+            <div style="display:flex;gap:5px"><input id="pb-zip" placeholder="Irsz." maxlength="10" style="width:32%"><input id="pb-city" placeholder="Település" maxlength="60"></div>
+            <input id="pb-address" placeholder="Utca, házszám" maxlength="120">
+            <input id="pb-email" placeholder="E-mail (a számlához, nem kötelező)" maxlength="120">
+            <label class="chk"><input type="checkbox" id="pb-terms"> <span>Elolvastam és elfogadom a <a href="/aszf" target="_blank" rel="noopener">vásárlási feltételeket (ÁSZF)</a> és az <a href="/adatvedelem.html" target="_blank" rel="noopener">adatkezelési tájékoztatót</a>.</span></label>
+            <label class="chk"><input type="checkbox" id="pb-immediate"> <span>Kérem, hogy a credit az utalás beérkezése után azonnal jóváírásra kerüljön, és tudomásul veszem, hogy a jóváírással elveszítem a 14 napos elállási jogomat.</span></label>
+            <button id="premium-order-btn" class="sg-tu-big" style="margin-top:10px" onclick="premiumOrder()">TOVÁBB AZ ÁTUTALÁSHOZ</button>
+        </div>`, '#e8c35a');
+    const me = player && player.email; if (me) { const e = document.getElementById('pb-email'); if (e) e.value = me; }
 }
 function premiumOrder() {
     const v = (id) => (document.getElementById(id) || {}).value || '';
-    const m = document.getElementById('premium-msg');
+    const m = document.getElementById('prem-pop-msg') || document.getElementById('premium-msg');
     if (!premiumPkg) { m.textContent = 'Válassz csomagot.'; m.style.color = '#f0a090'; return; }
     document.getElementById('premium-order-btn').disabled = true;
     socket.emit('premium_order', {
@@ -145,8 +200,7 @@ function premiumOrder() {
 function transferHtml(o) {
     const S = PS();
     const copy = (t) => `<button onclick="navigator.clipboard && navigator.clipboard.writeText('${pEsc(t)}');this.textContent='MÁSOLVA'">MÁSOL</button>`;
-    return `<div class="sg-prem-h">3. UTALD EL AZ ÖSSZEGET</div>
-        <div class="sg-xfer">
+    return `<div class="sg-xfer">
             Összeg: <b>${S.fmtHuf(o.huf)}</b> ${copy(String(o.huf))}<br>
             Közlemény: <b>${pEsc(o.code)}</b> ${copy(o.code)}<br>
             Kedvezményezett: <b>${pEsc(o.payee || '–')}</b><br>
@@ -157,7 +211,7 @@ function transferHtml(o) {
             ⚠️ A <b>közleménybe pontosan ezt írd: ${pEsc(o.code)}</b> – ebből tudjuk, kié az utalás.<br>
             Ha megérkezett, jóváírjuk a(z) ◆ ${o.credits} creditet, és értesítést kapsz. A rendelés ${o.expiresDays} napig érvényes.
         </div>
-        <button class="sg-prem-btn" style="margin-top:10px" onclick="premiumLastOrder=null;premiumTab='mine';renderPremium()">RENDBEN – RENDELÉSEIM</button>`;
+        <button class="sg-prem-btn" style="margin-top:10px" onclick="premiumLastOrder=null;closePremiumPop();premiumTab='mine';renderPremium()">RENDBEN – RENDELÉSEIM</button>`;
 }
 
 // ---------- láda nyitás ----------

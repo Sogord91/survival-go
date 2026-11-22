@@ -73,6 +73,8 @@ module.exports = {
     SEARCH_TIME_SCALE: 1,               // átkutatási idő szorzója (épülettípusonként 8/15/30 mp; a tesztekben 0)
     SEARCH_GRACE_MS: 1500,              // ennyivel korábban is elfogadjuk a befejezést (hálózati késés)
     POSITION_MAX_AGE_SECONDS: 120,      // ennél régebbi GPS pozícióval nem lehet lootolni
+    SHELTER_TIME_SCALE: 1,              // menedék építési idők szorzója (a tesztek 0-t állítanak be)
+    SHELTER_VIEW_METERS: 3000,          // ilyen messzire látszanak a menedékek a térképen
     LOOT_COOLDOWN_MS: 1500,             // két lootolási kérés között legalább ennyi idő (az OSM-lekérdezések védelme)
     OVERPASS_URLS: [                    // OSM (Overpass) szerverek sorrendben; ha az egyik nem válaszol időben, jön a következő
         'https://overpass.private.coffee/api/interpreter',          // korábban overpass.kumi.systems, nincs kérés-korlát

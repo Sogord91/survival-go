@@ -310,6 +310,22 @@ const itemDatabase = {
     'chemical_solvent': { name: 'Vegyi Oldószer', type: 'mod', icon: '🧪', img: 'SURV-0987_isopropyl_alcohol_flask', desc: 'Tisztításhoz és robbanóanyaghoz', weight: 0.5, stackable: true, loot: { hardware: 3, industrial: 3, hospital: 1, hazmat: 2 } },
     'gear_wheel': { name: 'Acél Fogaskerék', type: 'mod', icon: '⚙️', img: 'SURV-0821_spur_gear', desc: 'Mechanikus tuning alkatrész', weight: 0.6, stackable: true, loot: { industrial: 3, auto: 2, scrap: 2 } },
 
+    // --- MENEDÉK ÉPÍTÉSE (v0.1.12): a falakhoz, a barikádhoz, az ajtókhoz és a raktárhoz ---
+    'split_timber': { name: 'Hasított Fa Köteg', type: 'material', icon: '🪵', img: 'SURV-2239_split_timber_supply_bundle', desc: 'Fűrésszel deszkára és gerendára vágható', weight: 4, stackable: true, lootCount: [1, 2], loot: { farm: 4, hardware: 2, warehouse: 2 } },
+    'wall_planks': { name: 'Deszkacsomag', type: 'material', icon: '🪵', img: 'SURV-1913_wall_plank_bundle', desc: 'Falakhoz, ajtóhoz, ládához', weight: 3, stackable: true, loot: { hardware: 4, warehouse: 3, farm: 2, industrial: 1 } },
+    'timber_beam': { name: 'Gerenda', type: 'material', icon: '🪵', img: 'SURV-1907_wall_stud', desc: 'A falak váza, karóhoz is jó', weight: 3, stackable: true, loot: { hardware: 3, warehouse: 2, farm: 2, industrial: 1 } },
+    'palisade_stake': { name: 'Kihegyezett Karó', type: 'material', icon: '🪵', img: 'SURV-1918_palisade_stake', desc: 'Fa barikádhoz', weight: 1.5, stackable: true, loot: { farm: 1 } },
+    'plywood_panel': { name: 'Rétegelt Lemez', type: 'material', icon: '🟫', img: 'SURV-1956_plywood_wall_panel', desc: 'Ablakok bedeszkázásához', weight: 3, stackable: true, loot: { hardware: 4, warehouse: 3, industrial: 1 } },
+    'storm_shutter': { name: 'Viharzsalu', type: 'material', icon: '🪟', img: 'SURV-1954_hinged_storm_shutter', desc: 'Zárható ablaktábla a barikádhoz', weight: 3, stackable: true, loot: { hardware: 1 } },
+    'plank_door': { name: 'Deszkaajtó', type: 'material', icon: '🚪', img: 'SURV-1946_plank_cabin_door', desc: 'A fa barakk ajtaja', weight: 6, stackable: true },
+    'corrugated_sheet': { name: 'Hullámlemez', type: 'material', icon: '⬜', img: 'SURV-1939_corrugated_metal_roofing', desc: 'Fém barikádhoz, falpanelhez', weight: 4, stackable: true, loot: { scrap: 4, industrial: 3, farm: 2, warehouse: 2, auto: 1 } },
+    'corrugated_wall_panel': { name: 'Hullámlemez Falpanel', type: 'material', icon: '⬜', img: 'SURV-1962_corrugated_metal_wall_panel', desc: 'A fém falak eleme', weight: 6, stackable: true },
+    'reinforced_door': { name: 'Megerősített Ajtó', type: 'material', icon: '🚪', img: 'SURV-1947_reinforced_shelter_door', desc: 'Lemezzel borított ajtó a fém falakhoz', weight: 12, stackable: true },
+    'sliding_bolt': { name: 'Tolózár', type: 'material', icon: '🔩', img: 'SURV-1950_sliding_door_bolt', desc: 'Ajtók belső zárásához', weight: 0.4, stackable: true, loot: { hardware: 3 } },
+    'supply_crate': { name: 'Fa Ellátmányláda', type: 'material', icon: '📦', img: 'SURV-2201_wooden_supply_crate', desc: 'A menedék raktárának bővítéséhez', weight: 5, stackable: true, loot: { warehouse: 1, military: 0.5 } },
+    'shelter_kit': { name: 'Menedékalapító Csomag', type: 'material', icon: '🏚', img: 'SURV-2240_shelter_material_bundle', desc: 'Ezzel tehetsz egy épületet a menedékeddé (elfogy)', weight: 6, stackable: true, loot: { warehouse: 0.5, military: 0.3 } },
+    'iron_banded_chest': { name: 'Vasalt Láda', type: 'material', icon: '🧰', img: 'SURV-2202_iron_banded_chest', desc: 'Erős láda a raktár második bővítéséhez', weight: 8, stackable: true, loot: { military: 0.3 } },
+
     // --- LŐSZER ---
     'ammo_9mm': { name: '9x19mm Parabellum', type: 'ammo', icon: '🎯', img: 'drawn_ammo_9mm', desc: 'Pisztoly lőszer', ammoType: 'ammo_9mm', weight: 0.02, stackable: true, lootCount: [5, 15], loot: { police: 5, military: 3 } },
     'ammo_762': { name: '7.62x39mm Katonai Lőszer', type: 'ammo', icon: '🎯', img: 'drawn_ammo_762', desc: 'AK lőszer', ammoType: 'ammo_762', weight: 0.03, stackable: true, lootCount: [5, 15], loot: { military: 4, police: 0.5 } },

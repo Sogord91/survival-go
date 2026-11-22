@@ -20,6 +20,7 @@ const Admin = require('./admin'); // admin oldal, eseménynapló, bejelentések,
 const Premium = require('./premium'); // prémium credit, bolt, ládák (v0.1.16)
 let adminHooks = null;           // a fájl végén áll össze (Admin.setup)
 let premiumHooks = null;         // a fájl végén áll össze (Premium.setup)
+const SurvivalShelter = require('./public/js/shelter'); // menedék: építmények, raktár (v0.1.12)
 
 const app = express();
 const server = http.createServer(app);
@@ -101,7 +102,8 @@ const userSchema = new mongoose.Schema({
         lifeStartedAt: { type: Number, default: null },                   // a mostani túlélő mikor indult (a leghosszabb élethez)
         quickbar: { type: Array, default: [] },                           // gyorssáv: 3 kitűzött fogyasztható tárgy kulcsa (vagy null)
         tutorial: { type: mongoose.Schema.Types.Mixed, default: null },   // Első lépések: { introSeen, done: { lépés: időpont }, finalClaimed }
-        daily: { type: mongoose.Schema.Types.Mixed, default: null }       // napi bónusz: { lastDay: 'ÉÉÉÉ-HH-NN', streak }
+        daily: { type: mongoose.Schema.Types.Mixed, default: null },      // napi bónusz: { lastDay: 'ÉÉÉÉ-HH-NN', streak }
+        shelter: { type: mongoose.Schema.Types.Mixed, default: null }     // menedék: hely, építmények, raktár (a halál után is megmarad; v0.1.12)
     }
 });
 
@@ -405,8 +407,14 @@ function normalizePlayer(raw) {
     SurvivalStats.EQUIPMENT_SLOTS.forEach(slot => {
         equipment[slot] = typeof eq[slot] === 'string' && eq[slot] ? eq[slot] : null;
     });
+    const inventory = normalizeItemList(p.inventory);
+    return normalizePlayerFields(p, equipment, inventory);
+}
+
+// Egy tárgylista (leltár vagy menedék-raktár) egységes formára hozása
+function normalizeItemList(list) {
     const inventory = [];
-    (Array.isArray(p.inventory) ? p.inventory : [])
+    (Array.isArray(list) ? list : [])
         .filter(s => s && typeof s.key === 'string' && Math.floor(num(s.count, 0)) > 0)
         .forEach(s => {
             const count = Math.floor(num(s.count, 0));
@@ -427,6 +435,10 @@ function normalizePlayer(raw) {
                 }
             }
         });
+    return inventory;
+}
+
+function normalizePlayerFields(p, equipment, inventory) {
     return {
         hp: num(p.hp, 100),
         maxHp: num(p.maxHp, 100),
@@ -450,6 +462,7 @@ function normalizePlayer(raw) {
         tutorial: normalizeTutorial(p.tutorial),
         daily: normalizeDaily(p.daily),
         premiumSlots: Math.max(0, Math.min(6, Math.floor(num(p.premiumSlots, 0)))), // prémium: végleges +hely (v0.1.16)
+        shelter: normalizeShelter(p.shelter),
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
     };
 }
@@ -631,6 +644,102 @@ function markTutorial(p, key) {
 function bumpStat(p, key, amount) {
     if (!p.stats) p.stats = normalizeStats(null);
     p.stats[key] = (p.stats[key] || 0) + (amount === undefined ? 1 : amount);
+}
+
+// ===================== MENEDÉK (v0.1.12) =====================
+// A játékos adataiban él (playerData.shelter), így a raktár mozgatása a leltárral együtt, egy mentéssel történik.
+// A térképes megjelenítéshez egy kis külön gyűjtemény (SurvivalShelterIndex) tartja a helyet és a szinteket.
+function normalizeShelter(raw) {
+    if (!raw || typeof raw !== 'object' || typeof raw.lat !== 'number' || typeof raw.lng !== 'number') return null;
+    const levels = {};
+    SurvivalShelter.STRUCTURE_KEYS.forEach(k => {
+        levels[k] = clamp(Math.floor(num(raw.levels && raw.levels[k], 0)), 0, SurvivalShelter.maxLevel(k));
+    });
+    let build = null;
+    const b = raw.build;
+    if (b && SurvivalShelter.STRUCTURES[b.key] && Number.isFinite(Number(b.until))) {
+        const lvl = Math.floor(num(b.level, 0));
+        if (lvl >= 1 && lvl <= SurvivalShelter.maxLevel(b.key)) build = { key: b.key, level: lvl, until: Number(b.until), startedAt: num(b.startedAt, 0) };
+    }
+    const shelter = {
+        buildingId: typeof raw.buildingId === 'string' ? raw.buildingId : null,
+        name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'Menedék',
+        lat: raw.lat, lng: raw.lng,
+        bounds: SurvivalBuildings.cleanBounds(raw.bounds),
+        claimedAt: num(raw.claimedAt, Date.now()),
+        levels, build,
+        stash: normalizeItemList(raw.stash)
+    };
+    return SurvivalShelter.settle(shelter, Date.now());
+}
+
+const shelterIndexSchema = new mongoose.Schema({
+    _id: { type: String },          // a tulajdonos felhasználóneve
+    buildingId: String, name: String, lat: Number, lng: Number,
+    levels: { type: mongoose.Schema.Types.Mixed, default: {} },
+    build: { type: mongoose.Schema.Types.Mixed, default: null },
+    updatedAt: Number
+});
+const ShelterIndexModel = mongoose.model('SurvivalShelterIndex', shelterIndexSchema);
+const shelterIndex = new Map(); // tulajdonos -> { owner, buildingId, name, lat, lng, levels, build }
+ShelterIndexModel.find({}).then(rows => {
+    rows.forEach(r => shelterIndex.set(r._id, { owner: r._id, buildingId: r.buildingId, name: r.name, lat: r.lat, lng: r.lng, levels: r.levels || {}, build: r.build || null }));
+    console.log(`🏚 Menedékek betöltve: ${rows.length}`);
+}).catch(err => console.error('Hiba a menedékek betöltésekor:', err));
+
+function updateShelterIndex(owner, shelter) {
+    if (!shelter) {
+        shelterIndex.delete(owner);
+        return ShelterIndexModel.deleteOne({ _id: owner }).catch(err => console.error('Hiba a menedék törlésekor:', err));
+    }
+    const row = { owner, buildingId: shelter.buildingId, name: shelter.name, lat: shelter.lat, lng: shelter.lng, levels: shelter.levels, build: shelter.build };
+    shelterIndex.set(owner, row);
+    return ShelterIndexModel.updateOne({ _id: owner }, { $set: { buildingId: row.buildingId, name: row.name, lat: row.lat, lng: row.lng, levels: row.levels, build: row.build, updatedAt: Date.now() } }, { upsert: true })
+        .catch(err => console.error('Hiba a menedék mentésekor:', err));
+}
+
+// A térképre: a környék menedékei (mindenki látja őket)
+function sheltersAround(lat, lng, radius) {
+    const now = Date.now();
+    const out = [];
+    shelterIndex.forEach(row => {
+        if (SurvivalBuildings.haversine(lat, lng, row.lat, row.lng) > radius) return;
+        const settled = SurvivalShelter.settle({ levels: row.levels, build: row.build }, now);
+        out.push({ owner: row.owner, name: row.name, lat: row.lat, lng: row.lng, levels: settled.levels,
+            hp: SurvivalShelter.structureHp(settled), building: !!settled.build });
+    });
+    return out;
+}
+
+// Milyen messze van a játékos (friss GPS-pozíció) a saját menedékétől? { distance } vagy { error }
+function shelterDistance(entry, shelter) {
+    if (!shelter) return { error: 'Még nincs menedéked.' };
+    if (!entry || entry.lat === null || !entry.positionAt || Date.now() - entry.positionAt > config.POSITION_MAX_AGE_SECONDS * 1000) {
+        return { error: 'Várd meg a friss GPS pozíciót!' };
+    }
+    return { distance: SurvivalBuildings.distanceToBuilding(entry, shelter) };
+}
+function atShelter(entry, shelter) {
+    const d = shelterDistance(entry, shelter);
+    if (d.error) return d;
+    if (d.distance > SurvivalShelter.RANGE_METERS) return { error: `Ehhez a menedékednél kell lenned! (${Math.round(d.distance)} m)` };
+    return { ok: true };
+}
+
+// A raktár darabszáma egy tárgyból, és az építéshez: leltár + raktár együtt
+function stashCount(shelter, key) {
+    return shelter ? shelter.stash.reduce((sum, s) => sum + (s.key === key ? s.count : 0), 0) : 0;
+}
+function takeFromStash(shelter, key, count) {
+    let left = count;
+    for (let i = shelter.stash.length - 1; i >= 0 && left > 0; i--) {
+        const slot = shelter.stash[i];
+        if (slot.key !== key) continue;
+        const take = Math.min(slot.count, left);
+        slot.count -= take;
+        left -= take;
+    }
+    shelter.stash = shelter.stash.filter(s => s.count > 0);
 }
 
 // A teljes, friss állapot elküldése a játékos aktív kapcsolatára
@@ -915,7 +1024,13 @@ setInterval(() => {
             const { critical } = applySurvival(p, dt);
 
             // Online pihenés: ha a játékos legalább REST_IDLE_MINUTES óta egy helyben van
-            if (now - entry.lastMovedAt >= config.REST_IDLE_MINUTES * 60 * 1000) restFatigue(p, dt);
+            if (now - entry.lastMovedAt >= config.REST_IDLE_MINUTES * 60 * 1000) {
+                // a menedék fekhelye mellett gyorsabban (v0.1.12)
+                // (pihenéskor a telefon gyakran nem küld friss GPS-t, ezért az utolsó ismert hely számít)
+                const onBed = SurvivalShelter.level(p.shelter, 'bed') >= 1 && entry.lat !== null
+                    && SurvivalBuildings.distanceToBuilding(entry, p.shelter) <= SurvivalShelter.RANGE_METERS;
+                restFatigue(p, dt * (onBed ? SurvivalShelter.BED_REST_MULTIPLIER : 1));
+            }
 
             // Éjszaka (a játékos helyén) ég a fényforrás
             let notices = [];
@@ -1181,7 +1296,7 @@ function withBuilding(id, fn) {
 }
 
 async function setBuildingCache(id, cache) {
-    await BuildingModel.findOneAndUpdate({ _id: id }, { $set: { cache } }, { new: true });
+    await BuildingModel.findOneAndUpdate({ _id: id }, { $set: { cache } }, { returnDocument: 'after' });
 }
 
 // A kliensnek küldött zsákmánylista (a tárgyak és a lejárat; a látogatók listája nem)
@@ -1235,7 +1350,7 @@ async function lockBuilding(id, username, now, until) {
     const doc = await BuildingModel.findOneAndUpdate(
         { _id: id, $or: [{ lockedUntil: { $lte: now } }, { lockedUntil: null }] },
         { $set: { lockedUntil: until, lastLootedBy: username } },
-        { new: true }
+        { returnDocument: 'after' }
     );
     return !!doc;
 }
@@ -1251,7 +1366,7 @@ async function releaseBuildingLock(id, username, lockedUntil) {
     const doc = await BuildingModel.findOneAndUpdate(
         { _id: id, lastLootedBy: username, lockedUntil },
         { $set: { lockedUntil: 0 } },
-        { new: true }
+        { returnDocument: 'after' }
     );
     return !!doc;
 }
@@ -1720,7 +1835,9 @@ io.on('connection', (socket) => {
 
             // Tűzgyújtás: gyufa (elfogy), ha nincs, a tűzgyújtó rúd (kopik)
             let fireMatch = false;
-            if (recipe.fire) {
+            // A menedék tűzhelyénél nem kell tüzet gyújtani (v0.1.12)
+            const atHearth = recipe.fire && SurvivalShelter.level(p.shelter, 'hearth') >= 1 && atShelter(activePlayers[username], p.shelter).ok;
+            if (recipe.fire && !atHearth) {
                 const [match, rod] = RecipeTools.FIRE_STARTERS;
                 if (countItem(p, match) >= 1 + (recipe.req[match] || 0)) fireMatch = true;
                 else {
@@ -2225,6 +2342,133 @@ io.on('connection', (socket) => {
         })).then(reply('daily_result')).catch(logError('Hiba a napi bónusznál:'));
     });
 
+    // ===================== MENEDÉK (v0.1.12) =====================
+    // Elfoglalás: egy valódi épület a közelben. Költözni hetente egyszer lehet; a raktár és az építmények költöznek.
+    socket.on('shelter_claim', (data) => {
+        if (!data || !SurvivalBuildings.parseBuildingId(data.buildingId)) return;
+        const buildingId = data.buildingId;
+        withPlayer(username, freeOnly(async (p) => {
+            const now = Date.now();
+            if (p.shelter && p.shelter.buildingId === buildingId) return { save: false, error: 'Ez már a menedéked.' };
+            if (p.shelter) {
+                const nextMove = p.shelter.claimedAt + SurvivalShelter.MOVE_COOLDOWN_DAYS * 86400000;
+                if (now < nextMove) {
+                    const days = Math.ceil((nextMove - now) / 86400000);
+                    return { save: false, error: `Csak hetente egyszer költözhetsz. Legközelebb ${days} nap múlva.` };
+                }
+                if (p.shelter.build && p.shelter.build.until > now) return { save: false, error: 'Építkezés közben nem költözhetsz.' };
+            }
+            for (const [owner, row] of shelterIndex) {
+                if (owner !== username && row.buildingId === buildingId) return { save: false, error: 'Ezt az épületet már más választotta menedéknek.' };
+            }
+            const entry = activePlayers[username];
+            if (!entry || entry.lat === null || !entry.positionAt || now - entry.positionAt > config.POSITION_MAX_AGE_SECONDS * 1000) {
+                return { save: false, error: 'Várd meg a friss GPS pozíciót!' };
+            }
+            let building;
+            try { building = await getBuilding(buildingId); }
+            catch (err) { return { save: false, error: err.code === 'NOT_FOUND' ? 'Ez az épület nem található.' : 'Nem sikerült azonosítani az épületet. Próbáld újra később!' }; }
+            const distance = SurvivalBuildings.distanceToBuilding(entry, building);
+            if (distance > SurvivalShelter.RANGE_METERS) return { save: false, error: `Menj közelebb az épülethez! (${Math.round(distance)} m)` };
+            // Az elfoglaláshoz kell egy Menedékalapító Csomag (elfogy)
+            if (countItem(p, SurvivalShelter.CLAIM_ITEM) < 1) return { save: false, error: `Ehhez kell egy ${itemDatabase[SurvivalShelter.CLAIM_ITEM].name} a hátizsákodban.` };
+            removeItem(p, SurvivalShelter.CLAIM_ITEM, 1);
+            const moving = !!p.shelter;
+            const old = p.shelter || { levels: {}, stash: [], build: null };
+            p.shelter = normalizeShelter({ ...old, buildingId, name: building.name,
+                lat: building.lat, lng: building.lng, bounds: building.bounds, claimedAt: now });
+            updateShelterIndex(username, p.shelter);
+            return { message: moving ? `Átköltöztél: ${building.name}. A raktárad és az építményeid veled jöttek.` : `Mostantól ez a menedéked: ${building.name}.`, payload: { shelter: true } };
+        })).then(reply('shelter_result')).catch(logError('Hiba a menedék elfoglalásakor:'));
+    });
+
+    // Betevés a raktárba: a leltár egy helyéről (stackelhetőnél count darab, alapból mind)
+    socket.on('shelter_deposit', (data) => {
+        if (!data || !Number.isInteger(data.index)) return;
+        withPlayer(username, freeOnly((p) => {
+            const at = atShelter(activePlayers[username], p.shelter);
+            if (at.error) return { save: false, error: at.error };
+            const slot = p.inventory[data.index];
+            if (!slot) return { save: false, error: 'Ez a tárgy már nincs nálad.' };
+            const count = Number.isInteger(data.count) && data.count > 0 ? Math.min(data.count, slot.count) : slot.count;
+            const stash = p.shelter.stash;
+            const name = itemDatabase[slot.key] ? itemDatabase[slot.key].name : slot.key;
+            if (isStackable(slot.key)) {
+                const existing = stash.find(s => s.key === slot.key);
+                if (!existing && stash.length >= SurvivalShelter.stashSlots(p.shelter)) return { save: false, error: 'Megtelt a raktár!' };
+                if (existing) existing.count += count;
+                else stash.push(slot.dur !== undefined ? { key: slot.key, count, dur: slot.dur } : { key: slot.key, count });
+                slot.count -= count;
+                if (slot.count <= 0) p.inventory.splice(data.index, 1);
+            } else {
+                if (stash.length >= SurvivalShelter.stashSlots(p.shelter)) return { save: false, error: 'Megtelt a raktár!' };
+                stash.push({ ...slot });
+                p.inventory.splice(data.index, 1);
+            }
+            return { message: `Raktárba tetted: ${name}${count > 1 ? ` (${count} db)` : ''}.` };
+        })).then(reply('shelter_result')).catch(logError('Hiba a raktárba tételkor:'));
+    });
+
+    // Kivétel a raktárból a hátizsákba (ha elfér)
+    socket.on('shelter_withdraw', (data) => {
+        if (!data || !Number.isInteger(data.index)) return;
+        withPlayer(username, freeOnly((p) => {
+            const at = atShelter(activePlayers[username], p.shelter);
+            if (at.error) return { save: false, error: at.error };
+            const slot = p.shelter.stash[data.index];
+            if (!slot) return { save: false, error: 'Ez a tárgy már nincs a raktárban.' };
+            const count = Number.isInteger(data.count) && data.count > 0 ? Math.min(data.count, slot.count) : slot.count;
+            const check = canAddItem(p, slot.key, isStackable(slot.key) ? count : 1);
+            if (!check.ok) return { save: false, error: CAPACITY_MESSAGES[check.reason] };
+            const name = itemDatabase[slot.key] ? itemDatabase[slot.key].name : slot.key;
+            if (isStackable(slot.key)) {
+                pushItem(p, slot.key, count);
+                slot.count -= count;
+                if (slot.count <= 0) p.shelter.stash.splice(data.index, 1);
+            } else {
+                p.inventory.push({ ...slot });
+                p.shelter.stash.splice(data.index, 1);
+            }
+            return { message: `Kivetted: ${name}${count > 1 ? ` (${count} db)` : ''}.` };
+        })).then(reply('shelter_result')).catch(logError('Hiba a raktárból kivételkor:'));
+    });
+
+    // Építés / fejlesztés: az alapanyag a leltárból, ha ott nincs elég, a raktárból fogy. Valódi időben készül el.
+    socket.on('shelter_build', (data) => {
+        if (!data || typeof data.key !== 'string' || !SurvivalShelter.STRUCTURES[data.key]) return;
+        withPlayer(username, freeOnly((p) => {
+            const at = atShelter(activePlayers[username], p.shelter);
+            if (at.error) return { save: false, error: at.error };
+            const now = Date.now();
+            const blocker = SurvivalShelter.buildBlocker(p.shelter, data.key, now);
+            if (blocker) return { save: false, error: blocker };
+            const nextLevel = SurvivalShelter.level(p.shelter, data.key) + 1;
+            const def = SurvivalShelter.STRUCTURES[data.key].levels[nextLevel];
+            const itemName = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
+            for (const [key, need] of Object.entries(def.req || {})) {
+                if (countItem(p, key) + stashCount(p.shelter, key) < need) return { save: false, error: `Nincs elég alapanyag: ${itemName(key)} (kellene: ${need})` };
+            }
+            for (const [key, need] of Object.entries(def.req || {})) {
+                const fromBag = Math.min(countItem(p, key), need);
+                if (fromBag > 0) removeItem(p, key, fromBag);
+                if (need - fromBag > 0) takeFromStash(p.shelter, key, need - fromBag);
+            }
+            const minutes = def.minutes * (config.SHELTER_TIME_SCALE ?? 1);
+            p.shelter.build = { key: data.key, level: nextLevel, startedAt: now, until: now + Math.round(minutes * 60000) };
+            updateShelterIndex(username, p.shelter);
+            return { message: `Elkezdted: ${def.name}. Kb. ${def.minutes >= 60 ? `${Math.round(def.minutes / 60)} óra` : `${def.minutes} perc`} múlva kész.` };
+        })).then(reply('shelter_result')).catch(logError('Hiba az építéskor:'));
+    });
+
+    // A környék menedékei a térképre (mindenki látja őket)
+    socket.on('shelters_request', (data) => {
+        const entry = activePlayers[username];
+        const lat = data && Number(data.lat), lng = data && Number(data.lng);
+        const at = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : (entry && entry.lat !== null ? entry : null);
+        if (!at) return;
+        io.to(socket.id).emit('shelters_list', { shelters: sheltersAround(at.lat, at.lng, config.SHELTER_VIEW_METERS || 3000), me: username });
+    });
+
     // --- ÚJ TÚLÉLŐ INDÍTÁSA (csak halott karakterrel) ---
     // Minden elvész: szint, XP, pénz, leltár, felszerelés. A fiók (név, jelszó, avatar) megmarad.
     socket.on('respawn', () => {
@@ -2234,7 +2478,8 @@ io.on('connection', (socket) => {
             const keepTutorial = p.tutorial; // az Első lépések a fiókhoz tartozik
             const keepDaily = p.daily;       // a napi bónusz sorozata is
             const keepSlots = p.premiumSlots; // a megvett prémium hátizsák-hely is
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, premiumSlots: keepSlots, lifeStartedAt: Date.now() });
+            const keepShelter = p.shelter;   // a menedék és a raktára is megmarad (v0.1.12)
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, premiumSlots: keepSlots, shelter: keepShelter, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };

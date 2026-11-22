@@ -23,7 +23,7 @@ function toolOptions(entry) {
     if (options.some(k => TOOLBOX_REPLACES.includes(k)) && !options.includes('toolbox')) options.push('toolbox');
     return options;
 }
-const CRAFT_CATEGORIES = ['Elsősegély', 'Víz és étel', 'Fegyverek', 'Lőszer', 'Eszközök és fény', 'Ruha és táska', 'Alapanyag', 'Szétszerelés'];
+const CRAFT_CATEGORIES = ['Elsősegély', 'Víz és étel', 'Fegyverek', 'Lőszer', 'Eszközök és fény', 'Ruha és táska', 'Menedék', 'Alapanyag', 'Szétszerelés'];
 
 const craftingRecipes = [
     // --- ELSŐSEGÉLY ---
@@ -83,6 +83,18 @@ const craftingRecipes = [
     { key: 'canvas_roll', cat: 'Alapanyag', name: 'Vászontekercs', desc: 'Rongyokból összevarrt erős anyag', req: { rag: 4, cotton_cord: 1 }, tools: ['sewing_kit'] },
     { key: 'twist_wire', cat: 'Alapanyag', result: 'wire', name: 'Drótsodrás', desc: 'Két rézdrótból egy erős dróttekercs', req: { copper_wire: 2 }, tools: [['pliers', 'multitool']] },
     { key: 'purify_alcohol', cat: 'Alapanyag', result: 'alcohol', name: 'Alkohol Tisztítása', desc: 'Két üveg pálinkából tiszta alkohol', req: { moonshine: 2 }, tools: ['straw_filter'] },
+
+    // --- MENEDÉK (v0.1.12): a falak, a barikád és a raktár elemei ---
+    { key: 'shelter_kit', cat: 'Menedék', name: 'Menedékalapító Csomag', desc: 'Deszka, szög és zár: ezzel foglalhatsz el egy épületet', req: { wall_planks: 2, nails: 6, sliding_bolt: 1 }, tools: ['claw_hammer'] },
+    { key: 'saw_planks', cat: 'Menedék', result: 'wall_planks', count: 2, name: 'Deszka Fűrészelése', desc: 'Hasított fából két deszkacsomag', req: { split_timber: 1 }, tools: ['bow_saw'] },
+    { key: 'saw_beam', cat: 'Menedék', result: 'timber_beam', name: 'Gerenda Fűrészelése', desc: 'Hasított fából egy gerenda', req: { split_timber: 1 }, tools: ['bow_saw'] },
+    { key: 'palisade_stake', cat: 'Menedék', count: 2, name: 'Kihegyezett Karó', desc: 'Egy gerendából két karó', req: { timber_beam: 1 }, tools: [['axe', 'machete', 'bow_saw']] },
+    { key: 'storm_shutter', cat: 'Menedék', name: 'Viharzsalu', desc: 'Deszkából zsanéros ablaktábla', req: { wall_planks: 1, hinge_latch: 1, nails: 4 }, tools: ['claw_hammer'] },
+    { key: 'plank_door', cat: 'Menedék', name: 'Deszkaajtó', desc: 'A fa barakk ajtaja, tolózárral', req: { wall_planks: 2, timber_beam: 1, hinge_latch: 1, sliding_bolt: 1, nails: 6 }, tools: ['claw_hammer'] },
+    { key: 'corrugated_wall_panel', cat: 'Menedék', name: 'Hullámlemez Falpanel', desc: 'Két hullámlemez gerendára csavarozva', req: { corrugated_sheet: 2, timber_beam: 1, rusty_bolts: 4 }, tools: [['socket_wrench', 'screwdriver']] },
+    { key: 'reinforced_door', cat: 'Menedék', name: 'Megerősített Ajtó', desc: 'Deszkaajtó vaslemezzel borítva', req: { plank_door: 1, iron_sheet: 2, rusty_bolts: 6 }, tools: [['socket_wrench', 'screwdriver']] },
+    { key: 'supply_crate', cat: 'Menedék', name: 'Fa Ellátmányláda', desc: 'Láda a raktár bővítéséhez', req: { wall_planks: 2, nails: 6 }, tools: ['claw_hammer'] },
+    { key: 'iron_banded_chest', cat: 'Menedék', name: 'Vasalt Láda', desc: 'Ellátmányláda vaspántokkal és zárral', req: { supply_crate: 1, iron_sheet: 1, rusty_bolts: 4, hinge_latch: 1 }, tools: ['claw_hammer'] },
 
     // --- SZÉTSZERELÉS ---
     { key: 'scrap_toaster', cat: 'Szétszerelés', result: 'metal_scrap', count: 2, name: 'Kenyérpirító Szétszedése', desc: 'Fémhulladék a házából', req: { broken_toaster: 1 }, tools: ['screwdriver'] },

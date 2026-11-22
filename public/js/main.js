@@ -632,6 +632,13 @@ function itemUses(key) {
     const workshop = atStation.filter(r => r.station === 'workshop');
     if (smelter.length) add('🔥', 'Olvasztóban (hamarosan)', list(smelter.map(r => r.name)));
     if (workshop.length) add('🏭', 'Műhelyben (hamarosan)', list(workshop.map(r => r.name)));
+    // Menedék építése (v0.1.12)
+    if (window.SurvivalShelter) {
+        const builds = [];
+        Object.values(SurvivalShelter.STRUCTURES).forEach(def => def.levels.forEach(l => { if (l.req && l.req[key]) builds.push(l.name); }));
+        if (builds.length) add('🏚', 'Menedék építése', list(builds));
+        if (key === SurvivalShelter.CLAIM_ITEM) add('🏚', 'Menedék', 'ezzel teheted egy épületet a menedékeddé (elfogy)');
+    }
 
     // Javítás (ugyanaz a szabály, mint a szerveren)
     if (key === 'sewing_kit') add('🔧', 'Javítás', 'ruha, páncél, sisak, cipő és táska (+50%, 1 ronggyal)');

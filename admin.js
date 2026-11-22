@@ -92,6 +92,9 @@ function snapshotBefore(p) {
 const errorLog = []; let errorCount = 0; const startedAt = Date.now();
 const origError = console.error.bind(console);
 console.error = (...args) => {
+    // a könyvtárak elavulási figyelmeztetései (pl. Mongoose "Warning: ... deprecated") nem valódi hibák
+    const first = String(args[0] && args[0].message ? args[0].message : args[0] || '');
+    if (/Warning:|DeprecationWarning/.test(first)) return origError(...args);
     errorCount++;
     errorLog.unshift({ t: Date.now(), text: args.map(a => (a && a.stack) ? a.stack.split('\n').slice(0, 3).join(' | ') : String(a)).join(' ').slice(0, 400) });
     if (errorLog.length > 100) errorLog.length = 100;

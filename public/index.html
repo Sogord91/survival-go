@@ -493,6 +493,31 @@
         .sg-pkg-price { margin-top: 5px; padding: 2px 12px; border-radius: 999px; background: linear-gradient(180deg, #4c3a6a, #2c2140); border: 1.5px solid #c9a14a; font: 800 13px var(--sg-font); }
         .sg-prem-icon { display: block; width: 52px; height: 52px; margin: 0 auto 4px; object-fit: contain; }
         .sg-prem-card { background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 16%, #1d2017), #14160f 80%); }
+        /* felugró ablak: láda tartalma, csomag vásárlás (v0.1.17) */
+        #prem-pop { position: fixed; inset: 0; z-index: 3400; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0,0,0,.72); }
+        #prem-pop.hidden { display: none; }
+        .sg-pop-box { width: min(94vw, 26rem); max-height: 88vh; display: flex; flex-direction: column; background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 14%, #22261a), #15170f 60%);
+            border: 2px solid color-mix(in srgb, var(--tc) 70%, #15170f); box-shadow: 0 0 34px color-mix(in srgb, var(--tc) 30%, transparent), 0 12px 30px rgba(0,0,0,.8); animation: sg-pop .25s ease-out; }
+        .sg-pop-head { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: rgba(0,0,0,.35); color: #fff6dc; font: 800 13px var(--sg-font); letter-spacing: .14em; }
+        .sg-pop-head button { background: none; border: 0; color: var(--sg-muted); font: 800 18px var(--sg-font); }
+        .sg-pop-body { overflow-y: auto; padding: 10px 12px 14px; } .sg-pop-body input { box-sizing: border-box; max-width: 100%; }
+        .sg-ct-hero { height: 110px; display: flex; justify-content: center; align-items: flex-end; background: radial-gradient(ellipse 40% 16% at 50% 92%, rgba(0,0,0,.6), transparent 70%); }
+        .sg-ct-hero img { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--tc) 60%, transparent)); }
+        .sg-ct-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; margin: 4px 0 8px; font: 700 10.5px var(--sg-font); }
+        .sg-ct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 5px; }
+        .sg-ct { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 96px; padding: 7px 3px 5px; text-align: center;
+            background: radial-gradient(ellipse 70% 50% at 50% 30%, color-mix(in srgb, var(--rc) 28%, transparent), transparent 75%), #15170f;
+            border: 1.5px solid color-mix(in srgb, var(--rc) 65%, #15170f); box-shadow: inset 0 -3px 0 var(--rc); }
+        .sg-ct b { margin-top: 5px; color: var(--sg-thread); font: 700 10px/1.15 var(--sg-font); }
+        .sg-ct small { margin-top: auto; padding-top: 3px; color: var(--rc); font: 800 10.5px var(--sg-mono); }
+        .sg-ct.own { opacity: .8; } .sg-ct-own { position: absolute; top: 2px; right: 4px; color: #9fe07a; font: 900 12px var(--sg-font); font-style: normal; }
+        .sg-ct-frame { display: block; width: 34px; height: 34px; border-radius: 50%; background: #2a2e20 url('/images/avatars/avatar1.png') center/cover; box-shadow: 0 0 0 3px var(--cc); }
+        .sg-ct-title { display: flex; align-items: center; min-height: 34px; padding: 0 2px; font: 800 9px/1.1 var(--sg-font); letter-spacing: .08em; text-shadow: 0 1px 2px #000; }
+        .sg-crate-cat { margin: -2px 0 5px; color: color-mix(in srgb, var(--tc) 70%, #fff); font: 700 9.5px var(--sg-font); letter-spacing: .14em; text-transform: uppercase; }
+        .sg-pop-cat { margin-left: 6px; color: color-mix(in srgb, var(--tc) 70%, #fff); font: 700 9.5px var(--sg-font); letter-spacing: .12em; }
+        .sg-crate-stage, .sg-crate-name, .sg-found-row > img { cursor: pointer; }
+        .sg-pop-sum { display: flex; align-items: center; gap: 10px; padding: 8px; margin-bottom: 4px; background: rgba(0,0,0,.3); color: var(--sg-thread); font: 800 16px var(--sg-font); }
+        .sg-pop-sum img { width: 44px; height: 44px; } .sg-pop-sum small { display: block; color: var(--sg-muted); font: 700 12px var(--sg-font); }
         /* kinézet: keret és cím */
         .sg-ava.sg-cos:after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid var(--cos-c); pointer-events: none; }
         .sg-ava.sg-cos.glow:after, .sg-marker.sg-cos.glow { box-shadow: 0 0 10px var(--cos-c); }
@@ -519,6 +544,65 @@
             box-shadow: 0 3px 8px rgba(0,0,0,.6); animation: sg-pop .35s ease-out; }
         .sg-notice-big { position: fixed; z-index: 9998; left: 50%; top: calc(var(--sg-safe-t) + 14px); transform: translateX(-50%); width: min(92vw, 26rem); padding: 12px 14px;
             background: rgba(120,24,18,.96); border: 2px solid #f0b8a8; color: #fff3ec; font: 700 14px/1.4 var(--sg-font); box-shadow: 0 10px 30px rgba(0,0,0,.8); cursor: pointer; animation: sg-pop .35s ease-out; }
+        /* ===== MENEDÉK (v0.1.12) ===== */
+        .sg-shelter-icon { background: none; border: 0; }
+        .sg-shelter-marker { position: relative; width: 46px; height: 50px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.7)); }
+        .sg-shelter-marker svg { width: 100%; height: 100%; display: block; }
+        .sg-shelter-marker span { position: absolute; left: 50%; top: 48px; transform: translateX(-50%); white-space: nowrap; padding: 1px 6px; background: rgba(21,23,15,.9);
+            border: 1px solid #3f4433; font: 700 9px var(--sg-font); letter-spacing: .12em; color: var(--sg-thread); text-transform: uppercase; }
+        .sg-shelter-marker.mine span { background: #59652f; }
+        .sg-sh-sub { font: 700 11px var(--sg-font); letter-spacing: .12em; color: var(--sg-muted); margin: 4px 0 8px; text-transform: uppercase; }
+        .sg-sh-sub b { color: #e9d9a0; }
+        .sg-sh-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+        .sg-sh-tabs.hidden { display: none; }
+        .sg-sh-tabs button { flex: 1; padding: 7px 0; border: 2px solid var(--sg-dark); background: var(--sg-pocket); font: 800 10px var(--sg-font); letter-spacing: .16em; color: #bdb8a8; }
+        .sg-sh-tabs button.on { background: #59652f; color: var(--sg-thread); }
+        .sg-sh-sect { display: flex; justify-content: space-between; margin-top: 12px; font: 800 10px var(--sg-font); letter-spacing: .2em; color: var(--sg-muted); text-transform: uppercase; }
+        .sg-sh-sect .mono { font-family: var(--sg-mono); letter-spacing: 0; }
+        .sg-sh-hint { font: 500 11px var(--sg-font); color: #8f8a7a; margin: 2px 0 6px; }
+        .sg-sh-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+        #shelter-modal, #shelter-claim-modal, #shelter-info-modal { position: fixed; inset: 0; z-index: 3000; }
+        #shelter-claim-modal { z-index: 3100; }
+        #shelter-modal > .hud-panel { max-height: 90vh; display: flex; flex-direction: column; }
+        #shelter-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+        .sg-drag-ghost { position: fixed; left: 0; top: 0; z-index: 9999; width: 56px; height: 56px; pointer-events: none; display: flex; align-items: center; justify-content: center;
+            background: var(--sg-pocket); border: 2px solid var(--sg-gold); box-shadow: 0 8px 18px rgba(0,0,0,.7); font-size: 26px; opacity: .95; }
+        .sg-drag-ghost img { width: 44px; height: 44px; object-fit: contain; }
+        #shelter-body .inv-tile[data-src] { touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        .inv-tile.sg-dragging { opacity: .35; }
+        .sg-sh-grid.sg-drop-hot { outline: 2px dashed var(--sg-gold); outline-offset: 3px; background: rgba(217,197,138,.08); }
+        .sg-sh-free { font: 600 10.5px var(--sg-font); color: #8f8a7a; margin-top: 4px; text-align: right; }
+        .sg-sh-grid .inv-tile { aspect-ratio: 1; min-width: 0; }
+        .sg-sh-card { display: flex; gap: 9px; align-items: flex-start; margin-top: 8px; padding: 8px 9px; background: rgba(21,23,15,.42); border: 1px solid rgba(21,23,15,.85); }
+        .sg-sh-ic { width: 40px; height: 40px; flex: none; border: 1.5px solid var(--sg-dark); background: var(--sg-pocket); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .sg-sh-ic img { width: 34px; height: 34px; object-fit: contain; }
+        .sg-sh-main { flex: 1; min-width: 0; }
+        .sg-sh-name { font: 800 12px var(--sg-font); letter-spacing: .1em; color: var(--sg-thread); }
+        .sg-sh-pips { display: flex; gap: 3px; margin-top: 4px; }
+        .sg-sh-pips i { width: 16px; height: 4px; background: rgba(0,0,0,.45); }
+        .sg-sh-pips i.on { background: var(--sg-gold); }
+        .sg-sh-next { font: 500 11px/1.35 var(--sg-font); color: #bdb8a8; margin-top: 4px; }
+        .sg-sh-next b { color: var(--sg-thread); }
+        .sg-sh-costs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+        .sg-sh-cost { display: inline-flex; align-items: center; gap: 3px; padding: 2px 5px 2px 2px; background: var(--sg-pocket); border: 1.5px solid var(--sg-dark); font: 700 10px var(--sg-font); color: var(--sg-thread); }
+        .sg-sh-cost img, .sg-sh-cost .tile-emoji { width: 20px; height: 20px; object-fit: contain; font-size: 13px; }
+        .sg-sh-cost.miss b { color: #ec8f80; }
+        .sg-sh-warn { font: 600 10.5px var(--sg-font); color: #e9c45a; margin-top: 4px; }
+        .sg-sh-act { flex: none; }
+        .sg-sh-btn { display: inline-block; padding: 6px 9px; border: 2px solid var(--sg-dark); font: 800 9.5px var(--sg-font); letter-spacing: .14em; color: var(--sg-thread); background: #59652f; }
+        .sg-sh-btn.dim { background: var(--sg-pocket); color: #8f8a7a; }
+        .sg-sh-btn.time { background: #5e4419; font-family: var(--sg-mono); letter-spacing: 0; }
+        .sg-sh-btn.done { background: transparent; border-color: rgba(21,23,15,.6); color: var(--sg-gold); }
+        .sg-sh-far { margin: 2px 0 6px; padding: 7px 9px; background: #5e4419; border: 1.5px solid #2e2108; font: 600 11.5px/1.35 var(--sg-font); color: #f3e3b8; }
+        .sg-sh-note { margin-top: 10px; padding: 8px 10px; background: #ece6d6; color: #2a2620; font: 12px/1.5 'Special Elite', 'Courier New', var(--sg-mono); transform: rotate(-.4deg); box-shadow: 0 3px 6px rgba(0,0,0,.5); }
+        .sg-sh-note b { color: #9b1c1c; }
+        .sg-sh-facts { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font: 700 11px var(--sg-font); letter-spacing: .12em; color: var(--sg-muted); }
+        .sg-sh-facts b { color: var(--sg-thread); margin-left: 4px; }
+        .sg-sh-empty p, .sg-sh-p { font: 500 13px/1.45 var(--sg-font); color: var(--sg-thread); margin-bottom: 8px; }
+        .sg-sh-dim { color: #bdb8a8; font-size: 12px; }
+        .sg-sh-big { display: block; width: 100%; margin-top: 6px; padding: 11px 6px; border: 2px solid var(--sg-dark); background: #59652f; font: 800 12px var(--sg-font); letter-spacing: .18em; color: var(--sg-thread); box-shadow: 0 2px 3px rgba(0,0,0,.5); }
+        .sg-sh-ghost { background: var(--sg-pocket); }
+        .sg-sh-link { display: block; margin: 14px auto 2px; background: none; border: 0; border-bottom: 1px dashed #8f8a7a; font: 700 10px var(--sg-font); letter-spacing: .16em; color: var(--sg-muted); text-transform: uppercase; }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -589,6 +673,9 @@
             <p class="text-[11px] text-emerald-300/80 mb-4">A karaktered adatai, pozíciója és a zóna állapota folyamatosan szinkronban van a központi szerverrel.</p>
             
             <div class="space-y-2.5">
+                <button id="btn-open-shelter" onclick="document.getElementById('settings-modal').classList.add('hidden'); openShelterModal();" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
+                    🏚 Menedék (raktár, építés)
+                </button>
                 <button id="btn-open-journal" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     📓 Napló (az utolsó események)
                 </button>
@@ -1000,6 +1087,45 @@
             <div id="quest-body" class="overflow-y-auto pr-1 flex-1"></div>
         </div>
     </div>
+
+    <!-- MENEDÉK (v0.1.12): js/shelter-ui.js -->
+    <div id="shelter-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 flex flex-col max-h-[90vh] clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🏚 MENEDÉK</h2>
+                <button onclick="closeShelterModal()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="shelter-sub" class="sg-sh-sub"></div>
+            <div id="shelter-tabs" class="sg-sh-tabs">
+                <button data-tab="stash" onclick="setShelterTab('stash')">RAKTÁR</button>
+                <button data-tab="stations" onclick="setShelterTab('stations')">ÁLLOMÁS</button>
+                <button data-tab="defense" onclick="setShelterTab('defense')">VÉDELEM</button>
+            </div>
+            <div id="shelter-body" class="overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
+    <div id="shelter-claim-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3100]">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-5 clipped-panel shadow-2xl">
+            <h2 class="text-sm font-bold text-emerald-400 tracking-wider mb-3">🏚 MENEDÉK ITT?</h2>
+            <p class="sg-sh-p"><b id="shelter-claim-name"></b> lesz a menedéked.</p>
+            <p id="shelter-claim-move" class="sg-sh-p hidden">A régi menedékedből a raktár és az építmények is átköltöznek. Legközelebb egy hét múlva költözhetsz.</p>
+            <p class="sg-sh-p">Elfogy hozzá: <b>1 Menedékalapító Csomag</b>.</p>
+            <p class="sg-sh-p sg-sh-dim">A menedékedet a térképen mindenki látja, a neveddel együtt.</p>
+            <div class="flex gap-2 mt-4">
+                <button onclick="confirmShelterClaim()" class="sg-sh-big flex-1">IGEN, EZ LESZ</button>
+                <button onclick="abortShelterClaim()" class="sg-sh-big sg-sh-ghost flex-1">MÉGSE</button>
+            </div>
+        </div>
+    </div>
+    <div id="shelter-info-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-5 clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-2">
+                <h2 id="shelter-info-title" class="text-sm font-bold text-emerald-400 tracking-wider">MENEDÉK</h2>
+                <button onclick="document.getElementById('shelter-info-modal').classList.add('hidden')" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="shelter-info-body"></div>
+        </div>
+    </div>
     <div id="crafting-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
         <div class="hud-panel w-full max-w-md rounded-2xl p-5 flex flex-col max-h-[80vh] clipped-panel shadow-2xl">
             <div class="flex justify-between items-center mb-4 border-b border-emerald-500/30 pb-2">
@@ -1044,6 +1170,7 @@
     <script src="js/sun.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/daily.js"></script>
+    <script src="js/shelter.js"></script>
     <script src="js/combat.js"></script>
     <script src="js/map.js"></script>
     <script src="js/drag.js"></script>
@@ -1053,6 +1180,7 @@
     <script src="js/staff.js"></script>
     <script src="js/shop.js"></script>
     <script src="js/premium-ui.js"></script>
+    <script src="js/shelter-ui.js"></script>
     <script src="/js/auth.js"></script>
 </body>
 </html>

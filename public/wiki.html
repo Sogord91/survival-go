@@ -93,6 +93,7 @@ ol li, ul li { margin: 4px 0; }
 <script src="/js/tutorial.js"></script>
 <script src="/js/roles.js"></script>
 <script src="/js/shop.js"></script>
+<script src="/js/shelter.js"></script>
 <script>
 // =====================================================================================
 // A wiki a játék saját adatfájljaiból áll össze (tárgyak, receptek, épületek, napi bónusz, rangok),
@@ -315,11 +316,22 @@ const GUIDES = [
     <div class="tbl"><table><tr><th>Név</th><th>Fajta</th><th>Ritkaság</th><th>Ár</th></tr>${S.COSMETICS.map(c => `<tr><td><b style="color:${c.color}">${esc(c.name)}</b></td><td>${c.kind === 'frame' ? 'keret' : 'cím'}</td><td style="color:${S.RARITY[c.rarity].color}">${S.RARITY[c.rarity].name}</td><td>${c.price ? `◆ ${c.price} (${S.fmtHuf(S.huf(c.price))})` : 'csak ládából'}</td></tr>`).join('')}</table></div>
     <h2>Kényelem</h2><ul>${S.COMFORT.map(c => `<li><b>${esc(c.name)}</b> – ◆ ${c.price} (${S.fmtHuf(S.huf(c.price))}): ${esc(c.desc)}</li>`).join('')}</ul>
     <h2>Ládák</h2><p>A boltban vett láda azonnal kinyílik, és egy kinézeti tárgyat ad. Ha olyat kapsz, ami már megvan, creditet kapsz helyette: ${Object.values(S.RARITY).map(r => `${r.name.toLowerCase()} ◆ ${r.dupRefund}`).join(', ')}.</p>
-    ${S.CRATES.map(c => { const rc = S.rarityChances(c.key); return `<h3><img src="/images/premium/${c.img}.webp" alt="" style="width:46px;height:46px;vertical-align:middle"> ${esc(c.name)} – ◆ ${c.price} (${S.fmtHuf(S.huf(c.price))})</h3><p>${esc(c.desc)}${c.lootChance ? ` Épület átkutatásakor kb. ${(c.lootChance * 100).toLocaleString('hu-HU')}% eséllyel találsz egyet; a talált láda kulccsal nyílik (◆ ${S.BY_KEY[c.keyItem].price}).` : ''}</p>
+    ${S.CRATES.map(c => { const rc = S.rarityChances(c.key); return `<h3><img src="/images/premium/${c.img}.webp" alt="" style="width:46px;height:46px;vertical-align:middle"> ${esc(c.name)} <span class="muted" style="font-size:.7em">(${esc(c.cat || "")})</span> – ◆ ${c.price} (${S.fmtHuf(S.huf(c.price))})</h3><p>${esc(c.desc)}${c.lootChance ? ` Épület átkutatásakor kb. ${(c.lootChance * 100).toLocaleString('hu-HU')}% eséllyel találsz egyet; a talált láda kulccsal nyílik (◆ ${S.BY_KEY[c.keyItem].price}).` : ''}</p>
       <p>${Object.keys(S.RARITY).map(r => rc[r] ? `<span class="pill" style="color:${S.RARITY[r].color}">${S.RARITY[r].name}: ${(rc[r] * 100).toFixed(0)}%</span>` : '').join('')}</p>
       <div class="tbl"><table><tr><th>Tárgy</th><th>Ritkaság</th><th>Esély</th></tr>${S.crateOdds(c.key).map(o => `<tr><td>${esc(S.BY_KEY[o.key].name)}</td><td style="color:${S.RARITY[o.rarity].color}">${S.RARITY[o.rarity].name}</td><td class="n">${(o.chance * 100).toFixed(2).replace('.', ',')}%</td></tr>`).join('')}</table></div>`; }).join('')}`; } },
-  { slug: 'menedek', title: 'Menedék (hamarosan)', group: 'Útmutatók', render: () => `
-    <h1>🏚️ Menedék – hamarosan</h1><p>A következő nagy frissítésben saját menedéket foglalhatsz egy épületben: raktár, ami a halál után is megmarad, fekhely a gyorsabb pihenéshez, tűzhely, fa- és fémfalak, barikádok. Kövesd a bejelentéseket!</p>` },
+  { slug: 'menedek', title: 'Menedék', group: 'Útmutatók', render: () => {
+    const S = window.SurvivalShelter, I = (k) => itemLink(k);
+    const rows = S.STRUCTURE_KEYS.map(k => S.STRUCTURES[k].levels.slice(1).map((l, n) => `<tr><td>${S.STRUCTURES[k].icon} ${l.name}</td><td>${Object.entries(l.req || {}).map(([a, b]) => itemLink(a, b)).join('')}</td><td>${l.minutes >= 60 ? (l.minutes / 60) + ' óra' : l.minutes + ' perc'}</td><td>${l.hp ? l.hp : '–'}</td></tr>`).join('')).join('');
+    return `<h1>🏚️ Menedék</h1>
+    <p>Egy valódi épületet a térképen a saját menedékeddé tehetsz. Mindenki látja a térképen, és a <b>raktára a halál után is megmarad</b>.</p>
+    <h2>Elfoglalás</h2>
+    <p>Kell hozzá egy <b>${I(S.CLAIM_ITEM)}</b> (barkácsolható: Menedék kategória), ami elfogy. Menj egy épülethez, nyisd meg a Menedék gombot, és foglald el. Egy játékosnak egy menedéke lehet; máshová költözni ${S.MOVE_COOLDOWN_DAYS} naponta lehet, ehhez újabb csomag kell.</p>
+    <h2>Raktár</h2>
+    <p>A menedéktől legfeljebb ${S.RANGE_METERS} méterre állva rakhatsz be és vehetsz ki: koppints a tárgyra, vagy húzd át (telefonon tartsd rajta egy pillanatig az ujjad). Mérete ${S.STASH_SLOTS.join(' → ')} hely, ládákkal bővíthető.</p>
+    <h2>Építmények</h2>
+    <p>Egyszerre egy építkezés fut, valódi időben: közben nyugodtan mehetsz tovább. A fekhely mellett ${S.BED_REST_MULTIPLIER}× gyorsabban pihensz, a tűzhelynél gyufa nélkül főzhetsz és forralhatsz.</p>
+    <div class="tbl"><table><tr><th>Építmény</th><th>Alapanyag</th><th>Idő</th><th>Szerkezeti pont</th></tr>${rows}</table></div>
+    <div class="paper"><b>Betörés (raid):</b> még nincs. A PvP frissítéssel jön, és csak szombaton és vasárnap 11:00–18:00 között lesz lehetséges. Ilyenkor a falak és a barikád szerkezeti pontját kell lebontani.</div>`; } },
   { slug: 'stab', title: 'Stáb és segítség', group: 'Közösség', render: () => `
     <h1>Stáb és segítség</h1><p>A játékot egy kis csapat működteti. A stáb tagjait a térképen és a HUD-on színes keret és felirat jelzi:</p>
     <div class="tbl"><table><tr><th>Rang</th><th>Feladat</th></tr>${SurvivalRoles.ROLES.map(r => `<tr><td><b style="color:${r.color}">${r.name}</b></td><td>${{ owner: 'A játék gazdája és fejlesztője.', superadmin: 'Mindenben segít a tulajdonosnak.', admin: 'Játékosok ügyei, eventek, bejelentések.', moderator: 'Rend a Zónában: szabályszegők kezelése.', cm: 'Közösség, hírek, Discord.', helper: 'Segít az új játékosoknak.' }[r.key]}</td></tr>`).join('')}</table></div>

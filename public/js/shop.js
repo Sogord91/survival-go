@@ -44,18 +44,21 @@
         { key: 'rename',  name: 'Névváltoztatás',   img: 'keyring', price: 300, desc: 'Új felhasználónevet választhatsz. Utána az új névvel lépsz be.' }
     ];
 
-    // Ládák négy méretben. A boltban vett láda azonnal kinyílik (az ár a nyitást is tartalmazza).
+    // Ládák tartalom szerint. cat: mi van benne (a boltban ez látszik a láda neve alatt).
+    // pool: csak ilyen fajta kinézet kerül bele (kind), ha nincs megadva, vegyes.
+    // A boltban vett láda azonnal kinyílik (az ár a nyitást is tartalmazza).
     // A Kis ládát az épületekben is megtalálhatod (lootChance) – ezt kulccsal nyitod.
     // weights: ritkaságonkénti súly (gyakori, ritka, epikus, legendás) – az esélyek nyilvánosak.
+    // Később: Fagyos láda (téli festések), Fegyverfestő láda (fegyver festések) – ugyanígy, saját pool-lal.
     const CRATES = [
-        { key: 'crate_small',    name: 'Kis láda',      img: 'crate_small',    color: '#b8743a', price: 100, keyItem: 'key_basic', lootChance: 0.015,
-          weights: { common: 70, rare: 24, epic: 5, legendary: 1 }, desc: 'Rozsdás kis vasláda. Az épületekben is találhatsz ilyet – kulccsal nyílik.' },
-        { key: 'crate_military', name: 'Katonai láda',  img: 'crate_military', color: '#7f9a3e', price: 200,
-          weights: { common: 50, rare: 34, epic: 13, legendary: 3 }, desc: 'Megerősített lőszeres láda a kordon mögül.' },
-        { key: 'crate_iron',     name: 'Vasalt láda',   img: 'crate_iron',     color: '#5aa0e0', price: 350, popular: true,
-          weights: { common: 30, rare: 42, epic: 22, legendary: 6 }, desc: 'Vasveretes tölgyláda. Jobb esély a ritka darabokra.' },
-        { key: 'crate_carved',   name: 'Kincsesláda',   img: 'crate_carved',   color: '#e8b84a', price: 700,
-          weights: { common: 0, rare: 50, epic: 38, legendary: 12 }, desc: 'Faragott kincsesláda: biztosan legalább ritka tárgy van benne.' }
+        { key: 'crate_small',    name: 'Kis láda',      cat: 'Vegyes',          img: 'crate_small',    color: '#b8743a', price: 100, keyItem: 'key_basic', lootChance: 0.015,
+          weights: { common: 70, rare: 24, epic: 5, legendary: 1 }, desc: 'Rozsdás kis vasláda, vegyesen keret vagy cím. Az épületekben is találhatsz ilyet – kulccsal nyílik.' },
+        { key: 'crate_military', name: 'Címes láda',    cat: 'Csak címek',      img: 'crate_military', color: '#7f9a3e', price: 200, pool: 'title',
+          weights: { common: 50, rare: 34, epic: 13, legendary: 3 }, desc: 'Lőszeres láda a kordon mögül. Csak címek: a neved alatt látszanak a térképen.' },
+        { key: 'crate_iron',     name: 'Keretes láda',  cat: 'Csak keretek',    img: 'crate_iron',     color: '#5aa0e0', price: 350, popular: true, pool: 'frame',
+          weights: { common: 30, rare: 42, epic: 22, legendary: 6 }, desc: 'Vasveretes tölgyláda. Csak keretek az avatarod és a jelölőd köré.' },
+        { key: 'crate_carved',   name: 'Kincsesláda',   cat: 'Vegyes, legalább ritka', img: 'crate_carved', color: '#e8b84a', price: 700,
+          weights: { common: 0, rare: 50, epic: 38, legendary: 12 }, desc: 'Faragott kincsesláda, vegyesen keret vagy cím: biztosan legalább ritka tárgy van benne.' }
     ];
     const KEYS = [
         { key: 'key_basic', name: 'Láda kulcs', img: 'key', price: 100, desc: 'A talált Kis láda kinyitásához.' }
@@ -72,9 +75,11 @@
     function crateOdds(crateKey) {
         const crate = CRATES.find(c => c.key === (CRATE_ALIASES[crateKey] || crateKey)) || CRATES[0];
         const w = crate.weights;
-        const total = Object.keys(RARITY).reduce((a, r) => a + (w[r] || 0), 0);
-        return COSMETICS.map(c => {
-            const same = COSMETICS.filter(x => x.rarity === c.rarity).length;
+        const pool = COSMETICS.filter(c => !crate.pool || c.kind === crate.pool);
+        // csak azok a ritkaságok számítanak, amelyekből van tárgy a ládában
+        const total = Object.keys(RARITY).reduce((a, r) => a + (pool.some(c => c.rarity === r) ? (w[r] || 0) : 0), 0);
+        return pool.map(c => {
+            const same = pool.filter(x => x.rarity === c.rarity).length;
             return { key: c.key, name: c.name, kind: c.kind, rarity: c.rarity, chance: (w[c.rarity] || 0) / total / same };
         }).filter(o => o.chance > 0);
     }
