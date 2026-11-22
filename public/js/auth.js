@@ -78,6 +78,8 @@ function enterGame(data) {
     player.username = data.username;
     player.avatar = data.avatar;
     player.earlySurvivor = !!data.earlySurvivor; // "Korai túlélő" jelvény
+    player.staffRole = data.staffRole || ''; // stáb rang (v0.1.14): keret, felirat, admin panel
+    if (typeof applyStaffRole === 'function') applyStaffRole();
 
     // Az épületeket a térkép tölti be az OSM-ből, a zárakat (globális, mindenkire érvényes)
     // a szervertől kérdezi le a betöltött épületekre (building_status)
@@ -194,9 +196,11 @@ async function tryAutoLogin() {
         });
 
         if (response.status === 401) {
-            // lejárt vagy érvénytelen token: marad a belépő ablak
+            // lejárt vagy érvénytelen token: marad a belépő ablak (felfüggesztett fióknál kiírjuk az okát)
+            let info = null;
+            try { info = await response.json(); } catch (e) { }
             clearAuthToken();
-            setAuthMessage('', false);
+            setAuthMessage(info && info.banned ? info.message : '', false);
             return;
         }
 

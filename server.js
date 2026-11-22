@@ -16,6 +16,10 @@ const Combat = require('./combat-engine'); // körös harc szabályai
 const SurvivalSun = require('./public/js/sun'); // napkelte / napnyugta (éjszaka)
 const SurvivalTutorial = require('./public/js/tutorial'); // Első lépések (v0.1.11)
 const SurvivalDaily = require('./public/js/daily'); // napi bónusz (v0.1.11)
+const Admin = require('./admin'); // admin oldal, eseménynapló, bejelentések, eventek, tiltás (v0.1.13)
+const Premium = require('./premium'); // prémium credit, bolt, ládák (v0.1.16)
+let adminHooks = null;           // a fájl végén áll össze (Admin.setup)
+let premiumHooks = null;         // a fájl végén áll össze (Premium.setup)
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +64,11 @@ const userSchema = new mongoose.Schema({
     avatar: { type: String, default: 'avatar1.png' },
     earlySurvivor: { type: Boolean, default: false }, // "Korai túlélő" jelvény (végleges, a halál után is megmarad)
     privacyAcceptedAt: { type: Number, default: null }, // mikor fogadta el az adatkezelési tájékoztatót (v0.1.12)
+    seenNotices: { type: [String], default: [] },      // az elolvasott bejelentések azonosítói (v0.1.13)
+    bannedUntil: { type: Number, default: null },      // felfüggesztés vége (v0.1.13)
+    banReason: { type: String, default: '' },
+    role: { type: String, default: '' },
+    premium: { type: mongoose.Schema.Types.Mixed, default: null }, // credit, megvett kinézetek, ládák (v0.1.16, premium.js)               // stáb rang (public/js/roles.js); a tulajdonos az ADMIN_USERS-ből jön (v0.1.14)
     playerData: {
         hp: { type: Number, default: 100 },
         maxHp: { type: Number, default: 100 },
@@ -155,6 +164,39 @@ function registrationCodeOk(given) {
     const b = Buffer.from(expected.toLocaleLowerCase('hu'));
     return a.length === b.length && require('crypto').timingSafeEqual(a, b);
 }
+// --- WIKI (v0.1.15): a játék szabályai és az ellenfelek a wiki oldalnak (a vörös zóna titkos marad) ---
+app.get('/api/wiki', (req, res) => {
+    const C = config;
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({
+        enemies: Object.entries(Combat.ENEMIES).filter(([, e]) => !e.redZoneOnly).map(([key, e]) => ({
+            key, name: e.name, avatar: e.avatar, lvl: e.lvl, hp: e.hp, dmg: e.dmg, drops: e.drops, habitat: e.habitat || [],
+            night: !!e.night, nightWeight: e.nightWeight || 1,
+            xp: 15 + 10 * e.lvl, money: [5 * e.lvl, 5 * e.lvl + 10]
+        })),
+        combat: { ...Combat.RULES },
+        rules: {
+            hungerFullMinutes: C.HUNGER_FULL_MINUTES, thirstFullMinutes: C.THIRST_FULL_MINUTES, starveOneMinutes: C.STARVE_ONE_MINUTES, starveBothMinutes: C.STARVE_BOTH_MINUTES,
+            regenAbovePercent: C.REGEN_ABOVE_PERCENT, regenFullMinutes: C.REGEN_FULL_MINUTES, warnBelowPercent: C.WARN_BELOW_PERCENT,
+            fatiguePerKm: Math.round(C.FATIGUE_PER_METER * 1000 * 10) / 10, fatigueLoot: C.FATIGUE_LOOT, fatigueCombat: C.FATIGUE_COMBAT,
+            fatigueFullRestMinutes: C.FATIGUE_FULL_REST_MINUTES, restIdleMinutes: C.REST_IDLE_MINUTES,
+            lootLockHours: C.LOOT_LOCK_HOURS, lootCacheMinutes: C.LOOT_CACHE_MINUTES, lootRangeMeters: C.LOOT_RANGE_METERS, fleeLockMinutes: C.FLEE_LOCK_MINUTES,
+            combatWinEmptyFactor: C.COMBAT_WIN_EMPTY_FACTOR, lockpickEmptyFactor: C.LOCKPICK_EMPTY_FACTOR,
+            viewMeters: C.PLAYER_VIEW_METERS, viewNightMeters: C.PLAYER_VIEW_NIGHT_METERS, viewBinocularsMeters: C.PLAYER_VIEW_BINOCULARS_METERS,
+            moveXpMeters: C.MOVE_XP_METERS, moveMaxSpeedKmh: C.MOVE_MAX_SPEED_KMH, walkXpBonusPerItem: C.WALK_XP_BONUS_PER_ITEM,
+            shoeWearMeters: C.SHOE_WEAR_METERS, repairGear: C.REPAIR_GEAR_FRACTION, repairFirearm: C.REPAIR_FIREARM_FRACTION, repairOther: C.REPAIR_OTHER_FRACTION,
+            thermosBonus: C.THERMOS_DRINK_BONUS, repairMachineOil: C.MACHINE_OIL_REPAIR_FRACTION, jumpLootBlockSeconds: C.JUMP_LOOT_BLOCK_SECONDS,
+            starterKit: C.STARTER_KIT, earlyKit: C.EARLY_SURVIVOR_KIT, earlyBackpack: C.EARLY_SURVIVOR_BACKPACK, earlyLimit: C.EARLY_SURVIVOR_LIMIT,
+            base: SurvivalStats.BASE, hpPerLevel: SurvivalStats.HP_PER_LEVEL, overweightHardCap: SurvivalStats.OVERWEIGHT_HARD_CAP, overweightFactor: SurvivalStats.OVERWEIGHT_FACTOR,
+            usernameMin: C.USERNAME_MIN, usernameMax: C.USERNAME_MAX
+        },
+        event: Admin.publicEvent(),
+        premiumMode: Premium.mode()
+    });
+});
+app.get('/wiki', (req, res) => res.sendFile(path.join(__dirname, 'public', 'wiki.html')));
+app.get('/aszf', (req, res) => res.sendFile(path.join(__dirname, 'public', 'aszf.html')));
+
 // A kliens ebből tudja, kell-e mutatni a meghívókód mezőt (magát a kódot soha nem küldjük ki)
 app.get('/api/registration', (req, res) => {
     res.json({ codeRequired: !!config.REGISTRATION_CODE });
@@ -207,6 +249,7 @@ app.post('/api/register', async (req, res) => {
         });
 
         await newUser.save();
+        Admin.logEvent('register', username, { early });
         res.json({ success: true, message: early ? 'Sikeres regisztráció! 🎖️ Korai túlélő vagy: extra felszereléssel indulsz.' : 'Sikeres regisztráció!' });
     } catch (e) {
         console.error("Hiba regisztrációnál:", e);
@@ -226,6 +269,8 @@ function buildSessionPayload(user, token) {
         username: user.username,
         avatar: safeAvatar(user.avatar),
         earlySurvivor: !!user.earlySurvivor,
+        staffRole: Admin.roleOf(user),
+        isAdmin: !!Admin.roleOf(user),
         player: user.playerData,
         token
     };
@@ -255,6 +300,8 @@ app.post('/api/login', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Hibás felhasználónév vagy jelszó!' });
         }
         loginFails.delete(ip);
+        const ban = Admin.banInfo(user);
+        if (ban) return res.status(403).json({ success: false, banned: true, message: ban.message });
 
         res.json(buildSessionPayload(user, issueToken(user.username)));
     } catch (e) {
@@ -283,6 +330,8 @@ app.get('/api/session', async (req, res) => {
         if (!user) {
             return res.status(401).json({ success: false, code: 'TOKEN_INVALID', message: 'Érvénytelen vagy lejárt munkamenet.' });
         }
+        const ban = Admin.banInfo(user);
+        if (ban) return res.status(401).json({ success: false, code: 'BANNED', banned: true, message: ban.message });
 
         res.json(buildSessionPayload(user, token));
     } catch (e) {
@@ -321,7 +370,7 @@ function nearbyPlayers(viewerName) {
         const p = activePlayers[name];
         if (p.lat === null) continue;
         if (SurvivalBuildings.haversine(viewer.lat, viewer.lng, p.lat, p.lng) > radius) continue;
-        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, early: !!p.earlySurvivor, lat: p.lat, lng: p.lng };
+        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, early: !!p.earlySurvivor, role: p.role || '', cosmetic: p.cosmetic || null, lat: p.lat, lng: p.lng };
     }
     return result;
 }
@@ -400,6 +449,7 @@ function normalizePlayer(raw) {
         quickbar: normalizeQuickbar(p.quickbar),
         tutorial: normalizeTutorial(p.tutorial),
         daily: normalizeDaily(p.daily),
+        premiumSlots: Math.max(0, Math.min(6, Math.floor(num(p.premiumSlots, 0)))), // prémium: végleges +hely (v0.1.16)
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
     };
 }
@@ -509,12 +559,15 @@ function withPlayer(username, fn) {
             ? user.playerData.toObject()
             : user.playerData;
         const p = normalizePlayer(raw);
+        const before = Admin.snapshotBefore(p);
         const result = (await fn(p)) || {};
         if (result.save !== false) {
             finalizePlayer(p);
             const update = { playerData: p };
             if (result.extraUpdate) Object.assign(update, result.extraUpdate);
             await PlayerModel.findOneAndUpdate({ username }, update);
+            Admin.onPlayerSaved(username, before, p);
+            if (premiumHooks) premiumHooks.onPlayerSaved(username, before, p);
         }
         return { p, result };
     });
@@ -716,7 +769,9 @@ const CAPACITY_MESSAGES = {
 };
 
 // XP jóváírása (több szintlépés is lehet egyszerre). Szintlépéskor teljes gyógyulás.
-function grantXp(p, amount) {
+function grantXp(p, amount, raw) {
+    // event (pl. dupla XP hétvége): az admin oldalon állítható szorzó; az admin ajándéka (raw) nem szorzódik
+    if (!raw) amount = Math.round(amount * Admin.xpMultiplier());
     p.xp += amount;
     let levels = 0;
     while (p.xp >= p.level * 100) {
@@ -1233,8 +1288,10 @@ function useLockpick(p) {
 }
 
 function rollBuildingLoot(building, emptyFactor) {
-    return SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor })
-        .map(({ key, count }) => ({ key, count }));
+    // event: több zsákmány szorzó (kevesebb üres épület, több darab)
+    const mult = Admin.lootMultiplier();
+    return SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor: emptyFactor / mult })
+        .map(({ key, count }) => ({ key, count: mult > 1 ? Math.max(1, Math.round(count * mult)) : count }));
 }
 
 // --- SOCKET HITELESÍTÉS ---
@@ -1253,11 +1310,14 @@ io.use(async (socket, next) => {
     if (typeof payload.username !== 'string') return next(new Error('AUTH_INVALID'));
 
     try {
-        const user = await PlayerModel.findOne({ username: payload.username }, 'username avatar earlySurvivor');
+        const user = await PlayerModel.findOne({ username: payload.username }, 'username avatar earlySurvivor bannedUntil banReason role');
         if (!user) return next(new Error('AUTH_INVALID'));
+        const ban = Admin.banInfo(user);
+        if (ban) { const err = new Error('BANNED'); err.data = { message: ban.message }; return next(err); }
         socket.data.username = user.username;
         socket.data.avatar = safeAvatar(user.avatar);
         socket.data.earlySurvivor = !!user.earlySurvivor;
+        socket.data.role = Admin.roleOf(user);
         next();
     } catch (err) {
         console.error("Hiba a socket hitelesítés közben:", err);
@@ -1293,6 +1353,9 @@ io.on('connection', (socket) => {
             oldSocket.disconnect(true);
         }
     }
+
+    if (adminHooks) adminHooks.onConnect(socket, username); // bejelentések, event, hibajelentés, napló
+    if (premiumHooks) premiumHooks.onConnect(socket, username); // prémium bolt
 
     // Offline pihenés jóváírása, majd a friss állapot elküldése
     withPlayer(username, (p) => {
@@ -1509,6 +1572,23 @@ io.on('connection', (socket) => {
     });
 
     // --- LELTÁR RENDEZÉSE (típus, majd név szerint) ---
+    // --- ÁTHELYEZÉS A HÁTIZSÁKON BELÜL (húzással): két hely cseréje, vagy a lista végére üres helyre ---
+    socket.on('move_item', (data) => {
+        if (!data || !Number.isInteger(data.from) || !Number.isInteger(data.to)) return;
+        if (data.from < 0 || data.to < 0 || data.from === data.to) return;
+
+        withPlayer(username, freeOnly((p) => {
+            const inv = p.inventory;
+            if (data.from >= inv.length) return { save: false, error: 'Ez a hely már üres.' };
+            if (data.to < inv.length) {
+                const tmp = inv[data.from]; inv[data.from] = inv[data.to]; inv[data.to] = tmp;
+            } else {
+                inv.push(inv.splice(data.from, 1)[0]); // üres helyre: a végére kerül
+            }
+            return {};
+        })).then(reply('move_result')).catch(logError("Hiba a tárgy áthelyezése során:"));
+    });
+
     socket.on('sort_inventory', () => {
         withPlayer(username, freeOnly((p) => {
             p.inventory = sortInventory(p.inventory);
@@ -2153,7 +2233,8 @@ io.on('connection', (socket) => {
             const keepStats = p.stats; // a statisztika életre szól, az újrakezdés nem törli
             const keepTutorial = p.tutorial; // az Első lépések a fiókhoz tartozik
             const keepDaily = p.daily;       // a napi bónusz sorozata is
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, lifeStartedAt: Date.now() });
+            const keepSlots = p.premiumSlots; // a megvett prémium hátizsák-hely is
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, premiumSlots: keepSlots, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };
@@ -2174,6 +2255,27 @@ io.on('connection', (socket) => {
                 .catch(logError("Hiba a kilépés mentésekor:"));
         }
     });
+});
+
+// ===== ADMIN (v0.1.13) =====
+adminHooks = Admin.setup({
+    app, io, PlayerModel, config, authToken, activePlayers, itemDatabase, bcrypt, enemies: Combat.ENEMIES,
+    withPlayer, pushItem, grantXp, playerStats, sendPlayerState,
+    usernameValid: (n) => USERNAME_RE.test(n),
+    onRename: async (from, to) => {
+        // minden lépés külön: ha az egyik nem sikerül, a többi még lefut
+        const steps = [
+            () => BuildingModel.updateMany({ lastLootedBy: from }, { lastLootedBy: to }),
+            () => Premium.models.OrderModel.updateMany({ user: from }, { user: to }),
+            () => Premium.models.TxModel.updateMany({ user: from }, { user: to })
+        ];
+        for (const step of steps) { try { await step(); } catch (e) { /* folytatjuk */ } }
+    },
+    noTimers: !!process.env.SG_TEST
+});
+premiumHooks = Premium.setup({
+    app, io, PlayerModel, activePlayers, adminHooks, withPlayer, sendPlayerState,
+    usernameValid: (n) => USERNAME_RE.test(n), lootMultiplier: Admin.lootMultiplier
 });
 
 server.listen(config.PORT, () => {

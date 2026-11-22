@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Survival GO Wiki – tárgyak, receptek, ellenfelek, útmutatók</title>
+<meta name="description" content="A Survival GO magyar GPS-túlélőjáték wikije: útmutatók kezdőknek, minden tárgy, barkácsrecept, ellenfél és épülettípus.">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #14160f; --panel: #22261a; --panel2: #2b3021; --line: #3d4430; --text: #e9e3cf; --muted: #a39d89; --gold: #d9c58a; --green: #8fa64a; --red: #c9533f; --paper: #ece6d6; --ink: #2a2620;
+  --font: 'Barlow Condensed', 'Arial Narrow', sans-serif; --mono: 'Share Tech Mono', ui-monospace, monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 500 17px/1.5 var(--font); }
+body { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 6px, transparent 6px 12px); }
+a { color: var(--gold); text-decoration: none; } a:hover { text-decoration: underline; }
+header { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(14,16,11,.97); border-bottom: 1px solid var(--line); }
+header .logo { display: flex; align-items: center; gap: 10px; color: var(--gold); font-weight: 800; letter-spacing: .14em; font-size: 20px; white-space: nowrap; }
+header .logo img { width: 34px; height: 34px; }
+header .logo span small { color: var(--muted); font-size: 13px; letter-spacing: .2em; margin-left: 6px; }
+#q { flex: 1; max-width: 520px; margin-left: auto; padding: 9px 12px; background: #0f110c; border: 1px solid var(--line); color: var(--text); font: 500 16px var(--font); }
+#menu-btn { display: none; background: var(--panel2); border: 1px solid var(--line); color: var(--text); font: 800 15px var(--font); padding: 7px 10px; }
+.wrap { display: flex; max-width: 1280px; margin: 0 auto; }
+nav#side { width: 250px; flex: none; padding: 14px 10px 40px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; border-right: 1px solid var(--line); }
+nav#side h4 { margin: 16px 8px 4px; font-size: 12px; letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
+nav#side a { display: block; padding: 4px 8px; color: var(--text); border-left: 3px solid transparent; font-size: 16px; }
+nav#side a.on { border-left-color: var(--gold); background: rgba(217,197,138,.08); color: var(--gold); text-decoration: none; }
+main { flex: 1; min-width: 0; padding: 20px 28px 60px; }
+h1 { font-size: 34px; margin: 0 0 6px; letter-spacing: .06em; color: var(--gold); line-height: 1.15; }
+h2 { font-size: 23px; margin: 28px 0 8px; letter-spacing: .08em; color: var(--text); border-bottom: 1px dashed var(--line); padding-bottom: 4px; }
+h3 { font-size: 18px; margin: 18px 0 6px; color: var(--gold); letter-spacing: .06em; }
+.lead { color: var(--muted); font-size: 18px; margin-bottom: 14px; }
+.box { background: var(--panel); border: 1px solid var(--line); padding: 12px 16px; margin: 12px 0; }
+.tip { border-left: 4px solid var(--green); } .warn { border-left: 4px solid var(--red); }
+.paper { background: var(--paper); color: var(--ink); padding: 14px 16px; font: 15px/1.6 'Special Elite', 'Courier New', monospace; transform: rotate(-.25deg); box-shadow: 0 3px 8px rgba(0,0,0,.5); margin: 12px 0; }
+.grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.card { display: flex; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); padding: 8px 10px; color: var(--text); }
+.card:hover { background: var(--panel2); text-decoration: none; }
+.ico { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: #3a3f2c; border: 1.5px solid #15170f; font-size: 26px; }
+.ico img { width: 38px; height: 38px; object-fit: contain; }
+.ico.big { width: 96px; height: 96px; font-size: 54px; } .ico.big img { width: 84px; height: 84px; }
+.card b { display: block; line-height: 1.2; } .card small { color: var(--muted); font-size: 14px; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 16px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid #2c3123; text-align: left; vertical-align: top; }
+th { color: var(--gold); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; background: var(--panel2); }
+td.n { text-align: right; font-family: var(--mono); white-space: nowrap; }
+.tbl { overflow-x: auto; }
+.pill { display: inline-block; padding: 0 7px; margin: 2px 3px 2px 0; border: 1px solid var(--line); font-size: 14px; color: var(--text); background: rgba(0,0,0,.2); }
+a.pill:hover { border-color: var(--gold); text-decoration: none; }
+.pill.g { border-color: #5c6b30; color: #cfe08a; } .pill.r { border-color: #7a3a2e; color: #f0a090; } .pill.y { border-color: #8a7536; color: var(--gold); }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+.filters button { background: var(--panel2); border: 1px solid var(--line); color: var(--text); font: 700 14px var(--font); letter-spacing: .08em; padding: 5px 10px; cursor: pointer; }
+.filters button.on { background: #59652f; border-color: #0b0c08; }
+.head { display: flex; gap: 16px; align-items: center; margin-bottom: 10px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+.stat { background: var(--panel); border: 1px solid var(--line); padding: 8px 10px; } .stat small { display: block; color: var(--muted); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; } .stat b { font-size: 21px; }
+.recipe { background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; margin: 8px 0; }
+.recipe .arrow { color: var(--muted); margin: 0 6px; }
+.enemy-img { width: 160px; height: 160px; object-fit: cover; border: 6px solid var(--paper); border-bottom-width: 24px; transform: rotate(-2deg); box-shadow: 0 4px 10px rgba(0,0,0,.6); background: #000; }
+.muted { color: var(--muted); } .mono { font-family: var(--mono); }
+ol li, ul li { margin: 4px 0; }
+.foot { margin-top: 40px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.cta { display: inline-block; margin-top: 8px; padding: 9px 16px; background: #59652f; border: 1px solid #0b0c08; color: var(--text); font-weight: 800; letter-spacing: .14em; }
+.cta:hover { text-decoration: none; filter: brightness(1.15); }
+.hit { background: rgba(217,197,138,.25); }
+@media (max-width: 860px) {
+  #menu-btn { display: block; }
+  nav#side { display: none; position: fixed; left: 0; top: 56px; z-index: 40; background: #14160f; width: 82vw; box-shadow: 10px 0 30px rgba(0,0,0,.7); }
+  body.nav-open nav#side { display: block; }
+  main { padding: 16px 14px 50px; } h1 { font-size: 28px; }
+  header .logo span { display: none; }
+  header { gap: 8px; padding: 8px 10px; } #q { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <button id="menu-btn" onclick="document.body.classList.toggle('nav-open')">☰</button>
+  <a class="logo" href="#/"><img src="/icons/icon-192.png" alt=""><span>SURVIVAL GO<small>WIKI</small></span></a>
+  <input id="q" type="search" placeholder="Keresés: tárgy, recept, ellenfél, épület…" autocomplete="off">
+</header>
+<div class="wrap">
+  <nav id="side"></nav>
+  <main id="main"><p class="muted">Betöltés…</p></main>
+</div>
+
+<script src="/js/items.js"></script>
+<script src="/js/recipes.js"></script>
+<script src="/js/stats.js"></script>
+<script src="/js/buildings.js"></script>
+<script src="/js/daily.js"></script>
+<script src="/js/tutorial.js"></script>
+<script src="/js/roles.js"></script>
+<script src="/js/shop.js"></script>
+<script>
+// =====================================================================================
+// A wiki a játék saját adatfájljaiból áll össze (tárgyak, receptek, épületek, napi bónusz, rangok),
+// a szabályok és az ellenfelek a szervertől jönnek (/api/wiki) – így minden frissítéssel magától naprakész.
+// =====================================================================================
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ITEMS = itemDatabase, RECIPES = window.craftingRecipes || [], B = window.SurvivalBuildings, ST = window.SurvivalStats;
+let W = null; // szerver adatai
+const pct = (x) => Math.round(x * 100) + '%';
+const num = (x) => (Math.round(x * 100) / 100).toLocaleString('hu-HU');
+
+const TYPE_HU = { food: 'Étel', drink: 'Ital', medicine: 'Gyógyszer', weapon: 'Fegyver', helmet: 'Sisak', torso: 'Felső', armor: 'Mellény / páncél', legs: 'Nadrág', shoes: 'Cipő', backpack: 'Hátizsák',
+  material: 'Alapanyag', tool: 'Eszköz', mod: 'Fegyvermódosító', ammo: 'Lőszer', valuable: 'Értéktárgy', collectible: 'Gyűjthető', artifact: 'Műtárgy' };
+const SLOT_HU = { weapon: 'elsődleges fegyver', secondary: 'másodlagos fegyver (pisztoly)', melee: 'közelharci fegyver', helmet: 'sisak', torso: 'felső', armor: 'mellény', legs: 'nadrág', shoes: 'cipő', backpack: 'hátizsák' };
+const GROUP_HU = { grocery: 'élelmiszer', drinks: 'italok', smallgoods: 'apróáru', hardware: 'barkácsáru', tools: 'szerszámok', kitchen: 'konyha', auto: 'autós holmi', medical: 'orvosi', hospital: 'kórházi', police: 'rendőrségi',
+  office: 'irodai', fire: 'tűzoltó', military: 'katonai', hazmat: 'vegyvédelmi', household: 'háztartási', culture: 'kulturális', valuables: 'értéktárgyak', sport: 'sport', farm: 'mezőgazdasági', warehouse: 'raktári',
+  industrial: 'ipari', scrap: 'roncs és hulladék', utility: 'közmű', cemetery: 'temetői' };
+const EFFECT_HU = { hunger: 'Étel', thirst: 'Víz', hp: 'Élet', fatigue: 'Fáradtság' };
+const RANKS = [['Újonc', 1], ['Kadét', 5], ['Őrvezető', 10], ['Tizedes', 15], ['Őrmester', 20], ['Törzsőrmester', 25], ['Zászlós', 30], ['Hadnagy', 35], ['Főhadnagy', 40], ['Százados', 45], ['Őrnagy', 50], ['Ezredes', 60], ['Zóna-parancsnok', 75]];
+const slug = (s) => String(s).toLocaleLowerCase('hu').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+function icon(it, big) {
+  if (!it) return `<span class="ico${big ? ' big' : ''}">📦</span>`;
+  return `<span class="ico${big ? ' big' : ''}">${it.img ? `<img src="/images/items/${esc(it.img)}.webp" alt="" loading="lazy" onerror="this.outerHTML='${esc(it.icon || '📦')}'">` : esc(it.icon || '📦')}</span>`;
+}
+const itemLink = (key, count) => { const it = ITEMS[key]; return `<a class="pill" href="#/targy/${key}">${esc(it ? it.name : key)}${count > 1 ? ' ×' + count : ''}</a>`; };
+const enemyByKey = (k) => W && W.enemies.find(e => e.key === k);
+
+// ---------- tárgy: hol található, miből készül, mire jó ----------
+function rarity(w) { return w >= 8 ? ['gyakori', 'g'] : w >= 4 ? ['közepes', 'y'] : w >= 2 ? ['ritka', 'r'] : ['nagyon ritka', 'r']; }
+function whereFound(key) {
+  const it = ITEMS[key]; if (!it || !it.loot) return [];
+  const groups = Object.entries(it.loot);
+  return Object.entries(B.BUILDING_TYPES).map(([name, info]) => {
+    const w = groups.filter(([g]) => info.groups.includes(g)).reduce((a, [, x]) => Math.max(a, x), 0);
+    return w > 0 ? { name, info, w } : null;
+  }).filter(Boolean).sort((a, b) => b.w - a.w);
+}
+const recipeResult = (r) => r.result || r.key;
+const toolList = (r) => (r.tools || []).map(t => Array.isArray(t) ? t : [t]);
+function craftedBy(key) { return RECIPES.filter(r => recipeResult(r) === key); }
+function usedIn(key) { return RECIPES.filter(r => (r.req && r.req[key]) || toolList(r).some(opts => opts.includes(key) || (key === 'toolbox' && opts.some(o => RecipeTools.TOOLBOX_REPLACES.includes(o))))); }
+function droppedBy(key) { return W ? W.enemies.filter(e => e.drops.includes(key)) : []; }
+function recipeHtml(r) {
+  const res = ITEMS[recipeResult(r)];
+  const req = Object.entries(r.req || {}).map(([k, n]) => itemLink(k, n)).join('');
+  const tools = toolList(r).map(opts => opts.map(k => itemLink(k)).join('<span class="muted"> vagy </span>')).join(' ');
+  const fire = r.fire ? `<span class="pill y">🔥 tűz kell (1 gyufa vagy a tűzgyújtó rúd kopik)</span>` : '';
+  const station = r.station ? `<span class="pill r">csak ${r.station === 'workshop' ? 'műhelyben' : 'olvasztóban'} (hamarosan)</span>` : '';
+  return `<div class="recipe" id="r-${r.key}"><b>${esc(r.name)}</b> <span class="muted">· ${esc(r.cat || '')}</span><div class="muted" style="font-size:15px">${esc(r.desc || '')}</div>
+    <div style="margin-top:4px">${req}<span class="arrow">➜</span>${itemLink(recipeResult(r), r.count || 1)}</div>
+    ${tools ? `<div><span class="muted">Szerszám (nem fogy el, de kopik): </span>${tools}</div>` : ''}${fire || station ? `<div>${fire}${station}</div>` : ''}</div>`;
+}
+function itemFacts(it) {
+  const f = [];
+  if (it.type) f.push(['Típus', TYPE_HU[it.type] || it.type]);
+  const slot = ST.equipSlot(it); if (slot) f.push(['Hely', SLOT_HU[slot] || slot]);
+  if (it.tier) f.push(['Szint (tier)', it.tier]);
+  if (it.weight !== undefined) f.push(['Súly', num(it.weight) + ' kg']);
+  f.push(['Halmozható', it.stackable ? 'igen, egy helyen bármennyi' : 'nem, minden darab külön hely']);
+  if (it.dmg) f.push(['Sebzés', '+' + it.dmg]);
+  if (it.reqAmmo) f.push(['Lőszer', ITEMS[it.reqAmmo] ? `<a href="#/targy/${it.reqAmmo}">${esc(ITEMS[it.reqAmmo].name)}</a>` : it.reqAmmo]);
+  if (it.def) f.push(['Védelem', '+' + it.def + ` (≈ ${num(it.def * (W ? W.combat.DEFENSE_PER_POINT : 0.015) * 100)}% kevesebb sebzés)`]);
+  if (it.hpBonus) f.push(['Max élet', '+' + it.hpBonus]);
+  if (it.bonusSlots) f.push(['Hátizsák hely', '+' + it.bonusSlots]);
+  if (it.maxWeightBonus) f.push(['Teherbírás', '+' + it.maxWeightBonus + ' kg']);
+  if (it.fatigueRate !== undefined && it.fatigueRate !== 1) f.push(['Fáradás', it.fatigueRate < 1 ? `${Math.round((1 - it.fatigueRate) * 100)}%-kal lassabban fáradsz` : `${Math.round((it.fatigueRate - 1) * 100)}%-kal gyorsabban fáradsz`]);
+  if (it.durability) f.push([it.light ? 'Égési idő' : 'Tartósság', it.light ? it.durability + ' perc (csak éjjel fogy)' : it.durability + ' használat']);
+  if (it.light) f.push(['Fényforrás', it.light.fuel ? `igen – lemerüléskor magától újratölt ebből: <a href="#/targy/${it.light.fuel}">${esc((ITEMS[it.light.fuel] || {}).name || it.light.fuel)}</a>` : 'igen – ha leég, elfogy']);
+  if (it.effects) Object.entries(it.effects).forEach(([k, v]) => { if (v) f.push([EFFECT_HU[k] || k, (k === 'fatigue' ? (v < 0 ? `${v} (pihentet)` : `+${v} (fáraszt)`) : (v > 0 ? '+' + v : v))]); });
+  if (it.lootCount) f.push(['Egy találatnál', `${it.lootCount[0]}–${it.lootCount[1]} db`]);
+  return f;
+}
+
+// ---------- útmutató oldalak ----------
+const R = () => W.rules;
+const GUIDES = [
+  { slug: 'kezdolap', title: 'Kezdőlap', group: '', render: home },
+  { slug: 'hogyan-kezdj', title: 'Hogyan kezdj hozzá?', group: 'Útmutatók', render: () => `
+    <h1>Hogyan kezdj hozzá?</h1><p class="lead">Az első fél órád a Zónában, lépésről lépésre.</p>
+    <ol>
+      <li><b>Regisztrálj</b> a <a href="/">survivalgo.hu</a> oldalon (${R().usernameMin}–${R().usernameMax} betűs név, 16 év felett). Telefonon a Menü → „Letöltés a telefonra” gombbal alkalmazásként is felteheted.</li>
+      <li><b>Engedélyezd a helymeghatározást.</b> A pálya a valódi környezeted: a térképen a körülötted lévő épületek látszanak.</li>
+      <li><b>Nézd meg a kezdőcsomagod</b> a Készletben: ${R().starterKit.map(s => itemLink(s.key, s.count)).join('')}</li>
+      <li><b>Menj oda egy épülethez</b> (${R().lootRangeMeters} méteren belülre), koppints rá, és kutasd át. Ez az <a href="#/oldal/epuletek-es-kutatas">átkutatás</a>.</li>
+      <li><b>Figyeld a csíkokat</b> alul: élet, étel, víz, erő. Ha valamelyik fogy, egyél, igyál, pihenj. Lásd: <a href="#/oldal/tuleles">Túlélés alapjai</a>.</li>
+      <li><b>Csináld végig az Első lépéseket</b> (Küldetés gomb): hat egyszerű feladat, a végén jutalommal. Lásd: <a href="#/oldal/elso-lepesek">Első lépések</a>.</li>
+      <li><b>Gyere vissza minden nap</b> a <a href="#/oldal/napi-bonusz">napi bónuszért</a>.</li>
+    </ol>
+    <div class="box tip">💡 <b>Tipp:</b> az első napokban a lakóházak, kisboltok és élelmiszerboltok a legbiztonságosabbak. A katonai bázisok és bunkerek veszélyesek: oda erősebb felszereléssel menj.</div>
+    <div class="box warn">⚠️ <b>Figyelj a forgalomra!</b> Játék közben is nézz fel a telefonról, ne menj magánterületre vagy veszélyes helyre egy épület miatt.</div>` },
+  { slug: 'tuleles', title: 'Túlélés alapjai', group: 'Útmutatók', render: () => `
+    <h1>Túlélés alapjai</h1><p class="lead">Élet, étel, víz és erő – a négy csík a képernyő alján.</p>
+    <h2>❤️ Élet</h2>
+    <p>Ha 0-ra csökken, a karaktered meghal (lásd <a href="#/oldal/halal">Halál és újrakezdés</a>). Az alap maximum ${R().base.maxHp}, szintenként +${R().hpPerLevel}, és egyes felszerelések is növelik.</p>
+    <p><b>Magától visszatöltődik</b>, ha az étel ÉS a víz is ${R().regenAbovePercent}% felett van: 0-ról tele kb. ${R().regenFullMinutes} perc alatt. Gyorsabban gyógyítanak a <a href="#/targyak/medicine">gyógyszerek és kötszerek</a>. Szintlépéskor teljesen meggyógyulsz.</p>
+    <h2>🥫 Étel és 💧 víz</h2>
+    <p>Folyamatosan fogynak, akkor is, ha nem játszol: a teli étel-csík kb. ${R().hungerFullMinutes / 60} óra, a víz kb. ${R().thirstFullMinutes / 60} óra alatt ürül ki.</p>
+    <div class="box warn">Ha az egyik csík 0, a teljes életed kb. <b>${R().starveOneMinutes} perc</b> alatt elfogy. Ha mindkettő 0, kb. <b>${R().starveBothMinutes} perc</b> alatt. ${R().warnBelowPercent}% alatt a játék figyelmeztet.</div>
+    <p>Ételt a boltokban, konyhákban, házakban találsz, vizet és italokat szinte mindenhol. A szennyezett vizet <a href="#/receptek/viz-es-etel">szűrd vagy forrald fel</a>.</p>
+    <h2>⚡ Erő (fáradtság)</h2>
+    <p>Az ERŐ csík azt mutatja, mennyire vagy kipihent. Fáradsz:</p>
+    <ul><li>gyaloglástól: kilométerenként kb. ${R().fatiguePerKm}%,</li><li>épület átkutatásától: +${R().fatigueLoot}%,</li><li>harctól: +${R().fatigueCombat}%,</li><li>túlsúlytól (lásd <a href="#/oldal/suly">Súly és hátizsák</a>).</li></ul>
+    <p><b>Pihenés:</b> ha ${R().restIdleMinutes} percig egy helyben állsz, vagy kilépsz a játékból, pihensz: teljesen kimerültről kb. ${R().fatigueFullRestMinutes} perc alatt pihened ki magad. A kávé, energiaital és energiaszelet is segít.</p>
+    <div class="box">Fáradtan rosszabbul harcolsz: 60% fáradtság felett −15% sebzés és nehezebb menekülés, 85% felett −30% sebzés.</div>` },
+  { slug: 'mozgas', title: 'Mozgás, GPS és XP', group: 'Útmutatók', render: () => `
+    <h1>Mozgás, GPS és tapasztalat</h1>
+    <p>A karaktered ott van, ahol te: a játék a telefonod GPS-ét használja. Minden <b>${R().moveXpMeters} megtett méter +1 XP</b>. A ${pills(['pocket_compass', 'topo_map'])} egyenként +${pct(R().walkXpBonusPerItem)} gyaloglási XP-t ad, ha nálad van.</p>
+    <ul>
+      <li>Csak gyalog vagy biciklivel számít: ${R().moveMaxSpeedKmh} km/h felett (autó, busz) nincs XP és fáradás sem.</li>
+      <li>A kis GPS-ugrálást a játék kiszűri, állva nem „sétálsz”.</li>
+      <li>Hirtelen, valószerűtlen ugrás után (pl. rossz jel) ${R().jumpLootBlockSeconds} másodpercig nem kutathatsz.</li>
+    </ul>
+    <div class="box warn">🚫 A GPS-hamisítás (fake GPS alkalmazások) tilos, és tiltással jár. Lásd: <a href="#/oldal/szabalyok">Szabályok</a>.</div>` },
+  { slug: 'epuletek-es-kutatas', title: 'Épületek és átkutatás', group: 'Útmutatók', render: () => `
+    <h1>Épületek és átkutatás</h1><p class="lead">A zsákmány nagy része az épületekből jön. Minden valódi épület a térképen egy kifosztható hely.</p>
+    <ol>
+      <li>Menj ${R().lootRangeMeters} méteren belülre (a GPS pontatlansága miatt egy kis ráhagyás van).</li>
+      <li>Koppints az épületre → <b>Átkutatás</b>. A keresés ideje az épület méretétől függ: kis házak 8, közepesek 15, nagy létesítmények 30 másodperc.</li>
+      <li>A végén megjelenik, mit találtál. Amit nem teszel el, még ${R().lootCacheMinutes} percig ott marad – de bárki elviheti!</li>
+    </ol>
+    <h2>Zárolás</h2>
+    <p>Egy kifosztott épület <b>${R().lootLockHours} óráig mindenkinek zárva</b> van, utána újra átkutatható. Ha egy épületből elmenekülsz, az ${R().fleeLockMinutes} percig <i>neked</i> zárva marad (másoknak nem).</p>
+    <h2>Üres épületek és veszély</h2>
+    <p>Minden épülettípusnak van esélye, hogy üres, és hogy ellenség vár bent. Az <a href="#/targy/lockpick">álkulcs</a> nálad tartva ${pct(1 - R().lockpickEmptyFactor)}-kal csökkenti az üres épület esélyét (kutatásonként kopik 1-et). Ha harcot nyersz egy épületben, utána feleakkora eséllyel üres.</p>
+    <p>Az összes épülettípus a veszélyességgel és a zsákmánnyal: <a href="#/epuletek">Épületek</a>.</p>` },
+  { slug: 'harc', title: 'Harc és menekülés', group: 'Útmutatók', render: () => `
+    <h1>Harc és menekülés</h1><p class="lead">Az épületekben néha ellenség vár. Körökre osztott harc: te választasz, mit teszel.</p>
+    <h2>A lehetőségeid minden körben</h2>
+    <ul><li><b>Támadás</b> a felvett fegyvereid egyikével (elsődleges, másodlagos vagy közelharci). A fegyverváltás nem vesz el kört.</li>
+      <li><b>Gyógyulás</b> egy orvosi szerrel a hátizsákodból.</li>
+      <li><b>Menekülés</b>: alapesetben ${pct(W.combat.FLEE_CHANCE)} eséllyel sikerül (fáradtan kevesebb). Sikeres menekülésnél nincs zsákmány, és az épület ${R().fleeLockMinutes} percig neked zárva.</li></ul>
+    <h2>Sebzés</h2>
+    <ul><li>Fegyver nélkül ${W.combat.UNARMED_DMG}, lőfegyverrel lőszer nélkül ${W.combat.NO_AMMO_DMG} a sebzés (puskatussal ütsz).</li>
+      <li>Szintenként +${W.combat.LEVEL_DMG_BONUS} sebzés, minden ütéshez +0–${W.combat.DMG_RANDOM} véletlen.</li>
+      <li>${pct(W.combat.CRIT_CHANCE)} esély kritikus találatra (${W.combat.CRIT_MULT}× sebzés).</li>
+      <li>A lőfegyver lövésenként 1 lőszert visz el; ${pct(W.combat.CASING_CHANCE)} eséllyel visszakapod az üres hüvelyt (abból <a href="#/receptek/loszer">lőszert tölthetsz</a>).</li>
+      <li><b>Védelem:</b> pontonként ${num(W.combat.DEFENSE_PER_POINT * 100)}% kevesebb sebzést kapsz, legfeljebb ${pct(W.combat.DEFENSE_CAP)}.</li></ul>
+    <h2>Győzelem</h2>
+    <p>XP (15 + 10 × az ellenfél szintje), pénz, ${pct(W.combat.DROP_CHANCE)} eséllyel egy tárgy az ellenféltől, és az épület átkutatása. A harc +${R().fatigueCombat}% fáradtság.</p>
+    <p>Az ellenfelek listája: <a href="#/ellenfelek">Ellenfelek</a>.</p>
+    <div class="box tip">💡 A felszerelés kopik a harcban. A tönkrement felszerelés rajtad marad, de nem ad bónuszt – <a href="#/oldal/felszereles">javítsd meg</a> időben!</div>` },
+  { slug: 'ejszaka', title: 'Éjszaka és fény', group: 'Útmutatók', render: () => `
+    <h1>Éjszaka és fény</h1><p class="lead">Az éjszaka a valódi napnyugtától a napkeltéig tart, a helyedhez igazítva.</p>
+    <ul><li>Nappal ${R().viewMeters} méterre látod a többi játékost (<a href="#/targy/binoculars">távcsővel</a> ${R().viewBinocularsMeters} m-re).</li>
+      <li>Éjjel fényforrás nélkül csak ${R().viewNightMeters} méterre látsz.</li>
+      <li>Éjjel megjelenhet az <a href="#/ellenfel/shade">Árnyék</a>, és a ghoulok meg a kutyafalkák gyakoribbak.</li></ul>
+    <h2>Fényforrások</h2>
+    <p>Ha van nálad működő fényforrás, éjjel is rendesen látsz. Csak éjjel fogy, percenként 1-et.</p>
+    <div class="grid">${Object.entries(ITEMS).filter(([, it]) => it.light).map(([k, it]) => card(k, it, it.light.fuel ? 'újratölthető' : it.durability + ' percig ég')).join('')}</div>` },
+  { slug: 'barkacs', title: 'Barkácsolás', group: 'Útmutatók', render: () => `
+    <h1>Barkácsolás</h1><p class="lead">A Barkács gombbal a talált holmiból jobb dolgokat készíthetsz: kötszert, tiszta vizet, fegyvert, lőszert, fényt, ruhát.</p>
+    <ul><li>Az <b>alapanyagok</b> elfogynak.</li>
+      <li>A <b>szerszámok</b> nem fogynak el, de minden barkácsolásnál kopnak 1-et. A ${itemLink('toolbox')} bármelyik alapszerszámot pótolja.</li>
+      <li>Ahol <b>tűz</b> kell, ott 1 gyufásdoboz fogy el, vagy a tűzgyújtó rúd kopik (előbb a gyufát használja).</li>
+      <li>A <b>szétszerelés</b>sel a felesleges holmiból alapanyag lesz (rongy, fémhulladék, rézdrót…).</li></ul>
+    <p>Összesen <b>${RECIPES.length} recept</b>: <a href="#/receptek">mind megnézhető itt</a>.</p>` },
+  { slug: 'felszereles', title: 'Felszerelés, kopás, javítás', group: 'Útmutatók', render: () => `
+    <h1>Felszerelés, kopás és javítás</h1>
+    <p>Kilenc felszerelési helyed van: ${Object.values(SLOT_HU).join(', ')}. A Készletben a tárgyra koppintva vagy a helyére húzva veheted fel.</p>
+    <ul><li>A ruha és a páncél <b>védelmet</b> ad, a hátizsák <b>helyet és teherbírást</b>, egyes cipők lassítják a fáradást.</li>
+      <li>A felszerelés <b>kopik</b>: a fegyver és a páncél harcban, a cipő gyaloglással (${R().shoeWearMeters / 1000} km-enként 1). Ha tönkremegy, rajtad marad, de nem ad bónuszt.</li></ul>
+    <h2>Javítás</h2>
+    <ul><li>Ruha, páncél, táska: ${itemLink('sewing_kit')} + ${itemLink('rag')} → +${pct(R().repairGear)}</li>
+      <li>Lőfegyver: ${itemLink('gun_cleaning_kit')} → +${pct(R().repairFirearm)}, vagy gyorsjavítás: ${itemLink('machine_oil')} + ${itemLink('rag')} → +${pct(R().repairMachineOil)}</li>
+      <li>Közelharci fegyver, íj, parittya: ${itemLink('duct_tape')} + kalapács vagy fogó → +${pct(R().repairOther)}</li></ul>
+    <p>A felszerelés listája típusonként: ${['weapon', 'helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'].map(t => `<a class="pill" href="#/targyak/${t}">${TYPE_HU[t]}</a>`).join('')}</p>` },
+  { slug: 'suly', title: 'Súly és hátizsák', group: 'Útmutatók', render: () => `
+    <h1>Súly és hátizsák</h1>
+    <ul><li>Alapból <b>${R().base.slots} hely</b> és <b>${R().base.maxWeight} kg</b> teherbírás. A hátizsákok és egyes ruhák növelik.</li>
+      <li>A halmozható tárgyakból (étel, lőszer…) egy helyen bármennyi elfér; a nem halmozhatók (fegyver, ruha) darabonként egy helyet foglalnak.</li>
+      <li><b>Túlsúly:</b> a teherbírásod fölött gyorsabban fáradsz (10% túlsúly ≈ 1,2×, 50% ≈ 2× fáradás). A teherbírás ${pct(R().overweightHardCap)}-a fölé már semmit nem vehetsz fel.</li>
+      <li>A Készletben a <b>Rendez</b> gomb típus szerint sorba teszi a holmidat, a <b>Kidobás</b> gombbal egyszerre többet is eldobhatsz, és <b>húzással</b> is átrendezheted (telefonon röviden nyomd meg, aztán húzd).</li></ul>
+    <p>Hátizsákok: <a href="#/targyak/backpack">mind</a>.</p>` },
+  { slug: 'halal', title: 'Halál és újrakezdés', group: 'Útmutatók', render: () => `
+    <h1>Halál és újrakezdés</h1>
+    <div class="paper">Ha az életed 0-ra csökken – harcban, éhezéstől vagy szomjúságtól –, a karaktered meghal.</div>
+    <ul><li>Új túlélőként kezdesz: 1. szint, a kezdőcsomaggal (${R().starterKit.map(s => itemLink(s.key, s.count)).join('')}).</li>
+      <li>A tárgyaid, a felszerelésed és a pénzed <b>elveszik</b>.</li>
+      <li><b>Megmarad:</b> az életre szóló statisztikád, az Első lépések, a napi bónusz sorozatod és a Korai túlélő jelvény.</li></ul>
+    <div class="box tip">💡 Mindig legyen nálad víz, étel és kötszer, és ne menj sérülten veszélyes épületbe!</div>` },
+  { slug: 'szintek-es-rangok', title: 'Szintek és rangok', group: 'Útmutatók', render: () => `
+    <h1>Szintek és rangok</h1>
+    <p>XP-t kapsz gyaloglásért, átkutatásért, harcért, barkácsolásért és küldetésekért. A következő szinthez <b>szint × 100 XP</b> kell (pl. 3. szintről 4.-re 300 XP). Szintlépéskor teljesen meggyógyulsz, és +${R().hpPerLevel} max életet kapsz.</p>
+    <h2>Rangok</h2><p>Öt szintenként új rangot és új felvarrót kapsz, amit a többi játékos is lát a térképen.</p>
+    <div class="tbl"><table><tr><th>Rang</th><th>Szinttől</th></tr>${RANKS.map(([n, l]) => `<tr><td>${n}</td><td class="n">${l}.</td></tr>`).join('')}</table></div>` },
+  { slug: 'elso-lepesek', title: 'Első lépések (küldetés)', group: 'Útmutatók', render: () => `
+    <h1>Első lépések</h1><p class="lead">Hat egyszerű feladat az elején – mindegyikért XP jár, a végén csomag. A Küldetés gombbal nézheted meg.</p>
+    <div class="tbl"><table><tr><th>#</th><th>Feladat</th><th>Hogyan?</th><th>XP</th></tr>${SurvivalTutorial.STEPS.map((s, i) => `<tr><td>${i + 1}.</td><td><b>${esc(s.title)}</b></td><td>${esc(s.hint)}</td><td class="n">+${s.xp}</td></tr>`).join('')}</table></div>
+    <h3>A jutalom a végén</h3><p>${SurvivalTutorial.FINAL_REWARD.map(r => itemLink(r.key, r.count)).join('')} és +${SurvivalTutorial.FINAL_XP} XP</p>` },
+  { slug: 'napi-bonusz', title: 'Napi bónusz', group: 'Útmutatók', render: () => `
+    <h1>Napi bónusz</h1><p class="lead">Lépj be minden nap: a sorozat napról napra jobb jutalmat ad. Ha egy nap kimarad, elölről kezdődik; a 7. nap után újraindul.</p>
+    <div class="tbl"><table><tr><th>Nap</th><th>Jutalom</th></tr>${SurvivalDaily.REWARDS.map(r => `<tr><td><b>${r.day}. nap</b></td><td>${r.items.map(i => itemLink(i.key, i.count)).join('')} <span class="pill y">+${r.xp} XP</span>${r.money ? `<span class="pill y">+${r.money} $</span>` : ''}</td></tr>`).join('')}</table></div>
+    <p class="muted">A nap éjfélkor (magyar idő szerint) vált. Ha nem fér el a hátizsákodban, előbb csinálj helyet.</p>` },
+  { slug: 'korai-tulelo', title: 'Korai túlélő jelvény', group: 'Útmutatók', render: () => `
+    <h1>🎖️ Korai túlélő</h1><p>Az első ${R().earlyLimit} regisztráló végleges jelvényt kap, amit a többiek is látnak a térképen, és bővebb első csomaggal indul:</p>
+    <p>${R().earlyKit.map(s => itemLink(s.key, s.count)).join('')} + felszerelt ${itemLink(R().earlyBackpack)}</p>
+    <p class="muted">A bővebb csomag csak az első indulásnál jár, halál után a sima kezdőcsomag. A jelvény örökre megmarad.</p>` },
+  { slug: 'eventek', title: 'Eventek', group: 'Útmutatók', render: () => `
+    <h1>🎉 Eventek</h1><p>Időnként különleges időszakok vannak, például <b>dupla XP hétvége</b> vagy <b>dupla zsákmány</b> ünnepnapokon. Ilyenkor a térkép tetején egy sáv mutatja, mi fut és meddig.</p>
+    ${W.event ? `<div class="box tip"><b>Most fut:</b> ${esc(W.event.name || 'event')} – ${W.event.xp > 1 ? W.event.xp + '× XP ' : ''}${W.event.loot > 1 ? W.event.loot + '× zsákmány' : ''}${W.event.until ? ' · ' + new Date(W.event.until).toLocaleString('hu-HU') + '-ig' : ''}</div>` : '<div class="box">Most nincs futó event. Kövesd a Discordot és a játékon belüli bejelentéseket!</div>'}` },
+  { slug: 'jatekosok', title: 'A többi játékos', group: 'Útmutatók', render: () => `
+    <h1>A többi játékos</h1>
+    <ul><li>A közeledben lévő, épp online játékosokat látod a térképen (nappal ${R().viewMeters} m, éjjel fény nélkül ${R().viewNightMeters} m). A jelölőjükön a rangjuk felvarrója, a korai túlélőknél 🎖️.</li>
+      <li>Egy kifosztott épület mindenkinek zárva van egy ideig – aki előbb ér oda, azé a zsákmány.</li>
+      <li>A más által ott hagyott holmit te is elviheted.</li>
+      <li>A <b>stáb tagjait</b> színes keret és felirat jelzi. Lásd: <a href="#/oldal/stab">Stáb</a>.</li></ul>
+    <div class="box">⚔️ PvP (játékos a játékos ellen), csapatok és klánok egy későbbi frissítésben jönnek.</div>` },
+  { slug: 'premium', title: 'Prémium bolt és credit', group: 'Útmutatók', render: () => {
+    const S = window.SurvivalShop;
+    return `<h1>💎 Prémium bolt és credit</h1>
+    ${W.premiumMode !== 'on' ? '<div class="box warn">A prémium bolt még nem érhető el – hamarosan indul.</div>' : ''}
+    <p class="lead">A prémium credittel kinézetet és kényelmi szolgáltatásokat vehetsz. <b>Harcban és zsákmányban nem ad előnyt</b> – a játék ingyen is teljes értékű.</p>
+    <ul><li><b>1 credit = ${S.CREDIT_HUF} Ft.</b> Minden ár mellett ott a forintos összeg.</li>
+      <li>Vásárlás: Menü → Prémium bolt → Credit vásárlás. Banki átutalással fizetsz, egyedi közleménnyel; a credit az utalás beérkezése után kerül a fiókodra.</li>
+      <li>18 év alatt csak szülői hozzájárulással vásárolj. Feltételek: <a href="/aszf">ÁSZF</a>.</li></ul>
+    <h2>Csomagok</h2><div class="tbl"><table><tr><th>Credit</th><th>Ár</th></tr>${S.PACKAGES.map(p => `<tr><td>◆ ${p.credits}</td><td>${S.fmtHuf(p.huf)}</td></tr>`).join('')}</table></div>
+    <h2>Kinézet</h2><p>Keret a karaktered körül (a térképen és a HUD-on) és cím a neved alatt – a többiek is látják.</p>
+    <div class="tbl"><table><tr><th>Név</th><th>Fajta</th><th>Ritkaság</th><th>Ár</th></tr>${S.COSMETICS.map(c => `<tr><td><b style="color:${c.color}">${esc(c.name)}</b></td><td>${c.kind === 'frame' ? 'keret' : 'cím'}</td><td style="color:${S.RARITY[c.rarity].color}">${S.RARITY[c.rarity].name}</td><td>${c.price ? `◆ ${c.price} (${S.fmtHuf(S.huf(c.price))})` : 'csak ládából'}</td></tr>`).join('')}</table></div>
+    <h2>Kényelem</h2><ul>${S.COMFORT.map(c => `<li><b>${esc(c.name)}</b> – ◆ ${c.price} (${S.fmtHuf(S.huf(c.price))}): ${esc(c.desc)}</li>`).join('')}</ul>
+    <h2>Ládák</h2><p>A boltban vett láda azonnal kinyílik, és egy kinézeti tárgyat ad. Ha olyat kapsz, ami már megvan, creditet kapsz helyette: ${Object.values(S.RARITY).map(r => `${r.name.toLowerCase()} ◆ ${r.dupRefund}`).join(', ')}.</p>
+    ${S.CRATES.map(c => { const rc = S.rarityChances(c.key); return `<h3><img src="/images/premium/${c.img}.webp" alt="" style="width:46px;height:46px;vertical-align:middle"> ${esc(c.name)} – ◆ ${c.price} (${S.fmtHuf(S.huf(c.price))})</h3><p>${esc(c.desc)}${c.lootChance ? ` Épület átkutatásakor kb. ${(c.lootChance * 100).toLocaleString('hu-HU')}% eséllyel találsz egyet; a talált láda kulccsal nyílik (◆ ${S.BY_KEY[c.keyItem].price}).` : ''}</p>
+      <p>${Object.keys(S.RARITY).map(r => rc[r] ? `<span class="pill" style="color:${S.RARITY[r].color}">${S.RARITY[r].name}: ${(rc[r] * 100).toFixed(0)}%</span>` : '').join('')}</p>
+      <div class="tbl"><table><tr><th>Tárgy</th><th>Ritkaság</th><th>Esély</th></tr>${S.crateOdds(c.key).map(o => `<tr><td>${esc(S.BY_KEY[o.key].name)}</td><td style="color:${S.RARITY[o.rarity].color}">${S.RARITY[o.rarity].name}</td><td class="n">${(o.chance * 100).toFixed(2).replace('.', ',')}%</td></tr>`).join('')}</table></div>`; }).join('')}`; } },
+  { slug: 'menedek', title: 'Menedék (hamarosan)', group: 'Útmutatók', render: () => `
+    <h1>🏚️ Menedék – hamarosan</h1><p>A következő nagy frissítésben saját menedéket foglalhatsz egy épületben: raktár, ami a halál után is megmarad, fekhely a gyorsabb pihenéshez, tűzhely, fa- és fémfalak, barikádok. Kövesd a bejelentéseket!</p>` },
+  { slug: 'stab', title: 'Stáb és segítség', group: 'Közösség', render: () => `
+    <h1>Stáb és segítség</h1><p>A játékot egy kis csapat működteti. A stáb tagjait a térképen és a HUD-on színes keret és felirat jelzi:</p>
+    <div class="tbl"><table><tr><th>Rang</th><th>Feladat</th></tr>${SurvivalRoles.ROLES.map(r => `<tr><td><b style="color:${r.color}">${r.name}</b></td><td>${{ owner: 'A játék gazdája és fejlesztője.', superadmin: 'Mindenben segít a tulajdonosnak.', admin: 'Játékosok ügyei, eventek, bejelentések.', moderator: 'Rend a Zónában: szabályszegők kezelése.', cm: 'Közösség, hírek, Discord.', helper: 'Segít az új játékosoknak.' }[r.key]}</td></tr>`).join('')}</table></div>
+    <h2>Hogyan kérj segítséget?</h2>
+    <ul><li>A játékban: <b>Menü → 💬 Üzenet a stábnak</b>. A válasz a játékban jön meg.</li>
+      <li>Hiba vagy ötlet: <b>Menü → 🐞 Hibát találtam / ötletem van</b>.</li>
+      <li>E-mail: <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a></li></ul>
+    <div class="box warn">A stáb soha nem kéri el a jelszavadat!</div>` },
+  { slug: 'szabalyok', title: 'Szabályok', group: 'Közösség', render: () => `
+    <h1>Szabályok</h1><p class="lead">A játék mostani funkcióira vonatkoznak. Új funkcióval (pl. PvP, csapatok, kereskedés) új szabályok is jönnek.</p>
+    <h2>1. Helyadat és mozgás</h2>
+    <ul><li>Csak a valódi helyedről játszhatsz. <b>Tilos a GPS-hamisítás</b> (fake GPS alkalmazás, emulátor, helyhamisító beállítás vagy bővítmény).</li>
+      <li>Járműben utasként játszhatsz, de ${R().moveMaxSpeedKmh} km/h felett nem jár XP. Vezetés közben ne használd a játékot.</li></ul>
+    <h2>2. Fiók</h2>
+    <ul><li><b>Egy ember – egy fiók.</b> Tilos több fiókkal játszani, például azért, hogy több napi bónuszt, Korai túlélő csomagot vagy zsákmányt szerezz.</li>
+      <li>A fiókot nem adhatod oda, nem adhatod el, és nem játszhatsz más fiókjával.</li>
+      <li>A játékot 16 éven felülieknek szánjuk.</li></ul>
+    <h2>3. Felhasználónév</h2>
+    <ul><li>Nem lehet sértő, trágár, gyűlöletkeltő, és nem utánozhat más személyt, márkát vagy a stábot (pl. „Admin”, „Moderátor”).</li>
+      <li>A szabálytalan nevet a stáb átnevezheti.</li></ul>
+    <h2>4. Csalás és hibák</h2>
+    <ul><li>Tilos bármilyen automatizálás (bot, makró, szkript) és a játék módosított változata.</li>
+      <li>Tilos a játék hibáinak <b>szándékos kihasználása</b>: például tárgyak, pénz vagy XP többszörözése, a kifosztott épületek zárolásának megkerülése, a harc vagy a napi bónusz kijátszása.</li>
+      <li>Ha hibát találsz, jelezd: <b>Menü → 🐞 Hibát találtam</b>. A jóhiszemű bejelentésért nem jár büntetés.</li></ul>
+    <h2>5. Üzenetek a stábnak és hibajelentések</h2>
+    <ul><li>Az „Üzenet a stábnak” csevegésben és a hibajelentésben légy tisztelettudó: nincs sértegetés, fenyegetés, trágárság.</li>
+      <li>Ne küldj ismétlődő, tartalom nélküli vagy szándékosan hamis üzenetet.</li>
+      <li>Ne adj meg magadról vagy másokról érzékeny adatot (lakcím, telefonszám, jelszó). <b>A stáb soha nem kéri el a jelszavadat.</b></li></ul>
+    <h2>6. Biztonság a valóságban</h2>
+    <ul><li>Az épületeket nem kell megközelítened jobban, mint ${R().lootRangeMeters} méter: <b>soha ne menj be</b> idegen épületbe, magánterületre, lezárt vagy veszélyes helyre a játék miatt.</li>
+      <li>Figyelj a forgalomra és a környezetedre, tartsd be a helyi szabályokat.</li></ul>
+    <h2>Következmények</h2>
+    <p>A szabályszegés súlyától függően: figyelmeztetés, kiléptetés, ideiglenes felfüggesztés (1 órától 30 napig) vagy végleges kitiltás. A csalással szerzett tárgyakat, pénzt, XP-t és szintet a stáb elveheti vagy visszaállíthatja.</p>
+    <p>Kérdésed van egy döntéssel kapcsolatban? Írj: <b>Menü → 💬 Üzenet a stábnak</b>, vagy <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a>.</p>
+    <p class="muted">Adatkezelés: <a href="/adatvedelem.html">adatkezelési tájékoztató</a>.</p>` },
+  { slug: 'gyik', title: 'GYIK', group: 'Közösség', render: () => `
+    <h1>Gyakori kérdések</h1>
+    ${[['Ingyenes a játék?', 'Igen, teljesen ingyenes, böngészőben fut, és telefonra alkalmazásként is feltehető (Menü → Letöltés a telefonra).'],
+      ['Kell hozzá mobilnet?', 'Igen, a játék a szerverrel folyamatosan kapcsolatban van, és a térképhez is internet kell.'],
+      ['Nem látok épületeket a térképen.', 'Engedélyezd a helymeghatározást, és várj pár másodpercet a betöltésre. Ha a GPS pontatlan, menj szabad ég alá.'],
+      ['Miért nem tudom átkutatni az épületet?', `Lehet, hogy túl messze vagy (${R().lootRangeMeters} m-en belül kell lenned), vagy valaki nemrég kifosztotta (${R().lootLockHours} óráig zárva).`],
+      ['Fogy az ételem, amikor nem játszom?', 'Igen, a csíkok folyamatosan fogynak. Kilépés előtt egyél és igyál, és a napi bónusz is segít.'],
+      ['Mi történik, ha meghalok?', 'Új túlélőként kezdesz elölről, a tárgyaid elvesznek, de a statisztikáid és jelvényeid megmaradnak. Részletek: <a href="#/oldal/halal">Halál és újrakezdés</a>.'],
+      ['Autóban is játszhatok?', `Utasként igen, de ${R().moveMaxSpeedKmh} km/h felett nincs XP, és vezetés közben semmiképp ne nyúlj a telefonhoz.`],
+      ['Hogyan törölhetem a fiókomat?', 'Írj az <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre a felhasználóneveddel.'],
+      ['Hol kérdezhetek még?', 'A játékban: Menü → Üzenet a stábnak. A közösség a Discordon is ott van.']].map(([q, a]) => `<h3>${q}</h3><p>${a}</p>`).join('')}` }
+];
+function pills(keys) { return keys.map(k => itemLink(k)).join(''); }
+function card(key, it, sub) { return `<a class="card" href="#/targy/${key}">${icon(it)}<span><b>${esc(it.name)}</b><small>${esc(sub || TYPE_HU[it.type] || '')}</small></span></a>`; }
+
+function home() {
+  const types = Object.keys(B.BUILDING_TYPES).length;
+  return `<h1>Survival GO Wiki</h1><p class="lead">Minden, amit a Zónáról tudni kell. Magyar GPS-túlélőjáték, ahol a pálya a te városod.</p>
+    <a class="cta" href="/">▶ JÁTSSZ MOST</a>
+    <div class="stats" style="margin-top:18px">
+      <a class="stat" href="#/targyak"><small>Tárgyak</small><b>${Object.keys(ITEMS).length}</b></a>
+      <a class="stat" href="#/receptek"><small>Receptek</small><b>${RECIPES.length}</b></a>
+      <a class="stat" href="#/ellenfelek"><small>Ellenfelek</small><b>${W.enemies.length}</b></a>
+      <a class="stat" href="#/epuletek"><small>Épülettípusok</small><b>${types}</b></a>
+    </div>
+    <h2>Kezdőknek</h2>
+    <div class="grid">${['hogyan-kezdj', 'tuleles', 'epuletek-es-kutatas', 'harc', 'barkacs', 'halal'].map(sl => { const g = GUIDES.find(x => x.slug === sl); return `<a class="card" href="#/oldal/${sl}"><span class="ico">📖</span><span><b>${g.title}</b></span></a>`; }).join('')}</div>
+    <h2>Adatbázis</h2>
+    <div class="grid">
+      <a class="card" href="#/targyak/food">${icon(ITEMS.canned_food)}<span><b>Étel és ital</b><small>mit egyél, mit igyál</small></span></a>
+      <a class="card" href="#/targyak/weapon">${icon(ITEMS.ak47 || ITEMS.knife)}<span><b>Fegyverek</b><small>sebzés, lőszer</small></span></a>
+      <a class="card" href="#/targyak/medicine">${icon(ITEMS.bandage)}<span><b>Gyógyszerek</b><small>gyógyulás</small></span></a>
+      <a class="card" href="#/ellenfelek"><span class="ico">🧟</span><span><b>Ellenfelek</b><small>ki vár rád az épületekben</small></span></a>
+    </div>
+    <div class="paper">„Elmentem a sarki boltba tejért… és egy mutáns várt rám.” – egy túlélő naplójából</div>`;
+}
+
+// ---------- adatbázis oldalak ----------
+const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy']];
+function itemsPage(type) {
+  const list = Object.entries(ITEMS).filter(([, it]) => !type || it.type === type).sort((a, b) => a[1].name.localeCompare(b[1].name, 'hu'));
+  const sub = (it) => it.dmg ? `+${it.dmg} sebzés` : it.def ? `+${it.def} védelem` : it.effects ? Object.entries(it.effects).filter(([, v]) => v).map(([k, v]) => `${EFFECT_HU[k]} ${v > 0 ? '+' : ''}${v}`).join(', ') : (it.bonusSlots ? `+${it.bonusSlots} hely` : TYPE_HU[it.type] || '');
+  return `<h1>Tárgyak${type ? ': ' + (TYPE_HU[type] || type) : ''}</h1><p class="lead">${list.length} tárgy. Kattints egyre: hol található, miből készül, mire jó.</p>
+    <div class="filters">${ITEM_FILTERS.map(([k, l]) => `<button class="${(type || '') === k ? 'on' : ''}" onclick="location.hash='#/targyak${k ? '/' + k : ''}'">${l}</button>`).join('')}</div>
+    <div class="grid">${list.map(([k, it]) => card(k, it, sub(it))).join('')}</div>`;
+}
+function itemPage(key) {
+  const it = ITEMS[key]; if (!it) return notFound();
+  const found = whereFound(key), by = craftedBy(key), uses = usedIn(key), drops = droppedBy(key);
+  const daily = SurvivalDaily.REWARDS.filter(r => r.items.some(i => i.key === key)).map(r => r.day + '. nap');
+  return `<div class="head">${icon(it, true)}<div><h1>${esc(it.name)}</h1><div class="muted">${esc(TYPE_HU[it.type] || it.type)}${it.tier ? ' · tier ' + it.tier : ''}</div></div></div>
+    <div class="paper">${esc(it.desc || '')}</div>
+    <div class="tbl"><table>${itemFacts(it).map(([a, b]) => `<tr><th style="width:190px">${a}</th><td>${b}</td></tr>`).join('')}</table></div>
+    <h2>Hol található?</h2>${found.length ? `<p>${found.map(f => { const [l, c] = rarity(f.w); return `<a class="pill ${c}" href="#/epulet/${slug(f.name)}">${f.info.icon} ${esc(f.name)} · ${l}</a>`; }).join('')}</p>` : '<p class="muted">Épületekben nem található.</p>'}
+    ${drops.length ? `<p>Ellenfeleknél: ${drops.map(e => `<a class="pill" href="#/ellenfel/${e.key}">${e.avatar} ${esc(e.name)}</a>`).join('')}</p>` : ''}
+    ${daily.length ? `<p>Napi bónusz: ${daily.map(d => `<a class="pill y" href="#/oldal/napi-bonusz">${d}</a>`).join('')}</p>` : ''}
+    ${by.length ? `<h2>Hogyan készíthető?</h2>${by.map(recipeHtml).join('')}` : ''}
+    ${uses.length ? `<h2>Mire jó? (${uses.length} recept)</h2>${uses.map(recipeHtml).join('')}` : ''}`;
+}
+function recipesPage(cat) {
+  const cats = window.CRAFT_CATEGORIES || [...new Set(RECIPES.map(r => r.cat))];
+  const c = cats.find(x => slug(x) === cat);
+  const list = RECIPES.filter(r => !c || r.cat === c);
+  return `<h1>Barkácsreceptek${c ? ': ' + esc(c) : ''}</h1><p class="lead">${list.length} recept. A szerszámok nem fogynak el, csak kopnak. Lásd még: <a href="#/oldal/barkacs">Barkácsolás</a>.</p>
+    <div class="filters"><button class="${!c ? 'on' : ''}" onclick="location.hash='#/receptek'">Mind</button>${cats.map(x => `<button class="${c === x ? 'on' : ''}" onclick="location.hash='#/receptek/${slug(x)}'">${esc(x)}</button>`).join('')}</div>
+    ${list.map(recipeHtml).join('')}`;
+}
+function enemiesPage() {
+  const list = W.enemies.slice().sort((a, b) => a.lvl - b.lvl || a.hp - b.hp);
+  return `<h1>Ellenfelek</h1><p class="lead">Ők várnak rád az épületekben. A szintjük a veszélyességüket jelzi; erős ellenfél csak magasabb szintű játékosnál jön gyakrabban.</p>
+    <div class="tbl"><table><tr><th></th><th>Ellenfél</th><th>Szint</th><th>Élet</th><th>Ütés</th><th>Jutalom</th><th>Hol?</th></tr>
+    ${list.map(e => `<tr><td><a href="#/ellenfel/${e.key}"><img src="/images/enemies/${e.key}.webp" alt="" style="width:54px;height:54px;object-fit:cover;border:2px solid var(--paper)" onerror="this.outerHTML='${e.avatar}'"></a></td>
+      <td><a href="#/ellenfel/${e.key}"><b>${esc(e.name)}</b></a>${e.night ? ' <span class="pill r">csak éjjel</span>' : e.nightWeight > 1 ? ' <span class="pill y">éjjel gyakoribb</span>' : ''}</td>
+      <td class="n">${e.lvl}</td><td class="n">${e.hp}</td><td class="n">${e.dmg}</td><td class="n">${e.xp} XP · ${e.money[0]}–${e.money[1]} $</td>
+      <td>${e.night && !e.habitat.length ? 'éjjel bárhol' : e.habitat.map(g => GROUP_HU[g] || g).join(', ')}</td></tr>`).join('')}</table></div>
+    <p class="muted">Az ütés az ellenfél alapsebzése (±${pct(W.combat.ENEMY_VARIANCE)}), a védelmed csökkenti.</p>`;
+}
+function enemyPage(key) {
+  const e = enemyByKey(key); if (!e) return notFound();
+  const where = Object.entries(B.BUILDING_TYPES).filter(([, i]) => i.groups.some(g => e.habitat.includes(g)));
+  return `<div class="head"><img class="enemy-img" src="/images/enemies/${e.key}.webp" alt="" onerror="this.style.display='none'"><div><h1>${e.avatar} ${esc(e.name)}</h1><div class="muted">Veszélyességi szint: ${e.lvl}</div></div></div>
+    <div class="stats"><div class="stat"><small>Élet</small><b>${e.hp}</b></div><div class="stat"><small>Ütés</small><b>${e.dmg}</b></div><div class="stat"><small>XP</small><b>${e.xp}</b></div><div class="stat"><small>Pénz</small><b>${e.money[0]}–${e.money[1]} $</b></div></div>
+    ${e.night ? '<div class="box warn">🌙 Csak éjjel jelenik meg – bármelyik épületben. Fény és jó felszerelés nélkül kerüld!</div>' : e.nightWeight > 1 ? `<div class="box">🌙 Éjjel ${e.nightWeight}× gyakoribb.</div>` : ''}
+    <h2>Mit hagyhat hátra?</h2><p>${pct(W.combat.DROP_CHANCE)} eséllyel egyet ezek közül: ${e.drops.map(k => itemLink(k)).join('')}</p>
+    <h2>Hol találkozhatsz vele?</h2><p>${where.length ? where.map(([n, i]) => `<a class="pill" href="#/epulet/${slug(n)}">${i.icon} ${esc(n)}</a>`).join('') : 'Éjjel bárhol.'}</p>
+    <p><a href="#/oldal/harc">→ Hogyan működik a harc?</a></p>`;
+}
+function buildingsPage() {
+  const list = Object.entries(B.BUILDING_TYPES).sort((a, b) => a[1].encounter - b[1].encounter || a[0].localeCompare(b[0], 'hu'));
+  return `<h1>Épületek</h1><p class="lead">A térkép épületeit a valódi térképadatokból (OpenStreetMap) sorolja be a játék. Minden típusnak más a zsákmánya és a veszélye.</p>
+    <div class="tbl"><table><tr><th>Épület</th><th>Átkutatás</th><th>Üres esély</th><th>Veszély</th><th>Mit találsz?</th></tr>
+    ${list.map(([n, i]) => `<tr><td><a href="#/epulet/${slug(n)}">${i.icon} <b>${esc(n)}</b></a></td><td class="n">${B.searchSeconds(n)} mp</td><td class="n">${pct(i.empty)}</td><td class="n">${pct(i.encounter)}</td><td>${i.groups.map(g => GROUP_HU[g] || g).join(', ')}</td></tr>`).join('')}</table></div>`;
+}
+function buildingPage(sl) {
+  const entry = Object.entries(B.BUILDING_TYPES).find(([n]) => slug(n) === sl); if (!entry) return notFound();
+  const [name, info] = entry;
+  const table = B.lootTable(name, ITEMS).sort((a, b) => b[1] - a[1]);
+  const total = table.reduce((a, [, w]) => a + w, 0) || 1;
+  const enemies = W.enemies.filter(e => e.habitat.some(g => info.groups.includes(g)));
+  return `<h1>${info.icon} ${esc(name)}</h1>
+    <div class="stats"><div class="stat"><small>Átkutatás</small><b>${B.searchSeconds(name)} mp</b></div><div class="stat"><small>Üres esély</small><b>${pct(info.empty)}</b></div><div class="stat"><small>Ellenség esély</small><b>${pct(info.encounter)}</b></div><div class="stat"><small>Zsákmány</small><b>${info.groups.map(g => GROUP_HU[g] || g).join(', ')}</b></div></div>
+    <h2>Ellenfelek itt</h2><p>${enemies.map(e => `<a class="pill" href="#/ellenfel/${e.key}">${e.avatar} ${esc(e.name)}</a>`).join('') || '–'} <a class="pill r" href="#/ellenfel/shade">👤 éjjel: Árnyék</a></p>
+    <h2>Mit találhatsz? (${table.length} tárgy)</h2><p class="muted">A százalék azt mutatja, egy-egy talált tárgy mekkora eséllyel ez.</p>
+    <div class="grid">${table.map(([k, w]) => card(k, ITEMS[k], (100 * w / total).toFixed(1) + '%')).join('')}</div>`;
+}
+function notFound() { return '<h1>Nincs ilyen oldal</h1><p><a href="#/">← Vissza a kezdőlapra</a></p>'; }
+
+// ---------- keresés ----------
+function searchPage(q) {
+  const n = (s) => String(s).toLocaleLowerCase('hu').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const t = n(q);
+  const items = Object.entries(ITEMS).filter(([k, it]) => n(it.name).includes(t) || n(it.desc || '').includes(t) || k.includes(t));
+  const recs = RECIPES.filter(r => n(r.name).includes(t) || n(r.desc || '').includes(t));
+  const ens = W.enemies.filter(e => n(e.name).includes(t));
+  const bs = Object.keys(B.BUILDING_TYPES).filter(x => n(x).includes(t));
+  const gs = GUIDES.filter(g => n(g.title).includes(t));
+  return `<h1>Keresés: „${esc(q)}”</h1>
+    ${gs.length ? `<h2>Útmutatók</h2><p>${gs.map(g => `<a class="pill" href="#/oldal/${g.slug}">📖 ${g.title}</a>`).join('')}</p>` : ''}
+    ${ens.length ? `<h2>Ellenfelek</h2><p>${ens.map(e => `<a class="pill" href="#/ellenfel/${e.key}">${e.avatar} ${esc(e.name)}</a>`).join('')}</p>` : ''}
+    ${bs.length ? `<h2>Épületek</h2><p>${bs.map(x => `<a class="pill" href="#/epulet/${slug(x)}">${B.BUILDING_TYPES[x].icon} ${esc(x)}</a>`).join('')}</p>` : ''}
+    ${items.length ? `<h2>Tárgyak (${items.length})</h2><div class="grid">${items.slice(0, 60).map(([k, it]) => card(k, it)).join('')}</div>` : ''}
+    ${recs.length ? `<h2>Receptek (${recs.length})</h2>${recs.slice(0, 30).map(recipeHtml).join('')}` : ''}
+    ${!items.length && !recs.length && !ens.length && !bs.length && !gs.length ? '<p class="muted">Nincs találat.</p>' : ''}`;
+}
+
+// ---------- oldalsáv és útválasztás ----------
+function renderNav(active) {
+  const groups = {};
+  GUIDES.forEach(g => { const k = g.group || ''; (groups[k] = groups[k] || []).push(g); });
+  const a = (href, label) => `<a href="${href}" class="${active === href ? 'on' : ''}">${label}</a>`;
+  $('side').innerHTML = a('#/', '🏠 Kezdőlap') +
+    Object.entries(groups).filter(([k]) => k).map(([k, list]) => `<h4>${k}</h4>` + list.map(g => a('#/oldal/' + g.slug, g.title)).join('')).join('') +
+    `<h4>Adatbázis</h4>` + a('#/targyak', '🎒 Tárgyak') + a('#/receptek', '🔧 Receptek') + a('#/ellenfelek', '🧟 Ellenfelek') + a('#/epuletek', '🏚️ Épületek') +
+    `<h4>Egyéb</h4><a href="/">▶ Vissza a játékhoz</a><a href="/adatvedelem.html">Adatkezelés</a>`;
+}
+function route() {
+  const h = decodeURIComponent(location.hash.replace(/^#/, '')) || '/';
+  const [, p1, p2] = h.split('/');
+  let html, active = '#' + h;
+  if (!W) return;
+  if (!p1) { html = home(); active = '#/'; }
+  else if (p1 === 'oldal') { const g = GUIDES.find(x => x.slug === p2); html = g ? g.render() : notFound(); }
+  else if (p1 === 'targyak') { html = itemsPage(p2 || ''); active = '#/targyak'; }
+  else if (p1 === 'targy') { html = itemPage(p2); active = '#/targyak'; }
+  else if (p1 === 'receptek') { html = recipesPage(p2 || ''); active = '#/receptek'; }
+  else if (p1 === 'ellenfelek') html = enemiesPage();
+  else if (p1 === 'ellenfel') { html = enemyPage(p2); active = '#/ellenfelek'; }
+  else if (p1 === 'epuletek') html = buildingsPage();
+  else if (p1 === 'epulet') { html = buildingPage(p2); active = '#/epuletek'; }
+  else if (p1 === 'kereses') html = searchPage(p2 || '');
+  else html = notFound();
+  $('main').innerHTML = html + `<div class="foot">A wiki a játék saját adataiból készül, ezért mindig naprakész. Hibát találtál? Írj nekünk a játékban (Menü → Üzenet a stábnak) vagy az <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre.</div>`;
+  renderNav(active);
+  document.body.classList.remove('nav-open');
+  if (p1 !== 'kereses') window.scrollTo(0, 0);
+  const title = $('main').querySelector('h1');
+  document.title = (title ? title.textContent + ' – ' : '') + 'Survival GO Wiki';
+}
+let qt = null;
+$('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { const v = $('q').value.trim(); if (v.length >= 2) location.hash = '#/kereses/' + encodeURIComponent(v); else if (!v && location.hash.startsWith('#/kereses')) location.hash = '#/'; }, 250); });
+window.addEventListener('hashchange', route);
+fetch('/api/wiki').then(r => r.json()).then(d => { W = d; route(); }).catch(() => { $('main').innerHTML = '<h1>Nem sikerült betölteni</h1><p>Ellenőrizd az internetkapcsolatot, és frissítsd az oldalt.</p>'; });
+</script>
+</body>
+</html>

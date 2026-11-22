@@ -197,6 +197,7 @@ function updateHUD() {
     document.getElementById('hud-name').textContent = player.username || player.name || "Túlélő";
     const badge = document.getElementById('hud-badge');
     if (badge) badge.classList.toggle('hidden', !player.earlySurvivor);
+    if (typeof renderStaffHud === 'function') renderStaffHud();
     const level = player.level || 1;
     document.getElementById('hud-level').textContent = level;
     renderRank(level);
@@ -925,6 +926,34 @@ function confirmDropSelection() {
     renderDropBar();
 }
 
+// --- Húzás a Készletben: hátizsák <-> felszerelés, és a hátizsákon belüli áthelyezés ---
+function inventoryDrop(tile, zone) {
+    if (tile.dataset.src === 'inv') {
+        const index = Number(tile.dataset.index);
+        const slot = player.inventory[index];
+        if (!slot) return;
+        if (zone.dataset.slot) { // felszerelési helyre
+            const item = itemDatabase[slot.key];
+            const target = SurvivalStats.equipSlot(item);
+            if (!target) { logMessage(`${item ? item.name : 'Ez'}: ezt nem lehet felvenni.`); playSound('hit'); return; }
+            if (target !== zone.dataset.slot) { logMessage(`${item.name}: ez nem erre a helyre való.`); playSound('hit'); return; }
+            equipItem(slot.key, target, index);
+        } else if (zone.dataset.index !== undefined) { // másik helyre a hátizsákban
+            const to = Number(zone.dataset.index);
+            if (to !== index) socket.emit('move_item', { from: index, to });
+        }
+    } else if (tile.dataset.slot && zone.dataset.index !== undefined) { // felszerelésből vissza a hátizsákba
+        unequip(tile.dataset.slot);
+    }
+}
+if (window.SurvivalDrag) SurvivalDrag.bind({
+    tiles: '#equipment-modal .inv-tile[data-src], #equipment-modal .eq-tile[data-slot]:not(.empty)',
+    zones: '#equipment-modal .inv-tile[data-index], #equipment-modal .eq-tile[data-slot]',
+    canDrag: () => !dropMode,
+    scrollers: () => [document.getElementById('inventory-grid')],
+    onDrop: inventoryDrop
+});
+
 function updateUI() {
     updateHUD();
     renderQuickbar();
@@ -938,13 +967,13 @@ function updateUI() {
     let invHtml = '';
     for (let index = 0; index < capacity; index++) {
         const slot = player.inventory[index];
-        if (!slot) { invHtml += '<div class="inv-tile empty"></div>'; continue; }
+        if (!slot) { invHtml += `<div class="inv-tile empty" data-index="${index}"></div>`; continue; }
         const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦', desc: '', weight: 0 };
         const count = slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : '';
         const brokenTile = item.wear && slot.dur !== undefined && slot.dur <= 0;
         const selected = dropMode && dropSelection.has(index);
         const click = dropMode ? `toggleDropSelect(${index})` : `openItemSheet('inv', ${index})`;
-        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}${selected ? ' selected' : ''}" onclick="${click}" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}${selected ? '<span class="tile-check">❌</span>' : ''}</button>`;
+        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}${selected ? ' selected' : ''}" data-src="inv" data-index="${index}" onclick="${click}" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}${selected ? '<span class="tile-check">❌</span>' : ''}</button>`;
     }
     invGrid.innerHTML = invHtml;
     renderDropBar();

@@ -308,6 +308,14 @@
 
         /* Tárgyhelyek: varrott zsebek */
         .inv-tile, .eq-tile { background: var(--sg-pocket); border: 1.5px solid var(--sg-dark); border-radius: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+        /* húzás (Készlet, raktár) */
+        .inv-tile, .eq-tile { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        .sg-drag-ghost { position: fixed; left: 0; top: 0; z-index: 9999; width: 56px; height: 56px; pointer-events: none; display: flex; align-items: center; justify-content: center;
+            background: rgba(20,22,16,.9); border: 2px solid #d9c58a; border-radius: 4px; box-shadow: 0 8px 20px rgba(0,0,0,.7); font-size: 28px; }
+        .sg-drag-ghost img { width: 44px; height: 44px; object-fit: contain; }
+        .inv-tile.sg-dragging, .eq-tile.sg-dragging { opacity: .35; }
+        .sg-drop-hot { outline: 2px solid #d9c58a !important; outline-offset: 1px; background: rgba(217,197,138,.18) !important; }
+        html.sg-drag-on, html.sg-drag-on * { cursor: grabbing !important; }
         .inv-tile:before, .eq-tile:before { content: ''; position: absolute; inset: 3px; border: 1px dashed rgba(233,227,207,.16); pointer-events: none; }
         .inv-tile.empty, .eq-tile.empty { background: rgba(42,46,32,.55); border-style: solid; border-color: rgba(21,23,15,.7); }
         .eq-summary { color: var(--sg-thread); font-family: var(--sg-font); font-weight: 700; letter-spacing: .06em; }
@@ -388,6 +396,129 @@
         .sg-d-small .sg-d-items span { width: 28px; height: 28px; }
         .sg-d-small .sg-d-items img { width: 22px; height: 22px; }
         .sg-tu-big:disabled { color: #8f8a7a; cursor: default; }
+        /* bejelentések, hibajelentés, event, rendszerüzenet (v0.1.13) */
+        #announce-modal, #bug-modal, #support-modal { z-index: 3300; }
+        /* stáb rangok (v0.1.14) */
+        .sg-ava.sg-role:after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid var(--role-c); box-shadow: 0 0 10px var(--role-c), inset 0 0 6px var(--role-c); pointer-events: none; }
+        .sg-ava.sg-role-owner:after { animation: sg-role-glow 2.4s ease-in-out infinite; }
+        @keyframes sg-role-glow { 0%, 100% { box-shadow: 0 0 6px var(--role-c), inset 0 0 4px var(--role-c); } 50% { box-shadow: 0 0 16px var(--role-c), 0 0 4px #fff8dc, inset 0 0 8px var(--role-c); } }
+        .sg-staff { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 2; white-space: nowrap; padding: 0 4px; font-size: 8px !important; border: 1.5px solid var(--role-c); background: rgba(10,11,8,.92); color: var(--role-c); font: 800 9.5px var(--sg-font); letter-spacing: .16em; vertical-align: middle; text-shadow: 0 1px 1px #000; }
+        .sg-marker.sg-role { border-color: var(--role-c, #d9c58a); box-shadow: 0 0 0 2px var(--role-c), 0 0 12px var(--role-c), 0 3px 6px rgba(0,0,0,.7); }
+        .sg-marker.sg-role-owner { --role-c: #e8c35a; animation: sg-role-pulse 2.4s ease-in-out infinite; }
+        .sg-marker.sg-role-superadmin { --role-c: #e0703a; } .sg-marker.sg-role-admin { --role-c: #d23b2e; } .sg-marker.sg-role-moderator { --role-c: #4a9be0; }
+        .sg-marker.sg-role-cm { --role-c: #a46ad8; } .sg-marker.sg-role-helper { --role-c: #6fc05a; }
+        @keyframes sg-role-pulse { 0%, 100% { box-shadow: 0 0 0 2px var(--role-c), 0 0 8px var(--role-c); } 50% { box-shadow: 0 0 0 2px var(--role-c), 0 0 20px var(--role-c); } }
+        .sg-marker-staff { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 4px); padding: 0 4px; background: rgba(0,0,0,.8); border: 1px solid var(--role-c); color: var(--role-c);
+            font: 800 8px var(--sg-font); letter-spacing: .12em; white-space: nowrap; pointer-events: none; }
+        .sg-inline-badge { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #c9533f; color: #fff; font: 800 10px var(--sg-font); line-height: 16px; }
+        .sg-chat { flex: 1; overflow-y: auto; margin-top: 8px; padding: 8px; background: rgba(0,0,0,.35); border: 1px solid rgba(21,23,15,.9); display: flex; flex-direction: column; gap: 6px; }
+        .sg-msg { max-width: 82%; padding: 7px 10px; font: 500 13px/1.4 var(--sg-font); white-space: pre-wrap; word-wrap: break-word; }
+        .sg-msg.me { align-self: flex-end; background: #59652f; color: var(--sg-thread); }
+        .sg-msg.staff { align-self: flex-start; background: #ece6d6; color: #2a2620; border-left: 4px solid var(--role-c, #d9c58a); }
+        .sg-msg small { display: block; font: 700 9.5px var(--sg-mono); letter-spacing: .06em; opacity: .7; margin-bottom: 2px; }
+        .sg-chat-empty { margin: auto; text-align: center; color: var(--sg-muted); font: 600 12px var(--sg-font); }
+        .sg-chat-send { display: flex; gap: 6px; margin-top: 8px; }
+        .sg-chat-send textarea { flex: 1; resize: none; padding: 8px; background: #ece6d6; color: #2a2620; border: 2px solid var(--sg-dark); font: 13px/1.35 var(--sg-font); }
+        /* prémium (v0.1.16) */
+        #premium-modal { z-index: 3300; }
+        .sg-credit-chip { display: inline-block; padding: 0 7px; border: 1.5px solid #e8c35a; background: rgba(40,32,10,.85); color: #ffe39a; font: 800 11px var(--sg-mono); }
+        .sg-credit-chip:before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 3px; vertical-align: -2px; background: url('/images/premium/gem.webp') center/contain no-repeat; } .sg-credit-chip.big { font-size: 14px; padding: 2px 9px; }
+        .sg-prem-note { margin-top: 6px; padding: 5px 8px; background: rgba(120,24,18,.85); color: #ffe0d8; font: 800 11px var(--sg-font); letter-spacing: .1em; }
+        .sg-prem-tabs { display: flex; gap: 3px; margin-top: 8px; } .sg-prem-tabs button { flex: 1; padding: 6px 2px; background: rgba(0,0,0,.35); border: 1px solid rgba(21,23,15,.9); color: var(--sg-muted); font: 800 11px var(--sg-font); letter-spacing: .1em; }
+        .sg-prem-tabs button.on { background: #59652f; color: var(--sg-thread); }
+        .sg-prem-body { flex: 1; overflow-y: auto; margin-top: 8px; padding-right: 2px; }
+        .sg-prem-h { margin: 10px 0 5px; font: 800 12px var(--sg-font); letter-spacing: .16em; color: var(--sg-gold); }
+        .sg-prem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+        .sg-prem-card { position: relative; padding: 8px; background: rgba(0,0,0,.35); border: 1px solid rgba(21,23,15,.9); border-left: 4px solid var(--rc, #b9b29c); color: var(--sg-thread); font: 600 12px/1.3 var(--sg-font); }
+        .sg-prem-card b { display: block; font-size: 13px; } .sg-prem-card small { display: block; color: var(--sg-muted); font-size: 10.5px; margin: 2px 0 5px; }
+        .sg-prem-card .rar { font: 800 9px var(--sg-font); letter-spacing: .14em; color: var(--rc); }
+        .sg-prem-card button, .sg-prem-btn { width: 100%; padding: 5px; background: #6b5320; border: 1px solid #0b0c08; color: #ffe9b8; font: 800 11px var(--sg-font); letter-spacing: .08em; }
+        .sg-prem-card button:disabled, .sg-prem-btn:disabled { opacity: .45; }
+        .sg-prem-card button.eq { background: #59652f; color: var(--sg-thread); }
+        .sg-prem-prev { width: 46px; height: 46px; margin: 0 auto 6px; border-radius: 50%; background: #2a2e20 url('/images/avatars/avatar1.png') center/cover; }
+        .sg-prem-title-prev { margin: 4px auto 8px; text-align: center; }
+        .sg-prem-pkg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; margin-bottom: 6px; background: rgba(0,0,0,.35); border: 1px solid rgba(21,23,15,.9); color: var(--sg-thread); font: 700 14px var(--sg-font); width: 100%; text-align: left; }
+        .sg-prem-pkg.on { border-color: #e8c35a; background: rgba(90,70,20,.45); }
+        .sg-prem-form input { width: 100%; margin-top: 4px; padding: 7px; background: #ece6d6; color: #2a2620; border: 2px solid var(--sg-dark); font: 13px var(--sg-font); }
+        .sg-prem-form label.chk { display: flex; gap: 7px; align-items: flex-start; margin-top: 8px; color: var(--sg-thread); font: 500 11.5px/1.35 var(--sg-font); }
+        .sg-prem-form label.chk input { width: 16px; height: 16px; flex: none; margin: 2px 0 0; padding: 0; }
+        .sg-prem-form label.chk a { color: var(--sg-gold); text-decoration: underline; }
+        .sg-xfer { margin-top: 8px; padding: 10px; background: #ece6d6; color: #2a2620; font: 13px/1.6 var(--sg-mono); }
+        .sg-xfer b { font-size: 15px; } .sg-xfer button { margin-left: 6px; padding: 0 6px; background: #59652f; color: #fff; border: 0; font: 700 10px var(--sg-font); }
+        .sg-odds { width: 100%; margin-top: 6px; border-collapse: collapse; font: 600 11.5px var(--sg-font); color: var(--sg-thread); }
+        .sg-odds td { padding: 3px 5px; border-bottom: 1px solid rgba(255,255,255,.06); } .sg-odds td.n { text-align: right; font-family: var(--sg-mono); }
+        #crate-reveal { position: fixed; inset: 0; z-index: 9995; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.82); }
+        #crate-reveal.hidden { display: none; }
+        .sg-crate-box { width: min(88vw, 340px); padding: 22px 16px; text-align: center; background: #22261a; border: 2px solid #d9c58a; box-shadow: 0 0 40px rgba(217,197,138,.35); }
+        .sg-crate-shake { animation: sg-shake .25s ease-in-out infinite; filter: drop-shadow(0 0 12px var(--tc)); }
+        .sg-crate-open { animation: sg-pop .4s ease-out; filter: drop-shadow(0 0 24px var(--tc)) brightness(1.25); }
+        @keyframes sg-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-5deg) translateY(-2px); } 75% { transform: rotate(5deg) translateY(-2px); } }
+        .sg-crate-spin { font: 800 22px var(--sg-font); letter-spacing: .08em; color: var(--sg-thread); min-height: 34px; }
+        .sg-crate-result { margin-top: 8px; font: 700 13px var(--sg-font); color: var(--sg-muted); min-height: 36px; }
+        /* ládák kirakat, csomagok (v0.1.16b) */
+        .sg-gem { display: inline-block !important; width: 15px; height: 15px; vertical-align: -3px; margin-right: 2px; filter: drop-shadow(0 0 3px rgba(90,140,255,.6)); }
+        .sg-showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .sg-crate { position: relative; display: flex; flex-direction: column; align-items: center; padding: 0 0 8px; overflow: hidden;
+            background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,250,220,.20), transparent 70%), linear-gradient(180deg, #2a2d24 0%, #15170f 75%);
+            border: 1.5px solid color-mix(in srgb, var(--tc) 55%, #15170f); box-shadow: inset 0 -30px 40px -20px color-mix(in srgb, var(--tc) 35%, transparent); }
+        .sg-crate:before { content: ''; position: absolute; top: 0; left: 50%; width: 46px; height: 5px; transform: translateX(-50%); border-radius: 0 0 8px 8px; background: #fffbe0; box-shadow: 0 0 14px 4px rgba(255,250,210,.55); }
+        .sg-crate-stage { width: 100%; height: 118px; display: flex; align-items: flex-end; justify-content: center; padding-top: 14px;
+            background: radial-gradient(ellipse 45% 18% at 50% 92%, rgba(0,0,0,.65), transparent 70%); }
+        .sg-crate-stage img { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tc) 60%, transparent)); transition: transform .2s; }
+        .sg-crate:hover .sg-crate-stage img { transform: translateY(-3px) scale(1.04); }
+        .sg-crate-name { width: 100%; margin: 4px 0 4px; padding: 3px 0; text-align: center; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tc) 35%, #000), transparent);
+            color: #fff6dc; font: 800 13px var(--sg-font); letter-spacing: .16em; text-shadow: 0 1px 2px #000; }
+        .sg-crate-bars { display: flex; width: 82%; height: 4px; margin-bottom: 6px; background: #000; } .sg-crate-bars i { display: block; height: 100%; }
+        .sg-pill { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 10px; border-radius: 999px; border: 2px solid #c9a14a;
+            background: linear-gradient(180deg, #4c3a6a, #2c2140); color: #fff; font: 800 12px var(--sg-font); letter-spacing: .04em; box-shadow: 0 2px 0 #0b0c08, inset 0 1px 0 rgba(255,255,255,.2); }
+        .sg-pill.big { flex-direction: column; gap: 0; width: 88%; padding: 4px 6px; line-height: 1.15; }
+        .sg-pill.big span { font-size: 9.5px; opacity: .85; letter-spacing: .1em; } .sg-pill.big b { font-size: 15px; } .sg-pill.big small { font-size: 9.5px; opacity: .75; }
+        .sg-pill:disabled { filter: grayscale(.8); opacity: .55; }
+        .sg-badge { position: absolute; z-index: 2; top: 92px; left: 50%; transform: translateX(-50%); padding: 1px 9px; border-radius: 999px; background: linear-gradient(180deg, #5fbf3a, #2f7d1f);
+            border: 1.5px solid #b8f08a; color: #fff; font: 800 9.5px var(--sg-font); letter-spacing: .12em; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
+        .sg-odds-link { margin-top: 5px; background: none; border: 0; color: var(--sg-muted); font: 700 10px var(--sg-font); letter-spacing: .14em; text-decoration: underline; }
+        .sg-crate .sg-odds { width: 94%; }
+        .sg-found { margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .sg-found-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 25%, #15170f), rgba(0,0,0,.35)); border: 1px solid color-mix(in srgb, var(--tc) 50%, #15170f); }
+        .sg-found-row > img { width: 42px; height: 42px; object-fit: contain; } .sg-found-row div { flex: 1; color: var(--sg-thread); font: 700 13px var(--sg-font); }
+        .sg-found-row small { display: block; color: var(--sg-muted); font-size: 10.5px; }
+        .sg-pkgs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .sg-pkg { position: relative; display: flex; flex-direction: column; align-items: center; padding: 10px 6px 8px; color: var(--sg-thread);
+            background: radial-gradient(ellipse 60% 55% at 50% 30%, rgba(80,120,255,.22), transparent 70%), linear-gradient(180deg, #24283a, #13151d); border: 1.5px solid #3a4470; }
+        .sg-pkg.on { border-color: #e8c35a; box-shadow: 0 0 0 2px #e8c35a, 0 0 18px rgba(232,195,90,.35); }
+        .sg-pkg .sg-badge { top: 4px; }
+        .sg-pkg-gems { position: relative; height: 54px; width: 100%; display: flex; justify-content: center; align-items: flex-end; }
+        .sg-pkg-gems img { width: 44px; height: 44px; margin: 0 -9px; transform: translateY(calc(var(--k) * -4px)) rotate(calc(var(--k) * 9deg - 12deg)); filter: drop-shadow(0 0 6px rgba(90,140,255,.7)); }
+        .sg-pkg b { margin-top: 4px; font: 800 18px var(--sg-font); } .sg-pkg small { color: var(--sg-muted); font: 600 11px var(--sg-font); }
+        .sg-pkg-price { margin-top: 5px; padding: 2px 12px; border-radius: 999px; background: linear-gradient(180deg, #4c3a6a, #2c2140); border: 1.5px solid #c9a14a; font: 800 13px var(--sg-font); }
+        .sg-prem-icon { display: block; width: 52px; height: 52px; margin: 0 auto 4px; object-fit: contain; }
+        .sg-prem-card { background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 16%, #1d2017), #14160f 80%); }
+        /* kinézet: keret és cím */
+        .sg-ava.sg-cos:after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 3px solid var(--cos-c); pointer-events: none; }
+        .sg-ava.sg-cos.glow:after, .sg-marker.sg-cos.glow { box-shadow: 0 0 10px var(--cos-c); }
+        .sg-ava.sg-cos.pulse:after, .sg-marker.sg-cos.pulse { animation: sg-cos-pulse 2.2s ease-in-out infinite; }
+        .sg-ava.sg-cos.camo:after { border-style: dashed; }
+        @keyframes sg-cos-pulse { 0%, 100% { box-shadow: 0 0 4px var(--cos-c); } 50% { box-shadow: 0 0 16px var(--cos-c); } }
+        .sg-marker.sg-cos { border-color: var(--cos-c) !important; border-width: 3px; }
+        .sg-marker.sg-cos.camo { border-style: dashed; }
+        .sg-marker-title { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 4px); padding: 0 4px; background: rgba(0,0,0,.75); color: var(--cos-c); font: 700 8px var(--sg-font); letter-spacing: .1em; white-space: nowrap; pointer-events: none; }
+        .sg-marker-staff + .sg-marker-title { display: none; }
+        #admin-panel-modal { position: fixed; inset: 0; z-index: 9990; display: flex; flex-direction: column; background: #14160f; }
+        #admin-panel-modal.hidden { display: none; }
+        .sg-adm-bar { display: flex; align-items: center; gap: 10px; padding: calc(var(--sg-safe-t) + 6px) 10px 6px; background: #0e100b; border-bottom: 1px solid #3d4430; color: #d9c58a; font: 800 13px var(--sg-font); letter-spacing: .14em; }
+        .sg-adm-bar a { color: #9d9784; font: 600 12px var(--sg-font); }
+        .sg-adm-bar button { background: #59652f; border: 1px solid #0b0c08; color: #e9e3cf; font: 800 12px var(--sg-font); letter-spacing: .1em; padding: 6px 10px; cursor: pointer; }
+        #admin-panel-frame { flex: 1; width: 100%; border: 0; background: #14160f; }
+        .sg-ann-paper { margin-top: 6px; padding: 14px 14px 16px; background: #ece6d6; color: #2a2620; font: 14px/1.55 'Special Elite', 'Courier New', var(--sg-mono);
+            white-space: pre-wrap; max-height: 55vh; overflow-y: auto; transform: rotate(-.3deg); box-shadow: 0 3px 8px rgba(0,0,0,.55); }
+        .sg-ann-title { font: 800 15px var(--sg-font); letter-spacing: .14em; color: var(--sg-gold); text-transform: uppercase; }
+        .sg-ann-from { font: 600 10px var(--sg-mono); color: var(--sg-muted); letter-spacing: .1em; margin-top: 2px; }
+        .sg-bug-ta { width: 100%; min-height: 120px; margin-top: 8px; padding: 10px; background: #ece6d6; color: #2a2620; border: 2px solid var(--sg-dark); font: 13px/1.45 var(--sg-font); }
+        .sg-event-chip { position: absolute; z-index: 1001; left: 50%; transform: translateX(-50%); top: calc(var(--sg-safe-t) + 134px); padding: 4px 12px; pointer-events: none;
+            background: rgba(94,68,25,.92); border: 1.5px solid var(--sg-gold); color: #ffe9b8; font: 800 11px var(--sg-font); letter-spacing: .16em; white-space: nowrap;
+            box-shadow: 0 3px 8px rgba(0,0,0,.6); animation: sg-pop .35s ease-out; }
+        .sg-notice-big { position: fixed; z-index: 9998; left: 50%; top: calc(var(--sg-safe-t) + 14px); transform: translateX(-50%); width: min(92vw, 26rem); padding: 12px 14px;
+            background: rgba(120,24,18,.96); border: 2px solid #f0b8a8; color: #fff3ec; font: 700 14px/1.4 var(--sg-font); box-shadow: 0 10px 30px rgba(0,0,0,.8); cursor: pointer; animation: sg-pop .35s ease-out; }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -444,7 +575,7 @@
                 <div class="text-center mt-3">
                     <button id="auth-switch-btn" onclick="toggleAuthMode()" class="text-xs text-emerald-400 hover:text-emerald-300 underline font-mono">Még nincs fiókod? Regisztráció</button>
                 </div>
-                <div class="sg-auth-foot">Elfelejtetted a jelszavad? Írj a <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre vagy Discordon.<br><a href="/adatvedelem.html" target="_blank" rel="noopener">Adatkezelési tájékoztató</a></div>
+                <div class="sg-auth-foot">Elfelejtetted a jelszavad? Írj a <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre vagy Discordon.<br><a href="/wiki" target="_blank" rel="noopener">📖 Wiki: hogyan kell játszani?</a> · <a href="/adatvedelem.html" target="_blank" rel="noopener">Adatkezelési tájékoztató</a></div>
             </div>
         </div>
     </div>
@@ -461,6 +592,21 @@
                 <button id="btn-open-journal" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     📓 Napló (az utolsó események)
                 </button>
+                <button id="btn-open-premium" onclick="openPremium()" class="hidden w-full bg-amber-900/40 hover:bg-amber-800/50 border border-amber-500/80 py-2.5 rounded-xl text-xs font-bold text-amber-200 flex items-center justify-center gap-2 transition shadow">
+                    💎 Prémium bolt <span id="premium-menu-credits" class="sg-credit-chip">0</span>
+                </button>
+                <a href="/wiki" target="_blank" rel="noopener" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
+                    📖 Wiki: tárgyak, receptek, útmutatók
+                </a>
+                <button id="btn-open-bug" onclick="openBugModal()" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
+                    🐞 Hibát találtam / ötletem van
+                </button>
+                <button id="btn-open-support" onclick="openSupportModal()" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
+                    💬 Üzenet a stábnak <b id="support-badge" class="sg-inline-badge hidden">0</b>
+                </button>
+                <a id="btn-open-admin" href="/admin" onclick="return openAdminPanel()" class="hidden w-full bg-amber-900/50 hover:bg-amber-800/60 border border-amber-600/80 py-2.5 rounded-xl text-xs font-bold text-amber-200 flex items-center justify-center gap-2 transition shadow">
+                    🛠️ Admin panel <b id="admin-badge" class="sg-inline-badge hidden">0</b>
+                </a>
                 <a href="/adatvedelem.html" target="_blank" rel="noopener" class="sg-auth-foot" style="display:block">Adatkezelési tájékoztató · fióktörlés: info@survivalgo.hu</a>
                 <button onclick="location.reload()" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     🔄 Oldal Frissítése / Újratöltés
@@ -593,6 +739,7 @@
                     </svg>
                     <div id="hud-avatar" class="sg-ava-img"></div>
                     <span id="hud-rank-patch" class="sg-rank-patch" title="Rang"></span>
+                    <span id="hud-staff" class="sg-staff hidden"></span>
                 </div>
                 <div class="sg-idtext">
                     <div class="sg-nameline"><span id="hud-name" class="sg-tape">Túlélő</span><span id="hud-badge" class="hidden sg-early" title="Korai túlélő">🎖️</span></div>
@@ -667,7 +814,7 @@
             <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
             <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Rádió</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
-            <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span></button>
+            <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span><b id="nav-menu-badge" class="nav-badge hidden">0</b></button>
         </nav>
 
     <!-- ÁTKUTATÁS FOLYAMATBAN (map.js: startSearchProgress) -->
@@ -775,6 +922,66 @@
             </div>
         </div>
     </div>
+    <!-- BEJELENTÉS (üdvözlő üzenet, hírek) és HIBAJELENTÉS (v0.1.13, js/notices.js) -->
+    <div id="announce-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3300]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-5 clipped-panel shadow-2xl">
+            <div id="announce-title" class="sg-ann-title"></div>
+            <div id="announce-from" class="sg-ann-from"></div>
+            <div id="announce-body" class="sg-ann-paper"></div>
+            <button id="announce-ok" onclick="announceOk()" class="sg-tu-big" style="margin-top:14px">RENDBEN</button>
+        </div>
+    </div>
+    <div id="bug-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3300]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-5 clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center">
+                <div class="sg-ann-title">🐞 Hibajelentés, ötlet</div>
+                <button onclick="closeBugModal()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div class="sg-ann-from">Mi történt, hol, mit csináltál előtte? Az ötleteknek is örülünk.</div>
+            <textarea id="bug-text" class="sg-bug-ta" maxlength="1500" placeholder="Pl.: a Barkács ablakban nem jelenik meg a kötszer recept…"></textarea>
+            <div id="bug-msg" class="sg-ann-from" style="min-height:14px"></div>
+            <button id="bug-send" onclick="sendBugReport()" class="sg-tu-big">KÜLDÉS</button>
+        </div>
+    </div>
+    <div id="event-chip" class="sg-event-chip hidden"></div>
+
+    <!-- CSEVEGÉS A STÁBBAL és JÁTÉKON BELÜLI ADMIN PANEL (v0.1.14, js/staff.js) -->
+    <div id="support-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl flex flex-col" style="height:min(620px,86vh)">
+            <div class="flex justify-between items-center">
+                <div class="sg-ann-title">💬 Üzenet a stábnak</div>
+                <button onclick="closeSupportModal()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div class="sg-ann-from">Kérdés, gond, ötlet? Írj nyugodtan, amint tudunk, válaszolunk.</div>
+            <div id="support-list" class="sg-chat"></div>
+            <div class="sg-chat-send">
+                <textarea id="support-text" maxlength="500" rows="2" placeholder="Írd ide az üzenetedet…"></textarea>
+                <button id="support-send" onclick="sendSupport()" class="sg-tu-big" style="margin:0;width:auto;padding:0 16px">KÜLD</button>
+            </div>
+            <div id="support-err" class="sg-ann-from" style="min-height:14px"></div>
+        </div>
+    </div>
+    <!-- PRÉMIUM BOLT (v0.1.16, js/premium-ui.js) -->
+    <div id="premium-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3">
+        <div class="hud-panel w-full max-w-lg rounded-2xl p-4 clipped-panel shadow-2xl flex flex-col" style="height:min(720px,90vh)">
+            <div class="flex justify-between items-center">
+                <div class="sg-ann-title">💎 Prémium bolt</div>
+                <div class="flex items-center gap-2"><span class="sg-credit-chip big" id="premium-credits">0</span><button onclick="closePremium()" class="text-emerald-500 text-lg font-bold">✕</button></div>
+            </div>
+            <div id="premium-test-note" class="sg-prem-note hidden">TESZT ÜZEMMÓD – csak a stáb látja. Ne utalj valódi pénzt!</div>
+            <div class="sg-prem-tabs" id="premium-tabs">
+                <button data-pt="shop" class="on">BOLT</button><button data-pt="crates">LÁDÁK</button><button data-pt="mine">GYŰJTEMÉNYEM</button><button data-pt="buy">CREDIT VÁSÁRLÁS</button>
+            </div>
+            <div id="premium-body" class="sg-prem-body"></div>
+        </div>
+    </div>
+    <div id="crate-reveal" class="hidden"><div class="sg-crate-box"><img id="crate-img" alt="" style="width:120px;height:120px;object-fit:contain"><div id="crate-spin" class="sg-crate-spin"></div><div id="crate-result" class="sg-crate-result"></div><button id="crate-ok" class="sg-tu-big hidden" onclick="closeCrateReveal()">SZUPER!</button></div></div>
+
+    <div id="admin-panel-modal" class="hidden">
+        <div class="sg-adm-bar"><b>🛠️ ADMIN PANEL</b><span style="flex:1"></span><a href="/admin" target="_blank" rel="noopener">új lapon ↗</a><button onclick="closeAdminPanel()">✕ VISSZA A JÁTÉKHOZ</button></div>
+        <iframe id="admin-panel-frame" title="Admin panel"></iframe>
+    </div>
+
     <div id="daily-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3100]">
         <div class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl">
             <div class="flex justify-between items-center mb-2">
@@ -830,6 +1037,7 @@
     <script src="js/socket.js"></script>
     <script src="js/player.js"></script>
     <script src="js/items.js"></script>
+    <script src="js/roles.js"></script>
     <script src="js/recipes.js"></script>
     <script src="js/stats.js"></script>
     <script src="js/buildings.js"></script>
@@ -838,8 +1046,13 @@
     <script src="js/daily.js"></script>
     <script src="js/combat.js"></script>
     <script src="js/map.js"></script>
+    <script src="js/drag.js"></script>
     <script src="js/main.js"></script>
     <script src="js/tutorial-ui.js"></script>
+    <script src="js/notices.js"></script>
+    <script src="js/staff.js"></script>
+    <script src="js/shop.js"></script>
+    <script src="js/premium-ui.js"></script>
     <script src="/js/auth.js"></script>
 </body>
 </html>

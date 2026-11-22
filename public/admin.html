@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Survival GO – Admin</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root { --bg: #14160f; --panel: #22261a; --panel2: #2b3021; --line: #3d4430; --text: #e9e3cf; --muted: #9d9784; --gold: #d9c58a; --green: #8fa64a; --red: #c9533f; --blue: #6f9ec9;
+  --font: 'Barlow Condensed', 'Arial Narrow', sans-serif; --mono: 'Share Tech Mono', ui-monospace, monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 500 15px/1.35 var(--font); }
+a { color: var(--gold); }
+header { position: sticky; top: 0; z-index: 1000; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #0e100b; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { margin: 0; font-size: 20px; letter-spacing: .14em; color: var(--gold); font-weight: 800; }
+header .sp { flex: 1; }
+.upd { font: 12px var(--mono); color: var(--muted); }
+nav { display: flex; gap: 2px; padding: 0 12px; background: #0e100b; border-bottom: 1px solid var(--line); overflow-x: auto; position: sticky; top: 52px; z-index: 999; }
+nav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); font: 700 14px var(--font); letter-spacing: .1em; padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+nav button.on { color: var(--text); border-bottom-color: var(--gold); }
+nav button .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--red); color: #fff; font-size: 12px; }
+main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+.tab { display: none; } .tab.on { display: block; }
+.grid { display: grid; gap: 12px; }
+.cards { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.two { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; }
+.card h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .16em; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+.kpi .v { font: 800 30px var(--font); color: var(--text); }
+.kpi .s { font: 12px var(--mono); color: var(--muted); }
+.btn { background: #59652f; border: 1px solid #0b0c08; color: var(--text); font: 700 13px var(--font); letter-spacing: .1em; padding: 7px 12px; cursor: pointer; }
+.btn:hover { filter: brightness(1.15); } .btn.ghost { background: var(--panel2); } .btn.red { background: #7a2a1e; } .btn.gold { background: #6b5320; } .btn:disabled { opacity: .5; cursor: default; }
+input, textarea, select { background: #0f110c; border: 1px solid var(--line); color: var(--text); font: 500 14px var(--font); padding: 7px 9px; }
+textarea { width: 100%; min-height: 150px; font: 14px/1.5 var(--font); }
+label { display: block; font-size: 12px; letter-spacing: .12em; color: var(--muted); margin: 8px 0 3px; text-transform: uppercase; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid #2c3123; text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--panel2); color: var(--gold); font-size: 12px; letter-spacing: .1em; cursor: pointer; user-select: none; }
+td.n, th.n { text-align: right; font-family: var(--mono); }
+tr.click:hover td { background: #2a2f20; cursor: pointer; }
+.tblwrap { overflow: auto; max-height: 70vh; border: 1px solid var(--line); }
+.pill { display: inline-block; padding: 0 6px; font-size: 12px; border: 1px solid var(--line); margin-right: 3px; }
+.pill.on { border-color: var(--green); color: #c7dd7d; } .pill.red { border-color: var(--red); color: #f0a090; } .pill.gold { border-color: var(--gold); color: var(--gold); }
+.muted { color: var(--muted); } .mono { font-family: var(--mono); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.msg { position: fixed; right: 16px; bottom: 16px; z-index: 5000; max-width: 420px; padding: 12px 14px; background: #2f3a1c; border: 1px solid var(--green); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+.msg.err { background: #3a1c18; border-color: var(--red); }
+#map { height: 72vh; border: 1px solid var(--line); background: #0b0c09; }
+.bar { fill: var(--green); } .bar2 { fill: var(--gold); } svg text { fill: var(--muted); font: 11px var(--mono); }
+.funnel div { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.funnel i { display: block; height: 16px; background: var(--green); }
+.funnel span { width: 160px; font-size: 14px; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(720px, 100vw); background: #181b12; border-left: 1px solid var(--line); z-index: 3000; overflow-y: auto; padding: 16px; box-shadow: -12px 0 30px rgba(0,0,0,.6); }
+.drawer h2 { margin: 0; color: var(--gold); letter-spacing: .1em; }
+.paper { background: #ece6d6; color: #2a2620; padding: 12px; white-space: pre-wrap; font: 14px/1.5 'Courier New', monospace; }
+.ev { font: 13px var(--mono); padding: 3px 0; border-bottom: 1px dashed #2c3123; }
+.ev b { color: var(--gold); font-weight: normal; }
+#login { max-width: 360px; margin: 12vh auto; }
+.role-tag { display: inline-block; padding: 0 5px; margin-left: 4px; border: 1px solid var(--rc); color: var(--rc); font-size: 11px; letter-spacing: .1em; }
+.conv { padding: 9px 12px; border-bottom: 1px solid #2c3123; cursor: pointer; } .conv:hover, .conv.on { background: #2a2f20; }
+.conv b { color: var(--text); } .conv .muted { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm { max-width: 78%; margin: 6px 0; padding: 7px 10px; white-space: pre-wrap; word-wrap: break-word; }
+.cm.player { background: #2b3021; } .cm.staff { margin-left: auto; background: #4a5427; }
+.cm small { display: block; color: var(--muted); font: 11px var(--mono); margin-bottom: 2px; }
+body.embed header h1 { font-size: 15px; }
+@media (max-width: 700px) { #chat-grid { grid-template-columns: 1fr !important; } }
+.hidden { display: none !important; }
+@media (max-width: 600px) { .two { grid-template-columns: 1fr; } main { padding: 10px; } header { position: static; } nav { top: 0; } }
+</style>
+</head>
+<body>
+<script>if (/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');</script>
+<div id="login" class="card hidden">
+  <h3>Survival GO · Admin belépés</h3>
+  <p class="muted" id="login-why">Lépj be az admin fiókoddal (ugyanaz, mint a játékban).</p>
+  <label>Felhasználónév</label><input id="lu" style="width:100%">
+  <label>Jelszó</label><input id="lp" type="password" style="width:100%">
+  <div style="margin-top:12px"><button class="btn" onclick="doLogin()">BELÉPÉS</button></div>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <h1>SURVIVAL GO · ADMIN</h1>
+  <span id="me-role" class="pill"></span>
+  <span class="upd" id="upd"></span>
+  <span class="sp"></span>
+  <label class="upd" style="margin:0;text-transform:none;letter-spacing:0"><input type="checkbox" id="auto" checked> automatikus frissítés</label>
+  <button class="btn ghost" onclick="refreshAll()">↻ FRISSÍTÉS</button>
+  <button class="btn gold" id="btn-excel" data-perm="export" onclick="downloadExcel()">⬇ LETÖLTÉS EXCELBE</button>
+</header>
+<nav id="tabs">
+  <button data-t="ov" class="on">ÁTTEKINTÉS</button>
+  <button data-t="map">TÉRKÉP</button>
+  <button data-t="pl">JÁTÉKOSOK</button>
+  <button data-t="chat" data-perm="support">CSEVEGÉS <span id="chat-badge" class="badge hidden"></span></button>
+  <button data-t="msg" data-perm="announce">ÜZENETEK</button>
+  <button data-t="prem" data-perm="premium">PRÉMIUM <span id="prem-badge" class="badge hidden"></span></button>
+  <button data-t="rep">HIBAJELENTÉSEK <span id="rep-badge" class="badge hidden"></span></button>
+  <button data-t="evt" data-perm="events">EVENTEK</button>
+  <button data-t="eco">GAZDASÁG</button>
+  <button data-t="log">NAPLÓ</button>
+  <button data-t="srv" data-perm="server">SZERVER</button>
+  <button data-t="staff">STÁB</button>
+</nav>
+<main>
+  <!-- ÁTTEKINTÉS -->
+  <section class="tab on" id="t-ov">
+    <div class="grid cards" id="kpis"></div>
+    <div class="grid two" style="margin-top:12px">
+      <div class="card"><h3>Napi regisztráció és aktív játékos (30 nap)</h3><div id="ch-daily"></div><div class="muted mono" style="font-size:12px">■ <span style="color:var(--gold)">regisztráció</span> &nbsp; ■ <span style="color:var(--green)">aktív</span></div></div>
+      <div class="card"><h3>Mikor játszanak? (átlagos online óránként, 14 nap)</h3><div id="ch-hour"></div><div class="muted mono" style="font-size:12px" id="peak"></div></div>
+      <div class="card"><h3>Visszatérők</h3><div id="ret"></div></div>
+      <div class="card"><h3>Hol akadnak el az újak? (Első lépések)</h3><div id="funnel" class="funnel"></div></div>
+    </div>
+    <div class="card" style="margin-top:12px"><h3>Most online</h3><div id="online-list"></div></div>
+  </section>
+
+  <!-- TÉRKÉP -->
+  <section class="tab" id="t-map">
+    <div class="row" style="margin-bottom:8px"><span class="pill on">● online</span><span class="pill red">● harcban</span><span class="muted">Csak az épp online játékosok látszanak; a helyeket nem mentjük el.</span>
+      <button class="btn ghost" onclick="fitMap()">MINDENKI MUTATÁSA</button></div>
+    <div id="map"></div>
+  </section>
+
+  <!-- JÁTÉKOSOK -->
+  <section class="tab" id="t-pl">
+    <div class="row" style="margin-bottom:8px">
+      <input id="pl-q" placeholder="Keresés név vagy e-mail szerint…" style="width:280px" oninput="renderPlayers()">
+      <select id="pl-f" onchange="renderPlayers()"><option value="">mindenki</option><option value="online">online</option><option value="dead">halott</option><option value="banned">tiltott</option><option value="early">korai túlélő</option><option value="staff">stáb</option><option value="never">még nem játszott</option></select>
+      <span class="muted" id="pl-count"></span>
+      <span class="sp" style="flex:1"></span>
+      <button class="btn gold" data-perm="gift_all" onclick="openGift(null)">🎁 AJÁNDÉK MINDENKINEK</button>
+    </div>
+    <div class="tblwrap"><table id="pl-table"></table></div>
+  </section>
+
+  <!-- CSEVEGÉS -->
+  <section class="tab" id="t-chat">
+    <div class="grid" style="grid-template-columns:minmax(220px,320px) 1fr;align-items:start" id="chat-grid">
+      <div class="card" style="padding:0"><div id="chat-convs" style="max-height:72vh;overflow:auto"></div></div>
+      <div class="card" id="chat-thread-card">
+        <div class="row"><b id="chat-who" style="color:var(--gold);font-size:18px">Válassz egy beszélgetést</b><span id="chat-on"></span><span class="sp" style="flex:1"></span><button class="btn ghost hidden" id="chat-open-p" onclick="openPlayer(chatUser)">ADATLAP</button></div>
+        <div id="chat-thread" style="height:52vh;overflow:auto;margin:10px 0;padding:8px;background:#0f110c;border:1px solid var(--line)"></div>
+        <div class="row"><textarea id="chat-text" style="min-height:60px;flex:1" maxlength="1000" placeholder="Válasz… (Enter: küldés, Shift+Enter: új sor)"></textarea><button class="btn" onclick="sendChat()">KÜLDÉS</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRÉMIUM -->
+  <section class="tab" id="t-prem">
+    <div id="prem-mode" class="card" style="margin-bottom:12px"></div>
+    <div class="grid cards" id="prem-kpis"></div>
+    <div class="row" style="margin:12px 0 8px"><select id="prem-f" onchange="renderPremOrders()"><option value="pending">utalásra vár</option><option value="">mind</option><option value="paid">jóváírva</option><option value="cancelled">törölve</option><option value="expired">lejárt</option></select>
+      <input id="prem-q" placeholder="Keresés: közlemény, név, játékos" oninput="renderPremOrders()" style="width:260px"></div>
+    <div class="tblwrap"><table id="prem-orders"></table></div>
+    <div class="grid two" style="margin-top:12px">
+      <div class="card"><h3>Credit egyenlegek</h3><div id="prem-holders"></div></div>
+      <div class="card"><h3>Credit napló</h3><div class="row"><input id="prem-led-user" placeholder="játékos (üres: mind)" style="width:200px"><button class="btn ghost" onclick="loadLedger()">MUTAT</button></div><div id="prem-ledger" style="max-height:50vh;overflow:auto;margin-top:8px"></div></div>
+    </div>
+  </section>
+
+  <!-- STÁB -->
+  <section class="tab" id="t-staff">
+    <div class="grid">
+      <div class="card"><h3>A stáb tagjai</h3><div id="staff-list"></div><p class="muted" id="staff-how"></p></div>
+      <div class="card"><h3>Rangok és jogok</h3><div id="roles-table"></div></div>
+    </div>
+  </section>
+
+  <!-- ÜZENETEK -->
+  <section class="tab" id="t-msg">
+    <div class="grid two">
+      <div class="card">
+        <h3>Új bejelentés (mindenki egyszer kapja meg: a már regisztráltak a következő belépéskor, az újak az első belépéskor)</h3>
+        <label>Cím</label><input id="ann-title" style="width:100%" maxlength="80" placeholder="Üdv a Zónában, túlélő!">
+        <label>Szöveg</label><textarea id="ann-body" maxlength="3000" placeholder="Írd ide az üdvözlő üzenetet…"></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="postAnn()">KÖZZÉTÉTEL</button><span class="muted">Előnézet: lent</span></div>
+        <label>Előnézet</label><div class="paper" id="ann-prev"></div>
+      </div>
+      <div class="card">
+        <h3>Gyors üzenet mindenkinek, aki MOST online (felugró sáv)</h3>
+        <input id="bc-text" style="width:100%" maxlength="300" placeholder="Pl.: 5 perc múlva rövid frissítés, mentsétek a cuccot!">
+        <div class="row" style="margin-top:8px"><button class="btn red" onclick="broadcast()">KÜLDÉS MOST</button>
+          <button class="btn ghost" onclick="bcPreset('5 perc múlva rövid frissítés jön, kb. 1 percre megszakad a kapcsolat.')">sablon: frissítés</button></div>
+        <h3 style="margin-top:20px">Korábbi bejelentések</h3>
+        <div id="ann-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HIBAJELENTÉSEK -->
+  <section class="tab" id="t-rep">
+    <div class="row" style="margin-bottom:8px"><select id="rep-f" onchange="renderReports()"><option value="open">nyitott</option><option value="">mind</option><option value="done">megoldva</option><option value="ignored">félretéve</option></select></div>
+    <div id="rep-list"></div>
+  </section>
+
+  <!-- EVENTEK -->
+  <section class="tab" id="t-evt">
+    <div class="grid two">
+      <div class="card">
+        <h3>Élő játékbeállítások (azonnal érvényes, újraindítás nélkül)</h3>
+        <div id="evt-now" class="paper" style="margin-bottom:10px"></div>
+        <label>Event neve (a játékosok a térkép tetején látják)</label><input id="ev-name" style="width:100%" maxlength="60" placeholder="Pl.: Dupla XP hétvége">
+        <div class="row">
+          <div><label>XP szorzó</label><select id="ev-xp"><option>1</option><option>1.5</option><option>2</option><option>3</option></select></div>
+          <div><label>Zsákmány szorzó</label><select id="ev-loot"><option>1</option><option>1.5</option><option>2</option><option>3</option></select></div>
+          <div><label>Vége (üresen: amíg ki nem kapcsolod)</label><input id="ev-until" type="datetime-local"></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn" onclick="saveEvent()">ÉLESÍTÉS</button><button class="btn red" onclick="stopEvent()">EVENT KIKAPCSOLÁSA</button></div>
+      </div>
+      <div class="card">
+        <h3>Sablonok</h3>
+        <div class="row">
+          <button class="btn ghost" onclick="presetEvent('Dupla XP hétvége', 2, 1, 'weekend')">Dupla XP hétvége</button>
+          <button class="btn ghost" onclick="presetEvent('Mikulás-nap', 1, 2, 'day', '12-06')">Mikulás-nap (dupla zsákmány)</button>
+          <button class="btn ghost" onclick="presetEvent('Karácsonyi túlélés', 1.5, 1.5, 'range', '12-24', '12-26')">Karácsony (1,5× minden)</button>
+          <button class="btn ghost" onclick="presetEvent('Szilveszteri buli', 2, 2, 'range', '12-31', '01-01')">Szilveszter (2× minden)</button>
+        </div>
+        <p class="muted">A sablon csak kitölti a mezőket, az ÉLESÍTÉS gombbal indul. A sorban az adventi naptár következik, az is ide kerül majd.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAZDASÁG -->
+  <section class="tab" id="t-eco">
+    <div class="grid two">
+      <div class="card"><h3>Leggazdagabbak</h3><div id="eco-rich"></div></div>
+      <div class="card"><h3>Ellenfelek: hányszor győzték le / hány játékost öltek meg</h3><div id="eco-en"></div></div>
+      <div class="card" style="grid-column:1/-1"><h3>A leggyakoribb tárgyak a játékosoknál (hátizsák + felszerelés)</h3><div id="eco-items"></div></div>
+    </div>
+  </section>
+
+  <!-- NAPLÓ -->
+  <section class="tab" id="t-log">
+    <div class="row" style="margin-bottom:8px">
+      <select id="log-type" onchange="loadLog()"><option value="">minden esemény</option><option value="register">regisztráció</option><option value="login">belépés</option><option value="level_up">szintlépés</option><option value="death">halál</option><option value="combat_won">győzelem</option><option value="loot">átkutatás</option><option value="craft">barkács</option><option value="respawn">újrakezdés</option><option value="admin">admin műveletek</option></select>
+      <input id="log-user" placeholder="játékos neve" oninput="clearTimeout(window._lt); window._lt = setTimeout(loadLog, 500)">
+    </div>
+    <div class="card" id="log-list"></div>
+  </section>
+
+  <!-- SZERVER -->
+  <section class="tab" id="t-srv">
+    <div class="grid cards" id="srv-kpis"></div>
+    <div class="grid two" style="margin-top:12px">
+      <div class="card"><h3>Mentés</h3><div id="srv-backup"></div><div style="margin-top:8px"><button class="btn" id="btn-backup" onclick="backupNow()">MENTÉS MOST</button></div></div>
+      <div class="card"><h3>Legutóbbi szerverhibák</h3><div id="srv-err"></div></div>
+    </div>
+  </section>
+</main>
+</div>
+
+<div id="drawer" class="drawer hidden"></div>
+<div id="msg" class="msg hidden"></div>
+
+<script src="/js/items.js"></script>
+<script src="/js/roles.js"></script>
+<script src="/js/shop.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const TOKEN_KEY = 'survival_go_token';
+const token = () => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('hu-HU');
+const dt = (ms) => ms ? new Date(ms).toLocaleString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '–';
+function ago(ms) { if (!ms) return '–'; const m = Math.floor((Date.now() - ms) / 60000); if (m < 2) return 'most'; if (m < 60) return m + ' perce'; if (m < 1440) return Math.floor(m / 60) + ' órája'; return Math.floor(m / 1440) + ' napja'; }
+const RANKS = [['Újonc', 1], ['Kadét', 5], ['Őrvezető', 10], ['Tizedes', 15], ['Őrmester', 20], ['Törzsőrmester', 25], ['Zászlós', 30], ['Hadnagy', 35], ['Főhadnagy', 40], ['Százados', 45], ['Őrnagy', 50], ['Ezredes', 60], ['Zóna-parancsnok', 75]];
+const rank = (l) => { let r = RANKS[0][0]; RANKS.forEach(([n, x]) => { if (l >= x) r = n; }); return r; };
+let ME = { role: '', perms: [] };
+const can = (p) => ME.perms.includes(p);
+const roleTag = (key) => { const r = window.SurvivalRoles && SurvivalRoles.info(key); return r ? `<span class="role-tag" style="--rc:${r.color}">${r.tag}</span>` : ''; };
+function applyPerms() {
+  document.querySelectorAll('[data-perm]').forEach(el => el.classList.toggle('hidden', !can(el.dataset.perm)));
+  const r = SurvivalRoles.info(ME.role);
+  $('me-role').textContent = `${ME.username} · ${r ? r.name : ''}`; $('me-role').style.borderColor = r ? r.color : ''; $('me-role').style.color = r ? r.color : '';
+}
+const SLOT_HU = { weapon: 'Elsődleges fegyver', secondary: 'Másodlagos fegyver', melee: 'Közelharci', helmet: 'Sisak', torso: 'Felső', armor: 'Mellény', legs: 'Nadrág', shoes: 'Cipő', backpack: 'Hátizsák' };
+const EV_NAMES = { register: '🆕 regisztrált', login: '🔌 belépett', level_up: '⬆️ szintet lépett', death: '💀 meghalt', combat_won: '⚔️ harcot nyert', loot: '🏚 átkutatott egy épületet', craft: '🔧 barkácsolt', respawn: '♻️ újrakezdte', admin: '🛠️ admin'};
+
+function toast(text, err) { const m = $('msg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : ''); clearTimeout(m._t); m._t = setTimeout(() => m.classList.add('hidden'), 5000); }
+async function api(url, opts) {
+  opts = opts || {};
+  const r = await fetch(url, { method: opts.method || 'GET', headers: { 'Authorization': 'Bearer ' + token(), ...(opts.body ? { 'Content-Type': 'application/json' } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  let d = null; try { d = await r.json(); } catch (e) { }
+  if (r.status === 401 || r.status === 403) { showLogin((d && d.message) || ''); throw new Error('auth'); }
+  if (!r.ok || !d || d.success === false) { const m = (d && d.message) || ('Hiba: ' + r.status); if (!opts.quiet) toast(m, true); throw new Error(m); }
+  return d;
+}
+function showLogin(why) { $('app').classList.add('hidden'); $('login').classList.remove('hidden'); if (why) $('login-why').textContent = why; }
+async function doLogin() {
+  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: $('lu').value.trim(), password: $('lp').value }) });
+  const d = await r.json();
+  if (!d.success) { $('login-why').textContent = d.message || 'Hibás belépés.'; return; }
+  try { localStorage.setItem(TOKEN_KEY, d.token); } catch (e) { }
+  start();
+}
+$('lp').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ---------- fülek ----------
+let curTab = 'ov';
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 't-' + b.dataset.t));
+  curTab = b.dataset.t;
+  if (curTab === 'map') { initMap(); setTimeout(() => map && map.invalidateSize(), 50); }
+  if (curTab === 'msg') loadAnn();
+  if (curTab === 'rep') loadReports();
+  if (curTab === 'log') loadLog();
+  if (curTab === 'pl') loadPlayers();
+  if (curTab === 'chat') loadConvs();
+  if (curTab === 'staff') renderStaff();
+  if (curTab === 'prem') { loadPrem(); loadLedger(); }
+});
+function showTab(t) { const b = document.querySelector(`#tabs button[data-t="${t}"]`); if (b && !b.classList.contains('hidden')) b.click(); }
+
+// ---------- áttekintés ----------
+let OV = null;
+async function loadOverview() {
+  OV = await api('/api/admin/overview', { quiet: true });
+  const t = OV.totals;
+  const k = (label, v, s) => `<div class="card kpi"><h3>${label}</h3><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+  $('kpis').innerHTML = [
+    k('Regisztrált', fmt(t.users), `ma +${t.today} · 7 nap +${t.week}`),
+    k('Online most', fmt(t.online), `utolsó óra: ${t.active1h}`),
+    k('Aktív 24 óra', fmt(t.active24h), `7 nap: ${t.active7d}`),
+    k('Korai túlélő', `${t.early} / ${t.earlyLimit}`, `még ${Math.max(0, t.earlyLimit - t.early)} hely`),
+    k('Még nem játszott', fmt(t.neverPlayed), 'regisztrált, de nem lépett be'),
+    k('Átkutatott épület', fmt(t.looted), `barkácsolt tárgy: ${fmt(t.crafted)}`),
+    k('Legyőzött ellenfél', fmt(t.kills), `halálok: ${fmt(t.deaths)} · most halott: ${t.dead}`),
+    k('Gyaloglás', t.km + ' km', 'összesen'),
+    k('Pénz a játékban', fmt(t.money) + ' $', ''),
+    k('Tiltott fiók', fmt(t.banned), ''),
+    k('Nyitott hibajelentés', fmt(t.openReports), '')
+  ].join('');
+  $('rep-badge').textContent = t.openReports; $('rep-badge').classList.toggle('hidden', !t.openReports);
+  $('ch-daily').innerHTML = barChart(OV.daily.map(d => d.day.slice(5)), [OV.daily.map(d => d.regs), OV.daily.map(d => d.active)], ['bar2', 'bar']);
+  $('ch-hour').innerHTML = barChart(OV.byHour.map(h => String(h.hour)), [OV.byHour.map(h => h.avg)], ['bar']);
+  $('peak').textContent = OV.peak.online ? `Csúcs: ${OV.peak.online} játékos egyszerre (${dt(OV.peak.t)})` : 'A mérés most indult: 10 percenként rögzítjük, hányan vannak online.';
+  const r = OV.retention;
+  $('ret').innerHTML = `<div class="row"><div class="kpi"><div class="v">${r.d1 === null ? '–' : r.d1 + '%'}</div><div class="s">másnap visszajött (${r.d1Base} főből)</div></div>
+    <div class="kpi" style="margin-left:30px"><div class="v">${r.d7 === null ? '–' : r.d7 + '%'}</div><div class="s">az első héten visszajött (${r.d7Base} főből)</div></div></div>
+    <p class="muted">A mutató a nyitás után 2, illetve 8 nappal kezd értelmes lenni. Mobiljátékoknál 25–40% másnapi visszatérés már jó.</p>`;
+  const f = OV.funnel, max = Math.max(1, f.registered);
+  const NAMES = { loot: '1. átkutatás', use: '2. evés / ivás', pin: '3. gyorssáv', equip: '4. felszerelés', craft: '5. barkács', combat: '6. harc' };
+  const line = (label, n) => `<div><span>${label}</span><i style="width:${Math.max(2, 300 * n / max)}px"></i><b class="mono">${n}</b> <span class="muted mono" style="width:auto">${Math.round(100 * n / max)}%</span></div>`;
+  $('funnel').innerHTML = line('regisztrált', f.registered) + line('belépett a játékba', f.played) + f.steps.map(s => line(NAMES[s.step] || s.step, s.count)).join('') + line('jutalmat átvette', f.claimed);
+  $('online-list').innerHTML = OV.online.length ? OV.online.map(o => `<span class="pill ${o.combat ? 'red' : 'on'}" style="cursor:pointer" onclick="openPlayer('${esc(o.name)}')">${o.early ? '★' : ''}${esc(o.name)} · ${o.level}. szint · ${o.hp}/${o.maxHp}${o.combat ? ' · HARCBAN' : ''}</span>`).join(' ') : '<span class="muted">Most senki.</span>';
+  renderEco(); renderServer(); renderEventNow(); updateMap();
+  $('upd').textContent = 'frissítve: ' + new Date().toLocaleTimeString('hu-HU');
+}
+function barChart(labels, series, classes) {
+  const W = 640, H = 180, pad = 22, n = labels.length, max = Math.max(1, ...series.flat());
+  const bw = (W - pad) / n, sw = Math.max(2, (bw - 3) / series.length);
+  let s = `<svg viewBox="0 0 ${W} ${H + 18}" width="100%" preserveAspectRatio="none">`;
+  for (let g = 0; g <= 4; g++) { const y = H - (H - 10) * g / 4; s += `<line x1="${pad}" x2="${W}" y1="${y}" y2="${y}" stroke="#2c3123"/><text x="0" y="${y + 4}">${Math.round(max * g / 4 * 10) / 10}</text>`; }
+  labels.forEach((l, i) => {
+    series.forEach((ser, j) => { const h = (H - 10) * ser[i] / max; s += `<rect class="${classes[j]}" x="${pad + i * bw + j * sw + 1}" y="${H - h}" width="${sw - 1}" height="${h}"><title>${esc(l)}: ${ser[i]}</title></rect>`; });
+    if (n <= 24 || i % 3 === 0) s += `<text x="${pad + i * bw + bw / 2}" y="${H + 14}" text-anchor="middle">${esc(l)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+// ---------- térkép ----------
+let map = null, layer = null;
+function initMap() {
+  if (map || !window.L) return;
+  map = L.map('map').setView([47.2, 19.4], 7);
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; Stadia Maps &copy; OpenMapTiles &copy; OpenStreetMap' }).addTo(map);
+  layer = L.layerGroup().addTo(map);
+  updateMap(); setTimeout(fitMap, 200);
+}
+function markers() {
+  const list = [];
+  if (!OV) return list;
+  OV.online.filter(o => o.lat !== null && o.lat !== undefined).forEach(o => list.push({ ...o, kind: o.combat ? 'combat' : 'on' }));
+  return list;
+}
+function updateMap() {
+  if (!map || !layer) return;
+  layer.clearLayers();
+  markers().forEach(m => {
+    const color = m.kind === 'on' ? '#8fa64a' : m.kind === 'combat' ? '#c9533f' : '#77736a';
+    L.circleMarker([m.lat, m.lng], { radius: m.kind === 'off' ? 5 : 8, color: '#000', weight: 1, fillColor: color, fillOpacity: .9 })
+      .bindTooltip(`${esc(m.name)}${m.level ? ' · ' + m.level + '. szint' : ''}`)
+      .on('click', () => openPlayer(m.name)).addTo(layer);
+  });
+}
+function fitMap() { const ms = markers(); if (map && ms.length) map.fitBounds(ms.map(m => [m.lat, m.lng]), { padding: [40, 40], maxZoom: 15 }); }
+
+// ---------- játékosok ----------
+let PL = [], plSort = { k: 'level', dir: -1 };
+async function loadPlayers() { PL = (await api('/api/admin/players', { quiet: true })).players; renderPlayers(); }
+const COLS = [['name', 'Név'], ['level', 'Szint', 1], ['rank', 'Rang'], ['xp', 'XP', 1], ['money', 'Pénz', 1], ['hp', 'Élet', 1], ['kills', 'Ölés', 1], ['deaths', 'Halál', 1], ['looted', 'Épület', 1], ['crafted', 'Barkács', 1], ['km', 'Km', 1], ['tutorial', 'Első l.', 1], ['dailyStreak', 'Napi', 1], ['lastSeen', 'Utoljára', 1], ['registered', 'Regisztrált', 1], ['state', 'Állapot']];
+function renderPlayers() {
+  const q = $('pl-q').value.trim().toLowerCase(), f = $('pl-f').value;
+  let rows = PL.filter(r => (!q || r.name.toLowerCase().includes(q) || String(r.email || '').toLowerCase().includes(q))
+    && (!f || (f === 'staff' && r.role) || (f === 'online' && r.online) || (f === 'dead' && r.dead) || (f === 'banned' && r.banned) || (f === 'early' && r.early) || (f === 'never' && !r.lastSeen)));
+  const k = plSort.k === 'rank' ? 'level' : plSort.k;
+  rows.sort((a, b) => { const x = a[k], y = b[k]; return (typeof x === 'string' ? x.localeCompare(y, 'hu') : (Number(x) || 0) - (Number(y) || 0)) * plSort.dir; });
+  $('pl-count').textContent = `${rows.length} játékos`;
+  $('pl-table').innerHTML = `<thead><tr>${COLS.map(([c, l, n]) => `<th class="${n ? 'n' : ''}" onclick="sortPl('${c}')">${l}${plSort.k === c ? (plSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(r => `<tr class="click" onclick="openPlayer('${esc(r.name)}')"><td>${r.early ? '<span title="Korai túlélő" style="color:var(--gold)">★</span>' : ''}${esc(r.name)}${roleTag(r.role)}</td><td class="n">${r.level}</td><td>${rank(r.level)}</td><td class="n">${fmt(r.xp)}</td><td class="n">${fmt(r.money)}</td><td class="n">${r.dead ? '—' : r.hp + '/' + r.maxHp}</td><td class="n">${r.kills}</td><td class="n">${r.deaths}</td><td class="n">${r.looted}</td><td class="n">${r.crafted}</td><td class="n">${r.km}</td><td class="n">${r.tutorial}/6</td><td class="n">${r.dailyStreak}</td><td class="n">${ago(r.lastSeen)}</td><td class="n">${dt(r.registered).slice(0, 13)}</td><td>${r.online ? '<span class="pill on">online</span>' : ''}${r.combat ? '<span class="pill red">harcban</span>' : ''}${r.dead ? '<span class="pill red">halott</span>' : ''}${r.banned ? '<span class="pill red">tiltva</span>' : ''}</td></tr>`).join('') + '</tbody>';
+}
+function sortPl(k) { plSort = { k, dir: plSort.k === k ? -plSort.dir : (k === 'name' ? 1 : -1) }; renderPlayers(); }
+
+// ---------- játékos adatlap ----------
+let curPlayer = null;
+async function openPlayer(name) {
+  const d = await api('/api/admin/player/' + encodeURIComponent(name));
+  curPlayer = d; const r = d.row;
+  const enName = (k) => { const e = OV && OV.enemies.find(x => x.key === k); return e ? e.name : k; };
+  const kills = Object.entries(d.stats.kills || {}).map(([k, v]) => `${enName(k)} ${v}`).join(', ') || '–';
+  const canEdit = SurvivalRoles.canActOn(ME.role, r.role);
+  const b = (perm, html) => (can(perm) && canEdit ? html : '');
+  const roleSel = can('roles') && r.role !== 'owner' ? `<div class="card" style="margin-top:10px"><h3>Stáb rang</h3><div class="row"><select id="role-sel"><option value="">— sima játékos —</option>${SurvivalRoles.ROLES.filter(x => x.key !== 'owner').map(x => `<option value="${x.key}" ${r.role === x.key ? 'selected' : ''}>${x.name}</option>`).join('')}</select><button class="btn" onclick="pAct('role', { role: $('role-sel').value })">RANG MENTÉSE</button></div></div>` : '';
+  $('drawer').innerHTML = `<div class="row"><h2>${r.early ? '★ ' : ''}${esc(r.name)}${roleTag(r.role)}</h2><span class="sp" style="flex:1"></span><button class="btn ghost" onclick="closeDrawer()">✕ BEZÁR</button></div>
+    <div class="muted">${esc(r.email || '')} · regisztrált: ${dt(r.registered)} · utoljára: ${dt(r.lastSeen)} (${ago(r.lastSeen)})</div>
+    <div style="margin:8px 0">${r.online ? '<span class="pill on">online</span>' : '<span class="pill">offline</span>'}${r.combat ? '<span class="pill red">harcban</span>' : ''}${r.dead ? '<span class="pill red">halott</span>' : ''}${r.banned ? `<span class="pill red">tiltva ${dt(r.bannedUntil)}-ig${r.banReason ? ': ' + esc(r.banReason) : ''}</span>` : ''}</div>
+    <div class="grid cards">
+      <div class="card kpi"><h3>Szint</h3><div class="v">${r.level}</div><div class="s">${rank(r.level)} · ${fmt(r.xp)} XP</div></div>
+      <div class="card kpi"><h3>Pénz</h3><div class="v">${fmt(r.money)} $</div></div>
+      <div class="card kpi"><h3>Élet</h3><div class="v">${r.dead ? 'HALOTT' : r.hp + '/' + r.maxHp}</div><div class="s">étel ${r.hunger}% · víz ${r.thirst}% · fáradt ${r.fatigue}%</div></div>
+      <div class="card kpi"><h3>Harc</h3><div class="v">${r.kills}</div><div class="s">ölés · ${r.deaths} halál · ${r.won} győzelem</div></div>
+      <div class="card kpi"><h3>Felfedezés</h3><div class="v">${r.looted}</div><div class="s">épület · ${r.km} km · ${r.crafted} barkács</div></div>
+      <div class="card kpi"><h3>Leghosszabb élet</h3><div class="v">${r.longestH} ó</div><div class="s">Első lépések ${r.tutorial}/6 · napi ${r.dailyStreak}</div></div>
+    </div>
+    <h3 class="muted" style="letter-spacing:.14em">MŰVELETEK</h3>
+    <div class="row">
+      ${can('support') ? `<button class="btn" onclick="closeDrawer();openChat('${esc(r.name)}')">💬 ÜZENET</button>` : ''}
+      ${b('edit_player', `<button class="btn gold" onclick="openGift('${esc(r.name)}')">🎁 AJÁNDÉK</button>`)}
+      ${b('edit_player', `<button class="btn" onclick="pAct('heal')">❤️ GYÓGYÍT / FELTÁMASZT</button>`)}
+      ${b('edit_player', `<button class="btn ghost" onclick="openSet()">✏️ ÉRTÉKEK</button>`)}
+      ${b('kick', `<button class="btn ghost" onclick="pAct('kick', { message: prompt('Üzenet a játékosnak:', 'Az adminisztrátor kiléptetett. Lépj be újra.') })">⏏ KILÉPTET</button>`)}
+      ${b('edit_player', `<button class="btn ghost" onclick="renameP()">🏷 ÁTNEVEZ</button>`)}
+      ${b('edit_player', `<button class="btn ghost" onclick="pwP()">🔑 ÚJ JELSZÓ</button>`)}
+      ${b('ban_temp', r.banned ? `<button class="btn" onclick="pAct('unban')">TILTÁS FELOLDÁSA</button>` : `<button class="btn red" onclick="banP()">⛔ FELFÜGGESZT</button>`)}
+      ${!canEdit ? '<span class="muted">Magasabb vagy azonos rangú stábtagot nem módosíthatsz.</span>' : ''}
+    </div>
+    <div id="p-extra"></div>${roleSel}<div id="p-prem"></div>
+    <div class="grid two" style="margin-top:12px">
+      <div class="card"><h3>Felszerelés</h3>${Object.entries(d.equipment).map(([k, v]) => `<div><span class="muted">${SLOT_HU[k] || k}:</span> ${esc(v || '–')}</div>`).join('')}</div>
+      <div class="card"><h3>Hátizsák (${d.inventory.length} hely)</h3>${d.inventory.map(i => `<div>${esc(i.name)} <span class="muted mono">×${i.count}${i.dur !== undefined ? ' · tartósság ' + i.dur : ''}</span></div>`).join('') || '–'}</div>
+    </div>
+    <div class="card" style="margin-top:12px"><h3>Ölések ellenfelenként</h3>${esc(kills)}</div>
+    ${d.reports.length ? `<div class="card" style="margin-top:12px"><h3>Hibajelentései</h3>${d.reports.map(x => `<div class="ev">${dt(x.t)} · ${esc(x.text)}</div>`).join('')}</div>` : ''}
+    <div class="card" style="margin-top:12px"><h3>Utolsó események</h3>${d.events.map(evLine).join('') || '<span class="muted">Még nincs.</span>'}</div>`;
+  $('drawer').classList.remove('hidden');
+  premPlayerBox(r.name).then(h => { const el = $('p-prem'); if (el) el.innerHTML = h; });
+}
+function closeDrawer() { $('drawer').classList.add('hidden'); }
+async function pAct(action, body) {
+  if (!curPlayer) return;
+  if (action === 'kick' && body && body.message === null) return;
+  const d = await api(`/api/admin/player/${encodeURIComponent(curPlayer.row.name)}/${action}`, { method: 'POST', body: body || {} });
+  toast(d.message);
+  await openPlayer(d.newName || curPlayer.row.name); loadPlayers();
+}
+function banP() {
+  $('p-extra').innerHTML = `<div class="card" style="margin-top:10px"><h3>Felfüggesztés</h3><div class="row"><select id="ban-h"><option value="1">1 óra</option><option value="24">1 nap</option><option value="72">3 nap</option><option value="168">1 hét</option>${can('ban_perm') ? '<option value="720">30 nap</option><option value="0">végleges</option>' : ''}</select>
+    <input id="ban-r" placeholder="Ok (a játékos is látja)" style="flex:1;min-width:200px"><button class="btn red" onclick="pAct('ban', { hours: Number($('ban-h').value), reason: $('ban-r').value })">FELFÜGGESZT</button></div></div>`;
+}
+function renameP() { const n = prompt('Új név (3–16 betű vagy szám):', curPlayer.row.name); if (n && n !== curPlayer.row.name) pAct('rename', { newName: n }); }
+function pwP() { const p = prompt('Új jelszó (legalább 4 karakter). Közöld a játékossal biztonságos módon:'); if (p) pAct('password', { password: p }); }
+function openSet() {
+  const r = curPlayer.row;
+  const f = (k, l, v) => `<div><label>${l}</label><input id="set-${k}" type="number" value="${v}" style="width:100px"></div>`;
+  $('p-extra').innerHTML = `<div class="card" style="margin-top:10px"><h3>Értékek átírása</h3><div class="row">${f('level', 'Szint', r.level)}${f('xp', 'XP', r.xp)}${f('money', 'Pénz', r.money)}${f('hp', 'Élet', r.hp)}${f('hunger', 'Étel %', r.hunger)}${f('thirst', 'Víz %', r.thirst)}${f('fatigue', 'Fáradtság %', r.fatigue)}</div>
+    <div style="margin-top:8px"><button class="btn" onclick="pAct('set', Object.fromEntries(['level','xp','money','hp','hunger','thirst','fatigue'].map(k => [k, $('set-' + k).value])))">MENTÉS</button></div></div>`;
+}
+// ajándék: egy játékosnak vagy mindenkinek
+let giftTarget = null;
+function openGift(name) {
+  giftTarget = name;
+  const opts = Object.entries(typeof itemDatabase !== 'undefined' ? itemDatabase : {}).sort((a, b) => a[1].name.localeCompare(b[1].name, 'hu')).map(([k, v]) => `<option value="${esc(k)}">${esc(v.name)} (${esc(k)})</option>`).join('');
+  const html = `<div class="card" style="margin-top:10px"><h3>🎁 Ajándék ${name ? esc(name) + ' részére' : 'MINDENKINEK'}</h3>
+    <div id="gift-items"></div>
+    <div class="row"><select id="gift-key" style="max-width:340px">${opts}</select><input id="gift-n" type="number" value="1" min="1" style="width:70px"><button class="btn ghost" onclick="giftAdd()">+ TÁRGY</button></div>
+    <div class="row"><div><label>Pénz</label><input id="gift-money" type="number" value="0" style="width:110px"></div><div><label>XP</label><input id="gift-xp" type="number" value="0" style="width:110px"></div><div style="flex:1"><label>Üzenet (a játékos látja)</label><input id="gift-note" style="width:100%" placeholder="Pl.: Köszi a hibajelentést!"></div></div>
+    <div style="margin-top:8px"><button class="btn gold" onclick="giftSend()">KÜLDÉS</button> <button class="btn ghost" onclick="this.closest('.card').remove()">MÉGSE</button></div></div>`;
+  window._gift = [];
+  if (name) { $('p-extra').innerHTML = html; } else { $('drawer').innerHTML = `<div class="row"><h2>Ajándék mindenkinek</h2><span class="sp" style="flex:1"></span><button class="btn ghost" onclick="closeDrawer()">✕ BEZÁR</button></div><p class="muted">Kárpótlásnak vagy ünnepi meglepetésnek. Az offline játékosok a következő belépéskor látják a cuccot.</p>` + html; $('drawer').classList.remove('hidden'); }
+}
+function giftAdd() { window._gift.push({ key: $('gift-key').value, count: Number($('gift-n').value) || 1 }); renderGift(); }
+function renderGift() { $('gift-items').innerHTML = window._gift.map((g, i) => `<span class="pill gold">${esc(itemDatabase[g.key] ? itemDatabase[g.key].name : g.key)} ×${g.count} <a href="#" onclick="window._gift.splice(${i},1);renderGift();return false">✕</a></span>`).join(' '); }
+async function giftSend() {
+  const body = { items: window._gift, money: Number($('gift-money').value) || 0, xp: Number($('gift-xp').value) || 0, note: $('gift-note').value };
+  if (giftTarget) await pAct('gift', body);
+  else { if (!confirm('Biztosan mindenki megkapja?')) return; const d = await api('/api/admin/gift-all', { method: 'POST', body }); toast(d.message); closeDrawer(); }
+}
+
+// ---------- üzenetek ----------
+$('ann-title').oninput = $('ann-body').oninput = () => { $('ann-prev').textContent = ($('ann-title').value ? $('ann-title').value.toUpperCase() + '\n\n' : '') + $('ann-body').value; };
+async function loadAnn() {
+  const d = await api('/api/admin/announcements', { quiet: true });
+  $('ann-list').innerHTML = d.announcements.map(a => `<div class="card" style="margin-top:8px;background:var(--panel2)"><div class="row"><b>${esc(a.title)}</b><span class="sp" style="flex:1"></span><span class="pill ${a.active ? 'on' : ''}">${a.active ? 'aktív' : 'kikapcsolva'}</span></div>
+    <div class="muted mono" style="font-size:12px">${dt(a.createdAt)} · olvasta: ${a.readCount} / ${d.players} játékos</div><div class="paper" style="margin:6px 0;max-height:160px;overflow:auto">${esc(a.body)}</div>
+    <button class="btn ghost" onclick="toggleAnn('${a._id}')">${a.active ? 'KIKAPCSOL' : 'BEKAPCSOL'}</button></div>`).join('') || '<span class="muted">Még nincs bejelentés.</span>';
+}
+async function postAnn() { if (!confirm('Közzéteszed? Minden játékos egyszer megkapja.')) return; const d = await api('/api/admin/announcements', { method: 'POST', body: { title: $('ann-title').value, body: $('ann-body').value } }); toast(d.message); $('ann-title').value = ''; $('ann-body').value = ''; $('ann-prev').textContent = ''; loadAnn(); }
+async function toggleAnn(id) { const d = await api(`/api/admin/announcements/${id}/toggle`, { method: 'POST', body: {} }); toast(d.message); loadAnn(); }
+function bcPreset(t) { $('bc-text').value = t; }
+async function broadcast() { const t = $('bc-text').value.trim(); if (!t || !confirm('Elküldöd minden online játékosnak?')) return; const d = await api('/api/admin/broadcast', { method: 'POST', body: { text: t } }); toast(d.message); $('bc-text').value = ''; }
+
+// ---------- hibajelentések ----------
+let REP = [];
+async function loadReports() { REP = (await api('/api/admin/reports', { quiet: true })).reports; renderReports(); }
+function renderReports() {
+  const f = $('rep-f').value;
+  const list = REP.filter(r => !f || r.status === f);
+  $('rep-list').innerHTML = list.map(r => `<div class="card" style="margin-bottom:8px"><div class="row"><b style="cursor:pointer" onclick="openPlayer('${esc(r.user)}')">${esc(r.user)}</b><span class="muted mono">${dt(r.t)}</span><span class="pill ${r.status === 'open' ? 'red' : 'on'}">${{ open: 'nyitott', done: 'megoldva', ignored: 'félretéve' }[r.status] || r.status}</span><span class="sp" style="flex:1"></span>
+    ${can('reports') ? `<button class="btn" onclick="setRep('${r._id}','done')">MEGOLDVA</button><button class="btn ghost" onclick="setRep('${r._id}','ignored')">FÉLRETESZ</button><button class="btn ghost" onclick="setRep('${r._id}','open')">ÚJRANYIT</button>` : ''}</div>
+    <div class="paper" style="margin-top:6px">${esc(r.text)}</div><div class="muted mono" style="font-size:11px;margin-top:4px">${esc(r.ua || '')}${r.note ? ' · megjegyzés: ' + esc(r.note) : ''}</div></div>`).join('') || '<span class="muted">Nincs ilyen hibajelentés.</span>';
+}
+async function setRep(id, status) { await api('/api/admin/reports/' + id, { method: 'POST', body: { status } }); toast('Mentve.'); loadReports(); loadOverview(); }
+
+// ---------- eventek ----------
+function renderEventNow() {
+  if (!OV) return;
+  const s = OV.settings;
+  const on = s.xpMultiplier > 1 || s.lootMultiplier > 1 || s.eventName;
+  $('evt-now').textContent = on ? `MOST FUT: ${s.eventName || '(név nélkül)'}\nXP: ${s.xpMultiplier}×   Zsákmány: ${s.lootMultiplier}×\n${s.eventUntil ? 'Vége: ' + dt(s.eventUntil) : 'Nincs vége megadva (amíg ki nem kapcsolod)'}` : 'Most nincs event: minden normál (1×).';
+}
+function localInput(ms) { const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); }
+function presetEvent(name, xp, loot, mode, from, to) {
+  $('ev-name').value = name; $('ev-xp').value = String(xp); $('ev-loot').value = String(loot);
+  const now = new Date(); let end;
+  if (mode === 'weekend') { end = new Date(now); end.setDate(now.getDate() + ((7 - now.getDay()) % 7)); end.setHours(23, 59, 0, 0); }
+  else { const [m, d] = (to || from).split('-').map(Number); end = new Date(now.getFullYear() + (m < now.getMonth() + 1 ? 1 : 0), m - 1, d, 23, 59); }
+  $('ev-until').value = localInput(end.getTime());
+  toast('Kitöltve: ' + name + '. Az ÉLESÍTÉS gombbal indul. (Kezdés: amikor élesíted.)');
+}
+async function saveEvent() {
+  const until = $('ev-until').value ? new Date($('ev-until').value).getTime() : 0;
+  const d = await api('/api/admin/settings', { method: 'POST', body: { eventName: $('ev-name').value, xpMultiplier: Number($('ev-xp').value), lootMultiplier: Number($('ev-loot').value), eventUntil: until } });
+  toast(d.message); loadOverview();
+}
+async function stopEvent() { const d = await api('/api/admin/settings', { method: 'POST', body: { eventName: '', xpMultiplier: 1, lootMultiplier: 1, eventUntil: 0 } }); toast('Event kikapcsolva.'); loadOverview(); }
+
+// ---------- gazdaság ----------
+function renderEco() {
+  if (!OV) return;
+  $('eco-rich').innerHTML = '<table>' + OV.economy.richest.map((r, i) => `<tr class="click" onclick="openPlayer('${esc(r.name)}')"><td class="n">${i + 1}.</td><td>${esc(r.name)}</td><td class="n">${fmt(r.money)} $</td></tr>`).join('') + '</table>';
+  $('eco-en').innerHTML = '<table><tr><th>Ellenfél</th><th class="n">Legyőzve</th><th class="n">Játékost ölt</th></tr>' + OV.enemies.map(e => `<tr><td>${esc(e.name)}</td><td class="n">${e.killed}</td><td class="n">${e.killedPlayers}</td></tr>`).join('') + '</table>';
+  $('eco-items').innerHTML = '<table><tr><th>Tárgy</th><th>Kulcs</th><th class="n">Darab</th></tr>' + OV.economy.topItems.map(i => `<tr><td>${esc(i.name)}</td><td class="muted mono">${esc(i.key)}</td><td class="n">${fmt(i.count)}</td></tr>`).join('') + '</table>';
+}
+
+// ---------- napló ----------
+function evLine(e) {
+  let extra = '';
+  const d = e.data || {};
+  if (e.type === 'level_up') extra = `${d.from} → ${d.to}`;
+  else if (e.type === 'death') extra = d.by ? `(${d.by}${d.building ? ', ' + d.building : ''})` : '';
+  else if (e.type === 'combat_won') extra = d.enemy ? `(${d.enemy})` : '';
+  else if (e.type === 'admin') extra = `${d.action || ''} ${d.target || ''}`;
+  else if (e.type === 'register' && d.early) extra = '★ korai túlélő';
+  return `<div class="ev"><span class="muted">${dt(e.t)}</span> · <b>${esc(e.user || '')}</b> ${EV_NAMES[e.type] || esc(e.type)} <span class="muted">${esc(extra)}</span></div>`;
+}
+async function loadLog() {
+  const p = new URLSearchParams({ limit: 300 }); if ($('log-type').value) p.set('type', $('log-type').value); if ($('log-user').value.trim()) p.set('user', $('log-user').value.trim());
+  const d = await api('/api/admin/events?' + p, { quiet: true });
+  $('log-list').innerHTML = d.events.map(evLine).join('') || '<span class="muted">Nincs esemény.</span>';
+}
+
+// ---------- szerver ----------
+function renderServer() {
+  if (!OV) return;
+  const s = OV.server;
+  const up = s.uptimeSec > 86400 ? Math.floor(s.uptimeSec / 86400) + ' nap' : s.uptimeSec > 3600 ? Math.floor(s.uptimeSec / 3600) + ' óra' : Math.floor(s.uptimeSec / 60) + ' perc';
+  const k = (l, v, sub) => `<div class="card kpi"><h3>${l}</h3><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+  $('srv-kpis').innerHTML = k('Fut', up, 'az utolsó újraindítás óta') + k('Memória', s.rssMb + ' MB', 'heap ' + s.heapMb + ' MB') + k('Adatbázis', s.dbState === 1 ? 'OK' : 'HIBA?', 'állapot: ' + s.dbState) + k('Hibák', s.errors, 'újraindítás óta') + k('Node', s.node, '') +
+    k('Épületek', fmt(s.counts.survivalbuildings), 'tárolt épület') + k('Cellák', fmt(s.counts.survivalcells), 'betöltött térképnégyzet') + k('Napló', fmt(s.counts.survivalevents), 'esemény (180 napig)');
+  $('srv-backup').innerHTML = s.lastBackup ? `Utolsó: <b>${esc(s.lastBackup.file)}</b><br>${dt(s.lastBackup.t)} (${ago(s.lastBackup.t)}) · ${(s.lastBackup.size / 1048576).toFixed(1)} MB` : '<span class="muted">Nincs mentés a szerveren (vagy nem elérhető a mappa).</span>';
+  $('srv-err').innerHTML = s.recentErrors.map(e => `<div class="ev"><span class="muted">${dt(e.t)}</span> ${esc(e.text)}</div>`).join('') || '<span class="muted">Nincs hiba. 👍</span>';
+}
+async function backupNow() { $('btn-backup').disabled = true; try { const d = await api('/api/admin/backup', { method: 'POST', body: {} }); toast(d.message); loadOverview(); } finally { $('btn-backup').disabled = false; } }
+
+// ---------- Excel ----------
+async function downloadExcel() {
+  const r = await fetch('/api/admin/export.xlsx', { headers: { 'Authorization': 'Bearer ' + token() } });
+  if (!r.ok) { toast('Nem sikerült a letöltés.', true); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'survivalgo-' + new Date().toISOString().slice(0, 10) + '.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ---------- csevegés ----------
+let chatUser = null, CONVS = [];
+async function loadConvs() {
+  if (!can('support')) return;
+  CONVS = (await api('/api/admin/support', { quiet: true })).conversations;
+  const unread = CONVS.reduce((a, c) => a + c.unread, 0);
+  $('chat-badge').textContent = unread; $('chat-badge').classList.toggle('hidden', !unread);
+  $('chat-convs').innerHTML = CONVS.map(c => `<div class="conv ${c.user === chatUser ? 'on' : ''}" onclick="openChat('${esc(c.user)}')"><div class="row"><b>${esc(c.user)}</b>${c.online ? '<span class="pill on">online</span>' : ''}<span class="sp" style="flex:1"></span>${c.unread ? `<span class="badge" style="background:var(--red);padding:0 6px;border-radius:9px">${c.unread}</span>` : ''}</div>
+    <div class="muted">${c.last.from === 'staff' ? '↩ ' : ''}${esc(c.last.text)}</div><div class="muted mono" style="font-size:11px">${ago(c.last.t)}</div></div>`).join('') || '<p class="muted" style="padding:12px">Még senki nem írt. A játékosok a Menü → „Üzenet a stábnak” gombbal írhatnak.</p>';
+}
+async function openChat(user) {
+  chatUser = user;
+  if (curTab !== 'chat') showTab('chat');
+  const d = await api('/api/admin/support/' + encodeURIComponent(user), { quiet: true });
+  $('chat-who').textContent = user; $('chat-on').innerHTML = d.online ? '<span class="pill on">online</span>' : '<span class="pill">offline</span>';
+  $('chat-open-p').classList.remove('hidden');
+  const box = $('chat-thread');
+  const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.innerHTML = d.messages.map(m => `<div class="cm ${m.from}"><small>${m.from === 'staff' ? esc(m.staff) + ' (stáb)' : esc(m.user)} · ${dt(m.t)}</small>${esc(m.text)}</div>`).join('') || '<p class="muted">Még nincs üzenet. Írj neki elsőként!</p>';
+  if (atBottom || box.dataset.user !== user) box.scrollTop = box.scrollHeight;
+  box.dataset.user = user;
+  loadConvs();
+}
+async function sendChat() {
+  const t = $('chat-text').value.trim();
+  if (!t || !chatUser) return;
+  const d = await api('/api/admin/support/' + encodeURIComponent(chatUser), { method: 'POST', body: { text: t } });
+  $('chat-text').value = ''; toast(d.message); $('chat-thread').dataset.user = ''; openChat(chatUser);
+}
+$('chat-text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+setInterval(() => { if (!$('app').classList.contains('hidden') && can('support') && document.visibilityState === 'visible') { if (curTab === 'chat' && chatUser) openChat(chatUser).catch(() => { }); else loadConvs().catch(() => { }); } }, 6000);
+
+// ---------- prémium ----------
+let PREM = null;
+const huf = (n) => Math.round(n || 0).toLocaleString('hu-HU') + ' Ft';
+const ST_HU = { pending: '⏳ utalásra vár', paid: '✔ jóváírva', cancelled: '✕ törölve', expired: '⌛ lejárt' };
+async function loadPrem() {
+  if (!can('premium')) return;
+  PREM = await api('/api/admin/premium', { quiet: true });
+  const t = PREM.totals, sel = PREM.seller;
+  const missing = ['name', 'address', 'taxNo', 'payee', 'account'].filter(k => !sel[k]);
+  $('prem-mode').innerHTML = `<b>Állapot:</b> ${{ on: '<span class="pill on">ÉLES – mindenki látja</span>', staff: '<span class="pill gold">TESZT – csak a stáb látja</span>', off: '<span class="pill red">KIKAPCSOLVA</span>' }[PREM.mode]}
+    <span class="muted">(env: PREMIUM_SHOP=on / staff / off)</span><br>${missing.length ? `<span style="color:var(--red)">Hiányzó eladói adatok az env fájlban: ${missing.map(k => ({ name: 'PREMIUM_SELLER_NAME', address: 'PREMIUM_SELLER_ADDRESS', taxNo: 'PREMIUM_SELLER_TAXNO', payee: 'PREMIUM_PAYEE', account: 'PREMIUM_ACCOUNT' }[k])).join(', ')}</span>` : '<span class="muted">Eladói és banki adatok megadva.</span>'}`;
+  const k = (l, v, s2) => `<div class="card kpi"><h3>${l}</h3><div class="v">${v}</div><div class="s">${s2 || ''}</div></div>`;
+  $('prem-kpis').innerHTML = k('Befolyt', huf(t.paidHuf), `${t.paidCount} jóváírt rendelés`) + k('Utalásra vár', huf(t.pendingHuf), `${t.pendingCount} rendelés`) + k('Kint lévő credit', '◆ ' + t.creditsOutstanding, `≈ ${huf(t.creditsOutstanding * 10)}`);
+  $('prem-badge').textContent = t.pendingCount; $('prem-badge').classList.toggle('hidden', !t.pendingCount);
+  $('prem-holders').innerHTML = '<table><tr><th>Játékos</th><th class="n">Credit</th><th class="n">Kinézet</th><th class="n">Láda/kulcs</th></tr>' + PREM.holders.map(h => `<tr class="click" onclick="openPlayer('${esc(h.name)}')"><td>${esc(h.name)}</td><td class="n">${h.credits}</td><td class="n">${h.owned.length}</td><td class="n">${Object.values(h.crates).reduce((a, b) => a + b, 0)}/${h.keys.key_basic || 0}</td></tr>`).join('') + '</table>';
+  renderPremOrders();
+}
+function renderPremOrders() {
+  if (!PREM) return;
+  const f = $('prem-f').value, q = $('prem-q').value.trim().toLowerCase();
+  const list = PREM.orders.filter(o => (!f || o.status === f) && (!q || [o.code, o.user, o.billing && o.billing.name].join(' ').toLowerCase().includes(q)));
+  $('prem-orders').innerHTML = `<tr><th>Közlemény</th><th>Játékos</th><th class="n">Összeg</th><th class="n">Credit</th><th>Számlázási adatok</th><th>Létrehozva</th><th>Állapot</th><th></th></tr>` +
+    list.map(o => `<tr><td class="mono"><b>${esc(o.code)}</b></td><td><a href="#" onclick="openPlayer('${esc(o.user)}');return false">${esc(o.user)}</a></td><td class="n">${huf(o.huf)}</td><td class="n">◆ ${o.credits}</td>
+      <td style="white-space:normal;min-width:220px">${esc(o.billing ? `${o.billing.name}, ${o.billing.zip} ${o.billing.city}, ${o.billing.address}${o.billing.email ? ' · ' + o.billing.email : ''}` : '')}</td>
+      <td class="n">${dt(o.createdAt)}</td><td>${ST_HU[o.status] || o.status}${o.paidAt ? '<br><span class="muted">' + dt(o.paidAt) + ' · ' + esc(o.confirmedBy || '') + '</span>' : ''}${o.invoiceNo ? '<br><span class="muted">számla: ' + esc(o.invoiceNo) + '</span>' : ''}</td>
+      <td>${o.status === 'pending' || o.status === 'expired' ? `<button class="btn" onclick="premConfirm('${o.code}', ${o.huf})">MEGJÖTT – JÓVÁÍR</button> <button class="btn ghost" onclick="premCancel('${o.code}')">TÖRÖL</button>` : o.status === 'paid' ? `<button class="btn ghost" onclick="premInvoice('${o.code}')">SZÁMLASZÁM</button>` : ''}</td></tr>`).join('');
+  if (!list.length) $('prem-orders').innerHTML += '<tr><td colspan="8" class="muted">Nincs ilyen rendelés.</td></tr>';
+}
+async function premConfirm(code, amount) {
+  if (!confirm(`Megérkezett a(z) ${huf(amount)} utalás ezzel a közleménnyel: ${code}?\n\nNézd meg a bankszámládon, mielőtt jóváírod!`)) return;
+  const inv = prompt('Számla sorszáma (ha már kiállítottad; később is megadhatod):', '') || '';
+  const d = await api(`/api/admin/premium/orders/${code}/confirm`, { method: 'POST', body: { invoiceNo: inv } }); toast(d.message); loadPrem(); loadLedger();
+}
+async function premCancel(code) { const r = prompt('Miért törlöd? (a játékos látja)', 'Nem érkezett meg az utalás.'); if (r === null) return; const d = await api(`/api/admin/premium/orders/${code}/cancel`, { method: 'POST', body: { reason: r } }); toast(d.message); loadPrem(); }
+async function premInvoice(code) { const inv = prompt('Számla sorszáma:'); if (!inv) return; const d = await api(`/api/admin/premium/orders/${code}/invoice`, { method: 'POST', body: { invoiceNo: inv } }); toast(d.message); loadPrem(); }
+const TX_HU = { order: 'utalás jóváírva', purchase: 'vásárlás', admin: 'kézi módosítás', admin_give: 'admin ajándék', crate: 'láda nyitás', crate_duplicate: 'láda (ismétlődés, visszatérítés)', crate_found: 'láda találat', rename: 'névváltoztatás' };
+async function loadLedger() {
+  if (!can('premium')) return;
+  const u = $('prem-led-user').value.trim();
+  const d = await api('/api/admin/premium/ledger' + (u ? '?user=' + encodeURIComponent(u) : ''), { quiet: true });
+  $('prem-ledger').innerHTML = d.ledger.map(x => `<div class="ev"><span class="muted">${dt(x.t)}</span> · <b>${esc(x.user)}</b> ${x.delta > 0 ? '<span style="color:#cfe08a">+' + x.delta + '</span>' : x.delta < 0 ? '<span style="color:#f0a090">' + x.delta + '</span>' : ''} ${TX_HU[x.reason] || esc(x.reason)} <span class="muted">${esc(x.note || x.ref || '')}${x.by ? ' · ' + esc(x.by) : ''} · egyenleg: ${x.balance}</span></div>`).join('') || '<span class="muted">Üres.</span>';
+}
+async function premPlayerBox(name) {
+  if (!can('premium')) return '';
+  try {
+    const d = await api('/api/admin/premium/player/' + encodeURIComponent(name), { quiet: true });
+    const p = d.premium;
+    const opts = window.SurvivalShop ? [...SurvivalShop.COSMETICS, ...SurvivalShop.CRATES, ...SurvivalShop.KEYS].map(x => `<option value="${x.key}">${x.name}</option>`).join('') : '';
+    return `<div class="card" style="margin-top:12px"><h3>💎 Prémium</h3><div><b>◆ ${p.credits} credit</b> <span class="muted">· kinézet: ${p.owned.length} · láda: ${Object.values(p.crates).reduce((a, b) => a + b, 0)} · kulcs: ${p.keys.key_basic || 0} · +${p.slotsBought * 2} hely · keret: ${p.frame || '–'} · cím: ${p.title || '–'}</span></div>
+      <div class="row" style="margin-top:8px"><input id="pc-delta" type="number" placeholder="+100 vagy -50" style="width:130px"><input id="pc-note" placeholder="Ok (kötelező, naplóba kerül)" style="flex:1;min-width:180px"><button class="btn" onclick="premCredits('${esc(name)}')">CREDIT MÓDOSÍTÁS</button></div>
+      <div class="row" style="margin-top:6px"><select id="pc-give">${opts}</select><input id="pc-n" type="number" value="1" min="1" style="width:60px"><button class="btn ghost" onclick="premGive('${esc(name)}')">ODAAD</button></div>
+      ${d.orders.length ? `<div style="margin-top:6px">${d.orders.map(o => `<span class="pill">${esc(o.code)} · ${huf(o.huf)} · ${ST_HU[o.status] || o.status}</span>`).join('')}</div>` : ''}</div>`;
+  } catch (e) { return ''; }
+}
+async function premCredits(name) { const d = await api('/api/admin/premium/credits/' + encodeURIComponent(name), { method: 'POST', body: { delta: Number($('pc-delta').value), note: $('pc-note').value } }); toast(d.message); openPlayer(name); }
+async function premGive(name) { const d = await api('/api/admin/premium/give/' + encodeURIComponent(name), { method: 'POST', body: { key: $('pc-give').value, count: Number($('pc-n').value) || 1 } }); toast(d.message); openPlayer(name); }
+
+// ---------- stáb ----------
+const PERM_HU = { view: 'Áttekintés, játékosok, térkép, napló, hibajelentések olvasása', reports: 'Hibajelentések lezárása', announce: 'Bejelentések, gyors üzenet mindenkinek', kick: 'Kiléptetés', ban_temp: 'Tiltás legfeljebb 7 napra, feloldás', ban_perm: 'Hosszabb / végleges tiltás', edit_player: 'Ajándék, gyógyítás, értékek, átnevezés, jelszó', gift_all: 'Ajándék mindenkinek', events: 'Eventek (XP, zsákmány)', server: 'Szerver, hibák, mentés', support: 'Csevegés a játékosokkal', emails: 'E-mail címek', export: 'Excel letöltés', roles: 'Rangok kiosztása' };
+function renderStaff() {
+  const staff = PL.filter(p => p.role).sort((a, b) => SurvivalRoles.level(b.role) - SurvivalRoles.level(a.role));
+  $('staff-list').innerHTML = staff.map(p => `<div class="ev" style="cursor:pointer" onclick="openPlayer('${esc(p.name)}')"><b>${esc(p.name)}</b> ${roleTag(p.role)} ${p.online ? '<span class="pill on">online</span>' : '<span class="muted">' + ago(p.lastSeen) + '</span>'}</div>`).join('') || '<span class="muted">Még csak te.</span>';
+  $('staff-how').textContent = can('roles') ? 'Rangot a Játékosok fülön adhatsz: kattints a névre, lent a „Stáb rang” résznél. A tulajdonos rangot a szerver beállítása (ADMIN_USERS) adja.' : '';
+  const R = SurvivalRoles.ROLES;
+  $('roles-table').innerHTML = `<div class="tblwrap" style="max-height:none"><table><tr><th>Jog</th>${R.map(r => `<th style="color:${r.color}">${r.tag}</th>`).join('')}</tr>` +
+    Object.keys(SurvivalRoles.PERMS).map(p => `<tr><td style="white-space:normal">${PERM_HU[p] || p}</td>${R.map(r => `<td style="text-align:center">${SurvivalRoles.can(r.key, p) ? '✔' : '<span class="muted">–</span>'}</td>`).join('')}</tr>`).join('') + '</table></div>';
+}
+
+// ---------- indulás ----------
+async function refreshAll() { await loadOverview(); if (curTab === 'staff') loadPlayers().then(renderStaff); if (curTab === 'pl') loadPlayers(); if (curTab === 'rep') loadReports(); if (curTab === 'log') loadLog(); }
+async function start() {
+  if (!token()) return showLogin();
+  try { ME = await api('/api/admin/me', { quiet: true }); } catch (e) { return; }
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  applyPerms();
+  await loadOverview(); loadPlayers(); loadConvs().catch(() => { }); loadPrem().catch(() => { });
+  if (location.hash === '#chat') showTab('chat');
+}
+setInterval(() => { if ($('auto').checked && !$('app').classList.contains('hidden') && document.visibilityState === 'visible') refreshAll().catch(() => { }); }, 20000);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+start();
+</script>
+</body>
+</html>

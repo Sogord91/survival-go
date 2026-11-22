@@ -43,6 +43,11 @@
             <tr><td>Jelszó</td><td>Belépés. Csak titkosított (bcrypt-tel „hash”-elt) formában tárolom, én sem látom.</td><td>A fiókod törléséig.</td></tr>
             <tr><td>Pontos helyadat (GPS)</td><td>A játék lényege: a valódi környezeted a pálya. A helyedet a játék működése közben használja a szerver (melyik épületet kutathatod át, kik vannak a közeledben).</td><td>A pillanatnyi helyedet csak a memóriában tartom, amíg játszol; helyelőzményt nem mentek. Az adatbázisba csak az kerül, amit te jelölsz meg (pl. a menedéked helye), illetve a megtett távolság összege a statisztikádban.</td></tr>
             <tr><td>Játékadatok</td><td>A karaktered, tárgyaid, szinted, statisztikáid, napi bónusz, küldetések.</td><td>A fiókod törléséig.</td></tr>
+            <tr><td>Játékesemény-napló</td><td>Mikor léptél be, regisztráltál, léptél szintet, haltál meg (és mitől), kutattál át épületet, barkácsoltál. A játék egyensúlyának beállításához, a statisztikákhoz és a csalások kivizsgálásához. Helyadatot nem tartalmaz.</td><td>180 napig, utána automatikusan törlődik.</td></tr>
+            <tr><td>Hibajelentés</td><td>Amit a „Hibát találtam” gombbal beküldesz, és a böngésződ típusa (a hiba kereséséhez).</td><td>A hiba kivizsgálásáig, legfeljebb 1 évig.</td></tr>
+            <tr><td>Üzenetek a stábnak</td><td>Amit a „Üzenet a stábnak” csevegésben írsz, és a stáb válaszai. A kérdésed megválaszolásához.</td><td>1 évig, utána automatikusan törlődik.</td></tr>
+            <tr><td>Prémium vásárlás (számlázási adatok)</td><td>Ha creditet vásárolsz: név, cím, e-mail (ha megadod), a rendelés adatai (összeg, közlemény, időpont), és a jóváírás. A számla kiállításához és a számviteli kötelezettség teljesítéséhez (jogi kötelezettség).</td><td>A számviteli törvény szerint 8 évig.</td></tr>
+            <tr><td>Prémium egyenleg és napló</td><td>Credit egyenleged, megvett kinézeteid, ládáid és minden credit-mozgás (vásárlás, jóváírás, láda). A szolgáltatás nyújtásához és a panaszok kivizsgálásához.</td><td>A fiók törléséig; a vásárlásokhoz kapcsolódó tételek 8 évig.</td></tr>
             <tr><td>IP-cím, technikai naplók</td><td>A szerver biztonsága (pl. a jelszótalálgatás korlátozása) és hibakeresés.</td><td>Legfeljebb 30 napig.</td></tr>
         </tbody>
     </table>
@@ -51,6 +56,7 @@
     <h2>3. Ki láthatja a helyedet?</h2>
     <ul>
         <li>A <b>közeledben lévő, épp online játékosok</b> a térképen látják a karakteredet (nappal kb. 150 méteren belül), amíg játszol. Amint kilépsz, eltűnsz a térképről.</li>
+        <li>Az <b>üzemeltető</b> (adminisztrátor) az admin felületen látja az épp online játékosok pillanatnyi helyét a térképen, a játék felügyeletéhez és a visszaélések (pl. GPS-csalás) kivizsgálásához. Ezt sem menti el: ha kilépsz, nála is eltűnsz.</li>
         <li>Ha <b>menedéket</b> választasz, annak helyét és a felhasználónevedet a térképen <b>minden játékos látja</b>. Ne a saját otthonodat vagy annak közvetlen környékét válaszd, ha ezt nem szeretnéd.</li>
     </ul>
 

@@ -92,6 +92,9 @@ if (typeof socket !== 'undefined' && socket) {
     socket.on('sort_result', (data) => {
         if (!data.success) logMessage(data.message || 'Nem sikerült rendezni a leltárt.');
     });
+    socket.on('move_result', (data) => {
+        if (!data.success && data.message) logMessage(data.message);
+    });
 }
 
 // Tárgy eldobása (szerver oldali kérés; az eldobott tárgy eltűnik)

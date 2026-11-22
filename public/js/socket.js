@@ -39,12 +39,23 @@ function disconnectSocket() {
 // Hálózati hibánál a socket magától újracsatlakozik, ahhoz nem nyúlunk.
 socket.on('connect_error', (err) => {
     const reason = err && err.message;
+    if (reason === 'BANNED') {
+        clearAuthToken();
+        showAuthScreen((err.data && err.data.message) || 'A fiókodat felfüggesztettük.');
+        return;
+    }
     if (reason === 'AUTH_REQUIRED' || reason === 'AUTH_INVALID' || reason === 'AUTH_EXPIRED') {
         clearAuthToken();
         showAuthScreen(reason === 'AUTH_EXPIRED'
             ? 'A munkamenet lejárt, jelentkezz be újra.'
             : 'Érvénytelen munkamenet, jelentkezz be újra.');
     }
+});
+
+// Az adminisztrátor kiléptetett (tiltás, átnevezés): vissza a belépő képernyőre, az okkal
+socket.on('kicked', (data) => {
+    clearAuthToken();
+    showAuthScreen((data && data.message) || 'Az adminisztrátor kiléptetett.');
 });
 
 // Ugyanezzel a fiókkal máshol is beléptek: a szerver ezt a kapcsolatot lebontotta.

@@ -142,7 +142,7 @@ function initMap(lat, lng, realPosition) {
     const icon = L.divIcon({
         className: 'custom-player-icon',
         // Hímzett folt: vászon perem, varrás, benne az avatar (v0.1.11)
-        html: `<div class="sg-marker sg-marker-me"><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'"></div>`,
+        html: myMarkerHtml(avatarFile),
         iconSize: [40, 40],
         iconAnchor: [20, 20]
     });
@@ -654,15 +654,41 @@ function retryGps() {
 // A többi játékos: a szerver CSAK a közelben lévőket küldi (nappal 150 m, éjszaka fény nélkül 30 m),
 // mindig a teljes listát. Ami nincs benne, annak a jelölője eltűnik (így nem maradnak "szellem" jelölők).
 const SAFE_AVATAR = /^avatar[1-9]\.png$/;
+// Stáb rang a jelölőn: színes keret és felirat (v0.1.14)
+// + prémium kinézet (v0.1.16): keret és cím; a stáb kerete elsőbbséget élvez (hogy mindig felismerhető legyen)
+function staffMarkerExtra(role, cosmetic) {
+    const r = window.SurvivalRoles && SurvivalRoles.info(role);
+    if (r) return { cls: ` sg-role sg-role-${role}`, style: '', tag: `<span class="sg-marker-staff" style="--role-c:${r.color}">${r.tag}</span>` };
+    const S = window.SurvivalShop;
+    const f = S && cosmetic && S.BY_KEY[cosmetic.frame];
+    const t = S && cosmetic && S.BY_KEY[cosmetic.title];
+    return {
+        cls: f ? ` sg-cos${f.glow ? ' glow' : ''}${f.pulse ? ' pulse' : ''}${f.style === 'camo' ? ' camo' : ''}` : '',
+        style: f ? ` style="--cos-c:${f.color}"` : '',
+        tag: t ? `<span class="sg-marker-title" style="--cos-c:${t.color}">${t.name.toUpperCase()}</span>` : ''
+    };
+}
+function myMarkerHtml(avatarFile) {
+    const st = staffMarkerExtra(player.staffRole, player.cosmetic);
+    return `<div class="sg-marker sg-marker-me${st.cls}"${st.style}><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">${st.tag}</div>`;
+}
+// rangváltáskor a saját jelölő újrarajzolása
+function refreshMyMarker() {
+    if (typeof playerMarker === 'undefined' || !playerMarker) return;
+    const avatarFile = player.avatar || 'avatar1.png';
+    playerMarker.setIcon(L.divIcon({ className: 'custom-player-icon', html: myMarkerHtml(avatarFile), iconSize: [40, 40], iconAnchor: [20, 20] }));
+}
 
 function otherPlayerIcon(pData) {
     const avatarFile = SAFE_AVATAR.test(pData.avatar || '') ? pData.avatar : 'avatar1.png';
+    const st = staffMarkerExtra(pData.role, pData.cosmetic);
     return L.divIcon({
         className: 'other-player-icon',
         // Hímzett folt rozsdabarna peremmel; a sarkában a játékos rangja (v0.1.11)
         html: `
-            <div class="sg-marker sg-marker-other"><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
+            <div class="sg-marker sg-marker-other${st.cls}"${st.style}><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
                 ${typeof rankPatchSvg === 'function' ? `<span class="sg-marker-rank">${rankPatchSvg(rankIndexForLevel(Number(pData.level) || 1))}</span>` : ''}
+                ${st.tag}
                 ${pData.early === true ? '<span class="early-badge" style="position: absolute; left: -6px; bottom: -4px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 2px #000);">🎖️</span>' : ''}
             </div>
         `,
@@ -687,6 +713,7 @@ function initOtherPlayersListener() {
             const existing = otherPlayerMarkers[name];
             if (existing) {
                 existing.marker.setLatLng([pData.lat, pData.lng]);
+                if ((existing.data.role || '') !== (pData.role || '') || existing.data.level !== pData.level || JSON.stringify(existing.data.cosmetic || null) !== JSON.stringify(pData.cosmetic || null)) existing.marker.setIcon(otherPlayerIcon(pData));
                 existing.data = pData;
             } else {
                 const marker = L.marker([pData.lat, pData.lng], { icon: otherPlayerIcon(pData) }).addTo(map);
@@ -706,7 +733,8 @@ function initOtherPlayersListener() {
 }
 
 function showOtherPlayer(pData) {
-    logMessage(`👤 ${pData.username} – ${pData.level || 1}. szintű túlélő${pData.early === true ? ' · 🎖️ Korai túlélő' : ''}`);
+    const r = window.SurvivalRoles && SurvivalRoles.info(pData.role);
+    logMessage(`👤 ${pData.username} – ${pData.level || 1}. szintű túlélő${r ? ' · ' + r.name + ' (a játék stábja)' : ''}${pData.early === true ? ' · 🎖️ Korai túlélő' : ''}`);
 }
 
 // --- BIZTONSÁGOS LOOT EREDMÉNY FOGADÁSA A SZERVERTŐL ---

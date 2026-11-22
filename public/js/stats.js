@@ -26,6 +26,10 @@
         const level = Math.max(1, Math.floor(num(player && player.level, 1)));
         if (level > 1) bonuses.push({ source: 'level', maxHp: (level - 1) * HP_PER_LEVEL });
 
+        // prémium: végleges +hátizsák hely (v0.1.16)
+        const premiumSlots = Math.max(0, Math.floor(num(player && player.premiumSlots, 0)));
+        if (premiumSlots) bonuses.push({ source: 'premium', slots: premiumSlots });
+
         const equipment = (player && player.equipment) || {};
         EQUIPMENT_SLOTS.forEach(slot => {
             const key = equipment[slot];
