@@ -78,13 +78,24 @@ function onPlayerSaved(username, before, p) {
         if (num(s.itemsCrafted) > num(b.itemsCrafted)) logEvent('craft', username, { count: num(s.itemsCrafted) - num(b.itemsCrafted) });
         if (num(s.combatsWon) > num(b.combatsWon)) logEvent('combat_won', username, { enemy: before.enemy || null });
         if (before.dead && !p.dead) logEvent('respawn', username, null);
+        // Fagyos Csend és napi dolgok (v0.1.18): a monitorozáshoz
+        const d = p.daily || {};
+        if (d.lastDay && d.lastDay !== before.dailyDay) logEvent('daily_claim', username, { day: num(d.streak), date: d.lastDay });
+        const opened = (p.advent && Array.isArray(p.advent.opened)) ? p.advent.opened : [];
+        if (!(p.advent && p.advent.test)) opened.filter(x => !before.adventOpened.includes(x)).forEach(day => logEvent('advent_open', username, { day, catchup: !!(p.advent.catchupDay && p.advent.catchupDay !== before.adventCatchup) }));
+        const shId = p.shelter && p.shelter.buildingId;
+        if (shId && shId !== before.shelterId) logEvent('shelter_claim', username, { building: p.shelter.name || null, move: !!before.shelterId });
     } catch (e) { /* a napló hibája nem állíthatja meg a mentést */ }
 }
 function snapshotBefore(p) {
     return {
         level: p.level, dead: !!p.dead, stats: { ...(p.stats || {}) },
         enemy: p.combat && p.combat.enemy ? p.combat.enemy.key : null,
-        building: p.combat ? p.combat.buildingName : null
+        building: p.combat ? p.combat.buildingName : null,
+        dailyDay: p.daily ? p.daily.lastDay || null : null,
+        adventOpened: (p.advent && !p.advent.test && Array.isArray(p.advent.opened)) ? [...p.advent.opened] : [],
+        adventCatchup: p.advent ? p.advent.catchupDay || null : null,
+        shelterId: p.shelter ? p.shelter.buildingId || null : null
     };
 }
 
@@ -548,6 +559,33 @@ function setup(c) {
         const limit = Math.min(1000, Math.max(10, num(req.query.limit, 200)));
         res.json({ success: true, events: await EventModel.find(q).sort({ t: -1 }).limit(limit).lean() });
     });
+
+    // ---- Fagyos Csend és napi dolgok monitorozása (v0.1.18) ----
+    route('get', '/api/admin/winter', async (req, res) => {
+        const now = Date.now(), since = now - 45 * 86400000;
+        const ev = async (type) => EventModel.find({ type, t: { $gte: since } }).sort({ t: -1 }).limit(50000).lean();
+        const dayKey = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
+        const today = dayKey(now);
+        const [daily, advent, spins, shelters] = await Promise.all([ev('daily_claim'), ev('advent_open'), ev('wheel_spin'), ev('shelter_claim')]);
+        // napi bónusz: az utolsó 14 nap
+        const days = []; for (let i = 13; i >= 0; i--) days.push(dayKey(now - i * 86400000));
+        const perDay = (list) => days.map(k => ({ day: k, n: list.filter(e => dayKey(e.t) === k).length }));
+        const streaks = {}; daily.forEach(e => { const d = num(e.data && e.data.day); streaks[d] = (streaks[d] || 0) + 1; });
+        // adventi naptár: ablakonként
+        const windows = Array.from({ length: 24 }, (_, i) => ({ day: i + 1, n: 0, catchup: 0 }));
+        advent.forEach(e => { const w = windows[num(e.data && e.data.day) - 1]; if (w) { w.n++; if (e.data.catchup) w.catchup++; } });
+        // szerencsekerék
+        const prizes = {}; let credits = 0; const jackpots = [];
+        spins.forEach(e => { const k = e.data && e.data.prize; prizes[k] = (prizes[k] || 0) + 1; if (k === 'jackpot') { credits += num(e.data.credits, 100); jackpots.push({ t: e.t, user: e.user }); } });
+        const users = await allUsers();
+        const shelterCount = users.filter(u => u.playerData && u.playerData.shelter && u.playerData.shelter.buildingId).length;
+        res.json({ success: true, today,
+            daily: { today: daily.filter(e => dayKey(e.t) === today).length, users7: new Set(daily.filter(e => e.t > now - 7 * 86400000).map(e => e.user)).size, perDay: perDay(daily), streaks },
+            advent: { total: advent.length, today: advent.filter(e => dayKey(e.t) === today).length, users: new Set(advent.map(e => e.user)).size, catchups: advent.filter(e => e.data && e.data.catchup).length, windows, perDay: perDay(advent) },
+            wheel: { total: spins.length, today: spins.filter(e => dayKey(e.t) === today).length, users: new Set(spins.map(e => e.user)).size, prizes, credits, jackpots: jackpots.slice(0, 20), perDay: perDay(spins) },
+            shelter: { count: shelterCount, claims: shelters.length, today: shelters.filter(e => dayKey(e.t) === today).length }
+        });
+    }, 'events');
 
     // ---- mentés most ----
     route('post', '/api/admin/backup', async (req, res) => {

@@ -16,6 +16,8 @@ const Combat = require('./combat-engine'); // körös harc szabályai
 const SurvivalSun = require('./public/js/sun'); // napkelte / napnyugta (éjszaka)
 const SurvivalTutorial = require('./public/js/tutorial'); // Első lépések (v0.1.11)
 const SurvivalDaily = require('./public/js/daily'); // napi bónusz (v0.1.11)
+const SurvivalAdvent = require('./public/js/advent'); // adventi naptár – Fagyos Csend (v0.1.18)
+const SurvivalShop = require('./public/js/shop'); // a kinézetek nevei az adventi üzenethez
 const Admin = require('./admin'); // admin oldal, eseménynapló, bejelentések, eventek, tiltás (v0.1.13)
 const Premium = require('./premium'); // prémium credit, bolt, ládák (v0.1.16)
 let adminHooks = null;           // a fájl végén áll össze (Admin.setup)
@@ -461,6 +463,7 @@ function normalizePlayerFields(p, equipment, inventory) {
         quickbar: normalizeQuickbar(p.quickbar),
         tutorial: normalizeTutorial(p.tutorial),
         daily: normalizeDaily(p.daily),
+        advent: normalizeAdvent(p.advent),
         premiumSlots: Math.max(0, Math.min(6, Math.floor(num(p.premiumSlots, 0)))), // prémium: végleges +hely (v0.1.16)
         shelter: normalizeShelter(p.shelter),
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
@@ -622,6 +625,15 @@ function normalizeTutorial(raw) {
     const done = {};
     SurvivalTutorial.STEPS.forEach(s => { if (t.done && Number.isFinite(Number(t.done[s.key]))) done[s.key] = Number(t.done[s.key]); });
     return { introSeen: !!t.introSeen, done, finalClaimed: !!t.finalClaimed };
+}
+function normalizeAdvent(raw) {
+    const a = raw && typeof raw === 'object' ? raw : {};
+    const opened = [...new Set((Array.isArray(a.opened) ? a.opened : []).map(d => Math.floor(num(d, 0))).filter(d => d >= 1 && d <= SurvivalAdvent.DAYS_TOTAL))].sort((x, y) => x - y);
+    return {
+        opened,
+        catchupDay: typeof a.catchupDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(a.catchupDay) ? a.catchupDay : null,
+        test: !!a.test // a stáb tesztnyitásai: az igazi kezdéskor törlődnek
+    };
 }
 function normalizeDaily(raw) {
     const d = raw && typeof raw === 'object' ? raw : {};
@@ -2342,6 +2354,54 @@ io.on('connection', (socket) => {
         })).then(reply('daily_result')).catch(logError('Hiba a napi bónusznál:'));
     });
 
+    // ===== ADVENTI NAPTÁR – FAGYOS CSEND (v0.1.18) =====
+    // Dec. 1–24. naponta egy ablak; kihagyott ablak naponta egy pótolható dec. 26-ig. A szerver dönti el, mi nyitható.
+    // ADVENT_TEST=on: a stáb előre kipróbálhatja (minden ablak nyitható); ezek a nyitások az igazi kezdéskor törlődnek.
+    const adventTest = () => process.env.ADVENT_TEST === 'on' && !!socket.data.role;
+    socket.emit('advent_config', { test: adventTest() });
+    socket.on('advent_open', (data) => {
+        const day = Math.floor(num(data && data.day, 0));
+        const test = adventTest();
+        withPlayer(username, freeOnly((p) => {
+            const now = Date.now();
+            let adv = p.advent || { opened: [], catchupDay: null, test: false };
+            if (adv.test && !test) adv = { opened: [], catchupDay: null, test: false }; // tesztnyitások nem számítanak
+            const chk = SurvivalAdvent.canOpen(adv, day, now, { test });
+            if (!chk.ok) return { save: false, error: chk.reason };
+            const reward = SurvivalAdvent.DAYS[day - 1];
+            // Ami nem fér el nálad (hely vagy súly), az a menedéked raktárába kerül. Ha az sincs / tele van, az ablak zárva marad,
+            // de nem vész el: helyet csinálva ma kinyithatod, később pedig pótolhatod.
+            const place = (target) => {
+                const toStash = [];
+                for (const r of reward.items) if (!addItem(target, r.key, r.count).ok) toStash.push(r);
+                if (!toStash.length) return { ok: true, toStash };
+                if (!target.shelter) return { ok: false, toStash };
+                const box = { inventory: target.shelter.stash };
+                toStash.forEach(r => pushItem(box, r.key, r.count));
+                return { ok: target.shelter.stash.length <= SurvivalShelter.stashSlots(target.shelter), toStash };
+            };
+            const trial = JSON.parse(JSON.stringify(p));
+            const test1 = place(trial);
+            if (!test1.ok) return { save: false, error: p.shelter
+                ? 'Nincs nálad elég hely (vagy túl nehéz lenne), és a menedéked raktára is tele van. Csinálj helyet, és nyisd ki újra – az ablak nem vész el!'
+                : 'Nincs nálad elég hely, vagy túl nehéz lenne. Csinálj helyet, és nyisd ki újra – az ablak nem vész el!' };
+            const placed = place(p);
+            if (reward.money) p.money += reward.money;
+            const levels = grantXp(p, reward.xp);
+            p.advent = { opened: [...adv.opened, day].sort((x, y) => x - y), catchupDay: chk.catchup ? SurvivalAdvent.dayKey(now) : adv.catchupDay, test: test || adv.test };
+            const names = reward.items.map(r => `${r.count > 1 ? r.count + ' ' : ''}${itemDatabase[r.key].name}`).join(', ');
+            const stashNote = placed.toStash.length ? ` (Nem fért el nálad, a menedéked raktárába került: ${placed.toStash.map(r => itemDatabase[r.key].name).join(', ')}.)` : '';
+            const cos = reward.cosmetic && SurvivalShop.BY_KEY[reward.cosmetic];
+            return { leveledUp: levels > 0, message: `Adventi naptár, ${day}. ablak${chk.catchup ? ' (pótlás)' : ''}: ${names}${reward.money ? `, +${reward.money} pénz` : ''}, +${reward.xp} XP${cos ? `, és a(z) „${cos.name}” ${cos.kind === 'frame' ? 'keret' : 'cím'}` : ''}!${stashNote}`,
+                payload: { day, items: reward.items, xp: reward.xp, money: reward.money || 0, cosmetic: reward.cosmetic || null, toStash: placed.toStash.map(r => r.key) } };
+        })).then(async (r) => {
+            if (r && !r.result.error && r.result.payload && r.result.payload.cosmetic && premiumHooks && premiumHooks.grantCosmetic) {
+                await premiumHooks.grantCosmetic(username, r.result.payload.cosmetic).catch(logError('Hiba az adventi kinézetnél:'));
+            }
+            reply('advent_result')(r);
+        }).catch(logError('Hiba az adventi naptárnál:'));
+    });
+
     // ===================== MENEDÉK (v0.1.12) =====================
     // Elfoglalás: egy valódi épület a közelben. Költözni hetente egyszer lehet; a raktár és az építmények költöznek.
     socket.on('shelter_claim', (data) => {
@@ -2477,9 +2537,10 @@ io.on('connection', (socket) => {
             const keepStats = p.stats; // a statisztika életre szól, az újrakezdés nem törli
             const keepTutorial = p.tutorial; // az Első lépések a fiókhoz tartozik
             const keepDaily = p.daily;       // a napi bónusz sorozata is
+            const keepAdvent = p.advent;     // az adventi naptár ablakai is
             const keepSlots = p.premiumSlots; // a megvett prémium hátizsák-hely is
             const keepShelter = p.shelter;   // a menedék és a raktára is megmarad (v0.1.12)
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, premiumSlots: keepSlots, shelter: keepShelter, lifeStartedAt: Date.now() });
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, advent: keepAdvent, premiumSlots: keepSlots, shelter: keepShelter, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };

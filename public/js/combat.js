@@ -22,6 +22,12 @@ function syncCombatUI() {
     const combat = player.combat;
 
     if (!combat || player.dead) {
+        // a harc vége: előbb lejátsszuk az utolsó csapásokat (a combat_result a player_state után érkezik)
+        if (!player.dead && shownCombatKey && !modal.classList.contains('hidden')) {
+            if (Date.now() < arenaBusyUntil) { setTimeout(syncCombatUI, arenaBusyUntil - Date.now() + 50); return; }
+            if (!arenaEndWaited) { arenaEndWaited = true; setTimeout(syncCombatUI, 250); return; }
+        }
+        arenaEndWaited = false;
         modal.classList.add('hidden');
         document.getElementById('combat-heal-modal').classList.add('hidden');
         shownCombatKey = null;
@@ -32,6 +38,7 @@ function syncCombatUI() {
     if (shownCombatKey !== key) {
         shownCombatKey = key;
         document.getElementById('combat-log').innerHTML = '';
+        arenaReset(combat.enemy);
         combatLogAppend(`[Harc] ${combat.enemy.avatar} ${combat.enemy.name} támadt rád itt: ${combat.buildingName}. Harcolj vagy menekülj!`, 'text-amber-400');
         playSound('hit');
     }
@@ -138,19 +145,19 @@ if (typeof socket !== 'undefined' && socket) {
             return;
         }
         const enemyName = (data.enemy && data.enemy.name) || 'Az ellenség';
-        (data.events || []).forEach(ev => {
+        const events = data.events || [];
+        events.forEach(ev => {
             const [text, cls] = describeCombatEvent(ev, enemyName);
             if (text) combatLogAppend(text, cls);
-            if (ev.actor === 'enemy') playSound('hit');
-            else if (ev.type === 'hit' || ev.type === 'crit') playSound('attack');
         });
+        const animMs = arenaPlay(events, data.outcome); // felváltva odacsapnak; a hang az animációval együtt szól
 
         if (data.outcome === 'won') {
             logMessage(data.message);
-            playSound('win');
+            setTimeout(() => playSound('win'), Math.max(0, animMs - 600));
             // A talált holmi a Zsákmány ablakba kerül (amit nem teszel el, 30 percig az épületben marad)
             if (data.cache && data.cache.items && data.cache.items.length && typeof openLootWindow === 'function') {
-                openLootWindow(data.buildingId, data.buildingName || 'Épület', data.cache);
+                setTimeout(() => openLootWindow(data.buildingId, data.buildingName || 'Épület', data.cache), animMs); // a győzelem után nyílik
             }
         } else if (data.outcome === 'fled') {
             logMessage(data.message);
@@ -177,4 +184,105 @@ function renderEnemyPortrait(enemy) {
     img.className = 'w-full h-full object-cover';
     img.onload = () => { if (el.dataset.key === enemy.key) { el.textContent = ''; el.appendChild(img); } };
     img.src = `/images/enemies/${enemy.key}.webp`;
+}
+
+
+// ---------- HARC ARÉNA: a lépések animálva (v0.1.18) ----------
+// A szerver egy körben több eseményt küld (pl. te ütsz, aztán ő); ezeket egymás után játsszuk le.
+let arenaBusyUntil = 0;
+let arenaEndWaited = false;
+let arenaTimers = [];
+function arenaReset(enemy) {
+    arenaTimers.forEach(clearTimeout); arenaTimers = []; arenaBusyUntil = 0;
+    const me = document.getElementById('ar-me'), en = document.getElementById('ar-enemy');
+    if (!me || !en) return;
+    [me, en].forEach(f => f.className = f.className.replace(/\b(lunge|hurt|healed|dead|fled|shoot)\b/g, '').trim());
+    document.getElementById('ar-fx').innerHTML = '';
+    const myAva = player.avatar ? `/images/avatars/${player.avatar}` : '/images/avatars/avatar1.png';
+    const mi = document.getElementById('ar-me-img'); if (mi && mi.getAttribute('src') !== myAva) mi.src = myAva;
+    const lbl = document.getElementById('ar-enemy-label'); if (lbl) lbl.textContent = (enemy && enemy.name || 'ELLENFÉL').toUpperCase();
+    const box = document.getElementById('ar-enemy-img');
+    if (box && enemy) {
+        box.textContent = enemy.avatar || '👹';
+        if (/^[a-z_]{1,32}$/.test(enemy.key || '')) { const img = new Image(); img.alt = ''; img.onload = () => { box.textContent = ''; box.appendChild(img); }; img.src = `/images/enemies/${enemy.key}.webp`; }
+    }
+}
+function arenaRestart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function arenaFloat(side, text, cls) {
+    const fx = document.getElementById('ar-fx'), f = document.getElementById(side === 'me' ? 'ar-me' : 'ar-enemy');
+    if (!fx || !f) return;
+    const r = f.getBoundingClientRect(), a = fx.getBoundingClientRect();
+    const d = document.createElement('div');
+    d.className = 'sg-ar-dmg ' + (cls || '');
+    d.textContent = text;
+    fx.appendChild(d);
+    const half = d.offsetWidth * 0.6 + 8; // ne lógjon ki az aréna szélén
+    d.style.left = Math.min(a.width - half, Math.max(half, r.left - a.left + r.width / 2)) + 'px';
+    d.style.top = (r.top - a.top + 4) + 'px';
+    setTimeout(() => d.remove(), 1000);
+}
+function arenaSlash(side, glyph) {
+    const fx = document.getElementById('ar-fx'), f = document.getElementById(side === 'me' ? 'ar-me' : 'ar-enemy');
+    if (!fx || !f) return;
+    const r = f.getBoundingClientRect(), a = fx.getBoundingClientRect();
+    const d = document.createElement('div');
+    d.className = 'sg-ar-slash';
+    d.textContent = glyph;
+    d.style.left = (r.left - a.left + r.width / 2) + 'px';
+    d.style.top = (r.top - a.top + r.height / 2 - 8) + 'px';
+    fx.appendChild(d);
+    setTimeout(() => d.remove(), 400);
+}
+function arenaQuake() { const b = document.getElementById('combat-box'); if (b) arenaRestart(b, 'sg-quake'); }
+function arenaBanner(text) {
+    const fx = document.getElementById('ar-fx'); if (!fx) return;
+    const d = document.createElement('div'); d.className = 'sg-ar-banner'; d.textContent = text; fx.appendChild(d);
+}
+// Lőfegyver-e (a hit esemény weapon neve alapján)
+function arenaIsGun(weaponName) {
+    const w = Object.values(itemDatabase).find(it => it.name === weaponName);
+    return !!(w && w.reqAmmo);
+}
+function arenaStep(ev) {
+    const me = document.getElementById('ar-me'), en = document.getElementById('ar-enemy');
+    if (!me || !en) return;
+    if (ev.actor === 'enemy') {
+        arenaRestart(en, 'lunge');
+        setTimeout(() => { arenaRestart(me, 'hurt'); arenaSlash('me', '💥'); arenaFloat('me', `-${ev.amount}`); playSound('hit'); if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} } }, 230);
+        return;
+    }
+    if (ev.type === 'hit' || ev.type === 'crit') {
+        const gun = !ev.noAmmo && arenaIsGun(ev.weapon);
+        if (gun) { arenaRestart(me, 'shoot'); } else arenaRestart(me, 'lunge');
+        setTimeout(() => {
+            arenaRestart(en, 'hurt');
+            arenaSlash('enemy', gun ? '💥' : ev.type === 'crit' ? '⚡' : '⚔️');
+            arenaFloat('enemy', ev.type === 'crit' ? `KRITIKUS! -${ev.amount}` : `-${ev.amount}`, ev.type === 'crit' ? 'crit' : '');
+            if (ev.type === 'crit') arenaQuake();
+            playSound('attack');
+        }, gun ? 90 : 230);
+        return;
+    }
+    if (ev.type === 'heal') { arenaRestart(me, 'healed'); arenaFloat('me', `+${ev.amount}`, 'heal'); return; }
+    if (ev.type === 'flee_fail') { arenaRestart(me, 'shoot'); arenaFloat('me', 'NEM SIKERÜLT!', 'miss'); return; }
+    if (ev.type === 'flee') { me.classList.add('fled'); arenaFloat('me', 'MENEKÜLÉS!', 'miss'); return; }
+}
+// Lejátssza az eseményeket; visszaadja, mennyi ideig tart (ms)
+function arenaPlay(events, outcome) {
+    const steps = events.filter(ev => ev.actor === 'enemy' || ['hit', 'crit', 'heal', 'flee', 'flee_fail'].includes(ev.type));
+    const STEP = 620;
+    const start = Math.max(Date.now(), arenaBusyUntil);
+    let t = start - Date.now();
+    steps.forEach(ev => { arenaTimers.push(setTimeout(() => arenaStep(ev), t)); t += STEP; });
+    if (outcome === 'won') {
+        arenaTimers.push(setTimeout(() => { const en = document.getElementById('ar-enemy'); if (en) en.classList.add('dead'); arenaBanner('GYŐZELEM!'); }, t));
+        t += 1100;
+    } else if (outcome === 'lost') {
+        arenaTimers.push(setTimeout(() => { const me = document.getElementById('ar-me'); if (me) me.classList.add('dead'); }, t));
+        t += 700;
+    } else if (outcome === 'fled') {
+        t += 500;
+    }
+    arenaBusyUntil = Date.now() + t;
+    return t;
 }

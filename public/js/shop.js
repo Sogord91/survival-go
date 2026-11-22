@@ -35,7 +35,13 @@
         { key: 'title_medic',  kind: 'title', name: 'Tábori felcser',     rarity: 'rare',      price: 120, color: '#7fc9a0', desc: 'Cím a neved alatt.' },
         { key: 'title_hunter', kind: 'title', name: 'Mutánsvadász',       rarity: 'rare',      price: null, color: '#d98a5a', desc: 'Cím a neved alatt. Csak ládából.' },
         { key: 'title_ghost',  kind: 'title', name: 'Szellem',            rarity: 'epic',      price: null, color: '#b7c4d8', desc: 'Cím a neved alatt. Csak ládából.' },
-        { key: 'title_legend', kind: 'title', name: 'A Zóna legendája',   rarity: 'legendary', price: null, color: '#f0c24a', desc: 'Cím a neved alatt. Csak ládából.' }
+        { key: 'title_legend', kind: 'title', name: 'A Zóna legendája',   rarity: 'legendary', price: null, color: '#f0c24a', desc: 'Cím a neved alatt. Csak ládából.' },
+        // eseménykinézetek (event): nem vehetők meg és ládából sem jönnek
+        { key: 'title_santa26',  kind: 'title', name: 'Mikulás 2026',        rarity: 'epic',      price: null, event: true, color: '#e8645a', desc: 'Csak a 2026-os adventi naptár 6. ablakából.' },
+        { key: 'frame_blizzard26', kind: 'frame', name: 'Hóvihar keret',      rarity: 'rare',      price: null, event: true, color: '#7fc4f0', glow: true, desc: 'Csak a 2026-os téli szerencsekerékről.' },
+        { key: 'title_elf26',      kind: 'title', name: 'Télapó segédje',     rarity: 'epic',      price: null, event: true, color: '#e8645a', desc: 'Csak a 2026-os téli szerencsekerékről.' },
+        { key: 'frame_iceheart26', kind: 'frame', name: 'Jégszív keret',      rarity: 'legendary', price: null, event: true, color: '#dff4ff', glow: true, pulse: true, desc: 'Csak a 2026-os téli szerencsekerékről.' },
+        { key: 'frame_frost26',  kind: 'frame', name: 'Fagyos Csend 2026',   rarity: 'legendary', price: null, event: true, color: '#bfe8ff', glow: true, pulse: true, desc: 'Csak a 2026-os adventi naptár 24. ablakából. Soha többé nem szerezhető meg.' }
     ];
 
     // Kényelem: nem ad harci előnyt
@@ -75,7 +81,7 @@
     function crateOdds(crateKey) {
         const crate = CRATES.find(c => c.key === (CRATE_ALIASES[crateKey] || crateKey)) || CRATES[0];
         const w = crate.weights;
-        const pool = COSMETICS.filter(c => !crate.pool || c.kind === crate.pool);
+        const pool = COSMETICS.filter(c => !c.event && (!crate.pool || c.kind === crate.pool));
         // csak azok a ritkaságok számítanak, amelyekből van tárgy a ládában
         const total = Object.keys(RARITY).reduce((a, r) => a + (pool.some(c => c.rarity === r) ? (w[r] || 0) : 0), 0);
         return pool.map(c => {

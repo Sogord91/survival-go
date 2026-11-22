@@ -333,7 +333,18 @@ function setup(ctx) {
         await TxModel.updateMany({ user: from }, { user: to }).catch(() => { });
     }
 
-    return { onConnect, onPlayerSaved, onRename, enabledFor };
+    // Eseményből járó kinézet (pl. adventi naptár): ingyen a gyűjteménybe, ha még nincs meg
+    function grantCosmetic(username, key) {
+        const def = Shop.BY_KEY[key];
+        if (!def || !def.kind) return Promise.resolve({ error: 'Ismeretlen kinézet.' });
+        return withPremium(username, (pr, u, txs) => {
+            if (!pr.owned.includes(key)) pr.owned.push(key);
+            txs.push({ reason: 'event', delta: 0, note: `Esemény: ${def.name}` });
+            return { message: `Új kinézet: ${def.name}` };
+        });
+    }
+
+    return { onConnect, onPlayerSaved, onRename, enabledFor, grantCosmetic };
 }
 
 module.exports = { setup, normalizePremium, mode, enabledFor, models: { TxModel, OrderModel } };

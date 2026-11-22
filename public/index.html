@@ -493,6 +493,142 @@
         .sg-pkg-price { margin-top: 5px; padding: 2px 12px; border-radius: 999px; background: linear-gradient(180deg, #4c3a6a, #2c2140); border: 1.5px solid #c9a14a; font: 800 13px var(--sg-font); }
         .sg-prem-icon { display: block; width: 52px; height: 52px; margin: 0 auto 4px; object-fit: contain; }
         .sg-prem-card { background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 16%, #1d2017), #14160f 80%); }
+        /* ===== ADVENTI NAPTÁR – Fagyos Csend (v0.1.18) ===== */
+        #advent-modal { position: fixed; inset: 0; z-index: 3150; }
+        .sg-adv-panel { background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(170,215,255,.16), transparent 70%) !important; }
+        .sg-adv-h { font: 800 16px var(--sg-font); letter-spacing: .22em; color: #cfeaff; text-shadow: 0 0 10px rgba(150,210,255,.6); }
+        .sg-adv-sub { font: 700 10px var(--sg-font); letter-spacing: .18em; color: var(--sg-muted); }
+        .sg-adv-note { margin: 6px 0 8px; padding: 7px 9px; background: rgba(20,40,60,.45); border-left: 3px solid #9fd8f0; color: var(--sg-thread); font: 500 12px/1.4 var(--sg-font); }
+        .sg-adv-note.test { background: rgba(120,24,18,.8); border-color: #f0b8a8; color: #ffe0d8; font-weight: 800; }
+        .sg-adv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+        .sg-adv-day { position: relative; min-height: 74px; padding: 16px 3px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            background: linear-gradient(180deg, #3a2c1c, #241a10); border: 1.5px solid #15100a; box-shadow: inset 0 1px 0 rgba(255,230,180,.12), inset 0 -3px 0 rgba(0,0,0,.4); }
+        .sg-adv-day:before { content: ''; position: absolute; left: 50%; top: 5px; width: 14px; height: 3px; transform: translateX(-50%); background: #8a7350; border-radius: 2px; box-shadow: 0 1px 0 #000; }
+        .sg-adv-n { position: absolute; left: 5px; top: 3px; font: 800 13px var(--sg-font); color: #e9d9a0; text-shadow: 0 1px 1px #000; }
+        .sg-adv-day.special { background: linear-gradient(180deg, #5a1f1a, #2e100d); border-color: #c9a14a; }
+        .sg-adv-day.special .sg-adv-n { color: #ffd77a; }
+        .sg-adv-lock { font-size: 20px; color: rgba(200,230,255,.45); }
+        .sg-adv-day.special .sg-adv-lock { color: #ffd77a; }
+        .sg-adv-tag { margin-top: 2px; font: 800 8.5px var(--sg-font); letter-spacing: .1em; color: #ffd77a; }
+        .sg-adv-gift { font-size: 26px; filter: drop-shadow(0 0 6px rgba(255,215,120,.7)); } .sg-adv-gift.dim { filter: grayscale(.7); opacity: .6; }
+        .sg-adv-day.today { border-color: #ffd77a; box-shadow: 0 0 0 2px #ffd77a, 0 0 16px rgba(255,215,120,.55); animation: sg-adv-glow 1.6s ease-in-out infinite; }
+        .sg-adv-day.missed { border-color: #9fd8f0; box-shadow: 0 0 0 1.5px #9fd8f0; } .sg-adv-day.missed .sg-adv-tag { color: #bfe8ff; }
+        .sg-adv-day.missed.wait { box-shadow: none; opacity: .8; }
+        .sg-adv-day.got { background: linear-gradient(180deg, #23281c, #15170f); }
+        .sg-adv-day.opening { animation: sg-shake .25s ease-in-out infinite; }
+        .sg-adv-ok { position: absolute; right: 4px; top: 2px; font: 900 12px var(--sg-font); font-style: normal; color: #9fe07a; }
+        @keyframes sg-adv-glow { 0%, 100% { box-shadow: 0 0 0 2px #ffd77a, 0 0 10px rgba(255,215,120,.4); } 50% { box-shadow: 0 0 0 2px #ffd77a, 0 0 22px rgba(255,215,120,.85); } }
+        .sg-adv-items { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
+        .sg-adv-items > span { position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: var(--sg-pocket); border: 1px solid var(--sg-dark); font-size: 13px; }
+        .sg-adv-items img { width: 20px; height: 20px; object-fit: contain; }
+        .sg-adv-items b { position: absolute; right: 0; bottom: -2px; font: 800 8px var(--sg-font); color: var(--sg-thread); text-shadow: 0 1px 1px #000; }
+        .sg-adv-items.big > span { width: 52px; height: 52px; font-size: 26px; } .sg-adv-items.big img { width: 44px; height: 44px; } .sg-adv-items.big b { font-size: 11px; right: 2px; }
+        .sg-adv-items > span.sg-adv-cos { width: auto; min-width: 24px; padding: 0 2px; }
+        .sg-adv-frame { display: block; width: 16px; height: 16px; border-radius: 50%; background: #2a2e20; box-shadow: 0 0 0 2px var(--cc), 0 0 6px var(--cc); }
+        .sg-adv-items.big .sg-adv-frame { width: 34px; height: 34px; box-shadow: 0 0 0 3px var(--cc), 0 0 12px var(--cc); background: #2a2e20 url('/images/avatars/avatar1.png') center/cover; }
+        .sg-adv-title { font: 800 7px var(--sg-font); font-style: normal; letter-spacing: .04em; } .sg-adv-items.big .sg-adv-title { font-size: 10px; padding: 0 4px; }
+        .sg-adv-reveal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8,12,18,.82); }
+        .sg-adv-rbox { width: 90%; padding: 16px 12px; text-align: center; background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255,215,120,.22), transparent 70%), #1d2017; border: 2px solid #ffd77a; box-shadow: 0 0 30px rgba(255,215,120,.35); animation: sg-pop .35s ease-out; }
+        .sg-adv-rn { margin-bottom: 8px; font: 800 13px var(--sg-font); letter-spacing: .2em; color: #ffd77a; }
+        .sg-adv-rxp { margin-top: 8px; font: 800 13px var(--sg-mono); color: #e9d9a0; } .sg-adv-rcos { margin-top: 6px; color: #cfeaff; font: 600 12px var(--sg-font); }
+        .sg-adv-card { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px; padding: 9px 10px; text-align: left; color: var(--sg-thread);
+            background: linear-gradient(90deg, rgba(40,70,100,.6), rgba(21,23,15,.5)); border: 1.5px solid #6f9fc0; }
+        .sg-adv-card.hot { border-color: #ffd77a; box-shadow: 0 0 12px rgba(255,215,120,.35); }
+        .sg-adv-card-ic { font-size: 26px; } .sg-adv-card b { display: block; font: 800 11.5px var(--sg-font); letter-spacing: .12em; color: #cfeaff; }
+        .sg-adv-card small { color: var(--sg-muted); font: 600 11.5px var(--sg-font); } .sg-adv-card.hot small { color: #ffd77a; }
+        .sg-adv-card-go { margin-left: auto; font: 800 22px var(--sg-font); color: var(--sg-muted); }
+        /* adventi ablak: díszítés és ajándék-animáció */
+        .sg-adv-panel { position: relative; overflow: hidden; border: 2px solid #8a6a3a !important; background: linear-gradient(180deg, #1c2a36 0%, #16201a 45%, #14160f 100%) !important; }
+        .sg-adv-panel:after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .55;
+            background-image: radial-gradient(1.6px 1.6px at 20px 30px, #fff, transparent), radial-gradient(1.2px 1.2px at 80px 120px, #fff, transparent), radial-gradient(2px 2px at 150px 60px, #fff, transparent),
+                radial-gradient(1.4px 1.4px at 230px 160px, #fff, transparent), radial-gradient(1.8px 1.8px at 300px 40px, #fff, transparent), radial-gradient(1.2px 1.2px at 360px 110px, #fff, transparent);
+            background-size: 400px 200px; animation: sg-snow 9s linear infinite; }
+        @keyframes sg-snow { from { background-position: 0 -200px; } to { background-position: 30px 0; } }
+        .sg-adv-panel > * { position: relative; z-index: 1; }
+        .sg-adv-lights { display: flex; justify-content: space-between; height: 16px; margin: 0 -4px 2px; padding: 0 4px; background: radial-gradient(ellipse 52% 60% at 50% 0%, transparent 60%, transparent 61%), linear-gradient(transparent 5px, #2a3a20 5px, #2a3a20 7px, transparent 7px); }
+        .sg-adv-lights i { width: 7px; height: 10px; margin-top: 5px; border-radius: 50% 50% 45% 45%; background: hsl(calc(var(--k) * 67), 85%, 60%); box-shadow: 0 0 8px hsl(calc(var(--k) * 67), 90%, 60%); animation: sg-blink 1.4s ease-in-out infinite; animation-delay: calc(var(--k) * -.23s); }
+        @keyframes sg-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+        .sg-adv-cabinet { padding: 8px; background: linear-gradient(180deg, #4a3520, #2c1f12); border: 2px solid #15100a; box-shadow: inset 0 0 0 2px #6b4f2a, 0 6px 14px rgba(0,0,0,.6); }
+        .sg-adv-reveal { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(6,10,16,.86); }
+        .sg-adv-stage { position: relative; width: 100%; padding: 10px 10px 14px; text-align: center; }
+        .sg-adv-rays { position: absolute; left: 50%; top: 70px; width: 300px; height: 300px; margin: -150px 0 0 -150px; opacity: 0; pointer-events: none;
+            background: repeating-conic-gradient(rgba(255,215,120,.28) 0 10deg, transparent 10deg 30deg); border-radius: 50%; -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%); mask: radial-gradient(circle, #000 20%, transparent 70%); }
+        .sg-adv-rays.on { animation: sg-rays-in .6s ease-out forwards, sg-rays-spin 12s linear infinite; }
+        @keyframes sg-rays-in { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
+        @keyframes sg-rays-spin { to { rotate: 360deg; } }
+        .sg-adv-box { position: relative; width: 96px; height: 96px; margin: 14px auto 6px; }
+        .sg-adv-box i { position: absolute; display: block; }
+        .sg-adv-box .body { left: 8px; right: 8px; bottom: 0; height: 62px; background: linear-gradient(90deg, #a3241c, #d23a2c 50%, #a3241c); border: 2px solid #3a0d08; box-shadow: inset 0 -8px 0 rgba(0,0,0,.25); }
+        .sg-adv-box .lid { left: 2px; right: 2px; bottom: 60px; height: 20px; background: linear-gradient(90deg, #b82c22, #e24a3a 50%, #b82c22); border: 2px solid #3a0d08; z-index: 2; transform-origin: 10% 100%; }
+        .sg-adv-box .ribbon { left: 50%; width: 14px; margin-left: -7px; bottom: 0; height: 82px; background: linear-gradient(90deg, #d9b24a, #fff0b0 50%, #d9b24a); z-index: 3; }
+        .sg-adv-box .lid:before, .sg-adv-box .lid:after { content: ''; position: absolute; top: -16px; width: 22px; height: 16px; border: 4px solid #e8c35a; border-radius: 50% 50% 0 50%; }
+        .sg-adv-box .lid:before { left: 50%; margin-left: -24px; transform: rotate(-15deg); } .sg-adv-box .lid:after { left: 50%; margin-left: 2px; transform: scaleX(-1) rotate(-15deg); }
+        .sg-adv-box.shake { animation: sg-gift-shake .22s ease-in-out infinite; }
+        @keyframes sg-gift-shake { 0%, 100% { transform: rotate(0) translateY(0); } 25% { transform: rotate(-7deg) translateY(-3px); } 75% { transform: rotate(7deg) translateY(-3px); } }
+        .sg-adv-box.open .lid { animation: sg-lid-off .6s cubic-bezier(.2,.8,.3,1) forwards; }
+        .sg-adv-box.open .ribbon { height: 62px; }
+        @keyframes sg-lid-off { to { transform: translate(-46px, -70px) rotate(-55deg); opacity: 0; } }
+        .sg-adv-items.pop > span { opacity: 0; animation: sg-item-pop .5s cubic-bezier(.2,1.6,.4,1) forwards; animation-delay: calc(.35s + var(--k, 0) * .18s); }
+        @keyframes sg-item-pop { from { opacity: 0; transform: translateY(40px) scale(.3); } to { opacity: 1; transform: none; } }
+        .sg-adv-items.pop { margin-top: -26px; position: relative; z-index: 4; gap: 6px; }
+        .sg-adv-items.big > span { box-shadow: 0 0 14px rgba(255,215,120,.5); border-color: #c9a14a; }
+        .sg-adv-rnames { margin-top: 6px; color: var(--sg-thread); font: 700 13px/1.35 var(--sg-font); }
+        .sg-adv-rn { margin-top: 8px; font: 800 13px var(--sg-font); letter-spacing: .2em; color: #ffd77a; text-shadow: 0 0 10px rgba(255,215,120,.6); }
+        /* napi bónusz kinyitás (v0.1.18) */
+        #daily-body .sg-adv-reveal { margin: -4px; background: rgba(10,12,8,.9); }
+        .sg-dc-crate { display: block; width: 110px; height: 110px; margin: 6px auto 0; object-fit: contain; filter: drop-shadow(0 0 14px rgba(255,215,120,.5)); }
+        .sg-dc-crate.shake { animation: sg-gift-shake .22s ease-in-out infinite; }
+        .sg-dc-crate.open { animation: sg-dc-pop .45s ease-out forwards; }
+        @keyframes sg-dc-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18) translateY(-6px); filter: brightness(1.6) drop-shadow(0 0 30px #ffd77a); } 100% { transform: scale(.9); opacity: .45; } }
+        .sg-adv-rays.gold { background: repeating-conic-gradient(rgba(255,200,80,.42) 0 10deg, transparent 10deg 30deg); }
+        .sg-dc-money { font-size: 22px !important; } .sg-dc-money b { font-size: 10px !important; }
+        .sg-dc-streak { display: flex; justify-content: center; gap: 5px; margin-top: 8px; }
+        .sg-dc-streak i { width: 18px; height: 6px; background: rgba(255,255,255,.12); border: 1px solid #000; } .sg-dc-streak i.on { background: #ffd77a; box-shadow: 0 0 6px #ffd77a; }
+        .sg-dc-next { margin-top: 6px; color: var(--sg-muted); font: 600 11px var(--sg-font); }
+        /* ===== HARC ARÉNA (v0.1.18) ===== */
+        .sg-arena { position: relative; height: 128px; margin-bottom: 10px; overflow: hidden; border: 1px solid rgba(120,30,20,.6);
+            background: radial-gradient(ellipse 60% 70% at 50% 100%, rgba(160,40,20,.25), transparent 70%), linear-gradient(180deg, #151a12, #0c0e09); }
+        .sg-ar-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: linear-gradient(180deg, #2a2418, #15120c); border-top: 1px solid #3a3020; }
+        .sg-ar-fighter { position: absolute; bottom: 10px; width: 86px; text-align: center; transition: transform .18s ease-out, opacity .4s; z-index: 2; }
+        .sg-ar-fighter.me { left: 14%; } .sg-ar-fighter.enemy { right: 14%; }
+        .sg-ar-img { width: 78px; height: 78px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 44px; overflow: hidden;
+            border: 2px solid #2f4a22; background: #10140c; box-shadow: 0 6px 10px rgba(0,0,0,.7); }
+        .sg-ar-fighter.enemy .sg-ar-img { border-color: #7a1f16; }
+        .sg-ar-img img { width: 100%; height: 100%; object-fit: cover; }
+        .sg-ar-fighter.enemy .sg-ar-img img { transform: scaleX(-1); }
+        .sg-ar-label { margin-top: 2px; font: 800 9px var(--sg-font); letter-spacing: .16em; color: var(--sg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        @media (max-height: 700px) { .sg-arena { height: 104px; } .sg-ar-img { width: 62px; height: 62px; font-size: 34px; } }
+        .sg-ar-vs { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font: 900 18px var(--sg-font); color: rgba(255,120,90,.35); letter-spacing: .1em; }
+        .sg-ar-fx { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+        .sg-ar-fighter.me.lunge { animation: sg-lunge-r .42s cubic-bezier(.3,.0,.3,1); }
+        .sg-ar-fighter.enemy.lunge { animation: sg-lunge-l .42s cubic-bezier(.3,.0,.3,1); }
+        @keyframes sg-lunge-r { 0% { transform: none; } 35% { transform: translateX(-8px) rotate(-4deg); } 60% { transform: translateX(78px) rotate(6deg) scale(1.06); } 100% { transform: none; } }
+        @keyframes sg-lunge-l { 0% { transform: none; } 35% { transform: translateX(8px) rotate(4deg); } 60% { transform: translateX(-78px) rotate(-6deg) scale(1.06); } 100% { transform: none; } }
+        .sg-ar-fighter.shoot { animation: sg-recoil .3s ease-out; } @keyframes sg-recoil { 30% { transform: translateX(-7px); } 100% { transform: none; } }
+        .sg-ar-fighter.hurt .sg-ar-img { animation: sg-hurt .38s ease-out; }
+        @keyframes sg-hurt { 0% { filter: none; transform: none; } 20% { filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(6); transform: translateX(6px); } 45% { transform: translateX(-6px); } 70% { transform: translateX(3px); } 100% { filter: none; transform: none; } }
+        .sg-ar-fighter.healed .sg-ar-img { animation: sg-healed .6s ease-out; } @keyframes sg-healed { 30% { filter: brightness(1.5) sepia(1) hue-rotate(60deg) saturate(4); box-shadow: 0 0 18px #6fe07a; } 100% { filter: none; } }
+        .sg-ar-fighter.dead { transform: translateY(14px) rotate(80deg) !important; opacity: .25; transition: transform .6s ease-in, opacity .8s; }
+        .sg-ar-fighter.fled { transform: translateX(-160px) !important; opacity: 0; transition: transform .6s ease-in, opacity .6s; }
+        .sg-ar-dmg { position: absolute; font: 900 20px var(--sg-font); color: #ff5a40; text-shadow: 0 2px 0 #000, 0 0 8px rgba(255,60,40,.7); animation: sg-dmg-up 1s ease-out forwards; white-space: nowrap; }
+        .sg-ar-dmg.crit { font-size: 23px; color: #ffd24a; text-shadow: 0 2px 0 #000, 0 0 12px rgba(255,200,60,.9); }
+        .sg-ar-dmg.heal { color: #7fe08a; text-shadow: 0 2px 0 #000, 0 0 8px rgba(100,230,120,.7); }
+        .sg-ar-dmg.miss { color: #c9c1a8; font-size: 15px; }
+        @keyframes sg-dmg-up { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -4px) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -44px) scale(1); } }
+        .sg-ar-slash { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; font-size: 46px; display: flex; align-items: center; justify-content: center; animation: sg-slash .35s ease-out forwards; }
+        @keyframes sg-slash { 0% { opacity: 0; transform: scale(.4) rotate(-30deg); } 30% { opacity: 1; transform: scale(1.2) rotate(0); } 100% { opacity: 0; transform: scale(1.4) rotate(15deg); } }
+        .sg-ar-banner { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font: 900 20px var(--sg-font); letter-spacing: .22em; color: #ffd77a; text-shadow: 0 2px 0 #000, 0 0 14px rgba(255,215,120,.7); animation: sg-pop .4s ease-out; }
+        #combat-box.sg-quake { animation: sg-quake .3s linear; } @keyframes sg-quake { 20% { transform: translate(-4px, 2px); } 40% { transform: translate(4px, -2px); } 60% { transform: translate(-3px, -1px); } 80% { transform: translate(3px, 1px); } }
+        /* ===== SZERENCSEKERÉK (v0.1.19) ===== */
+        .sg-wh-wrap { position: relative; width: min(78vw, 300px); margin: 14px auto 6px; filter: drop-shadow(0 10px 18px rgba(0,0,0,.7)); }
+        .sg-wh-svg { display: block; width: 100%; height: auto; }
+        .sg-wh-svg text { pointer-events: none; }
+        .sg-wh-bulb { fill: #ffe9a0; filter: drop-shadow(0 0 3px #ffd77a); animation: sg-blink 1.2s ease-in-out infinite; animation-delay: calc(var(--k) * -.1s); }
+        .sg-wh-pointer { position: absolute; left: 50%; top: -10px; width: 0; height: 0; margin-left: -13px; border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 30px solid #e8c35a;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,.8)); transform-origin: 50% 0; }
+        .sg-wh-pointer:after { content: ''; position: absolute; left: -5px; top: -36px; width: 10px; height: 10px; border-radius: 50%; background: #fff2a8; box-shadow: 0 0 6px #ffd77a; }
+        .sg-wh-pointer.tick { animation: sg-wh-tick .12s ease-out; } @keyframes sg-wh-tick { 40% { transform: rotate(-14deg); } 100% { transform: none; } }
+        .sg-wh-dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border: 1px solid #000; vertical-align: -1px; }
         /* felugró ablak: láda tartalma, csomag vásárlás (v0.1.17) */
         #prem-pop { position: fixed; inset: 0; z-index: 3400; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0,0,0,.72); }
         #prem-pop.hidden { display: none; }
@@ -770,6 +906,14 @@
                 <div id="enemy-bar-hp" class="bg-red-600 h-full w-full transition-all duration-300 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></div>
             </div>
 
+            <!-- Harc aréna (v0.1.18): a lépések animálva, felváltva -->
+            <div id="combat-arena" class="sg-arena">
+                <div class="sg-ar-ground"></div>
+                <div id="ar-me" class="sg-ar-fighter me"><div class="sg-ar-img"><img id="ar-me-img" src="/images/avatars/avatar1.png" alt=""></div><div class="sg-ar-label">TE</div></div>
+                <div class="sg-ar-vs">VS</div>
+                <div id="ar-enemy" class="sg-ar-fighter enemy"><div class="sg-ar-img" id="ar-enemy-img">🧟</div><div class="sg-ar-label" id="ar-enemy-label">ELLENFÉL</div></div>
+                <div id="ar-fx" class="sg-ar-fx"></div>
+            </div>
             <div id="combat-log" class="bg-emerald-950/40 border border-emerald-600/40 rounded-xl p-3 h-32 overflow-y-auto text-xs text-emerald-200/90 mb-4 space-y-1">
                 <div class="text-amber-400">[Harc] Ellenséges kontakt! Készülj a harcra vagy menekülj!</div>
             </div>
@@ -1097,7 +1241,17 @@
                 <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🎁 NAPI BÓNUSZ</h2>
                 <button onclick="closeDailyModal()" class="text-emerald-500 text-lg font-bold">✕</button>
             </div>
-            <div id="daily-body"></div>
+            <div id="daily-body" style="position:relative"></div>
+        </div>
+    </div>
+    <!-- ADVENTI NAPTÁR – Fagyos Csend (v0.1.18, js/advent-ui.js) -->
+    <div id="advent-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3150]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl sg-adv-panel flex flex-col" style="max-height:92vh">
+            <div class="flex justify-between items-center mb-1">
+                <div><div class="sg-adv-h">❄ FAGYOS CSEND</div><div class="sg-adv-sub">ADVENTI NAPTÁR · DECEMBER 1–24.</div></div>
+                <button onclick="closeAdventModal()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="advent-body" style="overflow-y:auto"></div>
         </div>
     </div>
     <div id="quest-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
@@ -1189,12 +1343,16 @@
     <script src="js/sun.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/daily.js"></script>
+    <script src="js/advent.js"></script>
+    <script src="js/wheel.js"></script>
     <script src="js/shelter.js"></script>
     <script src="js/combat.js"></script>
     <script src="js/map.js"></script>
     <script src="js/drag.js"></script>
     <script src="js/main.js"></script>
     <script src="js/tutorial-ui.js"></script>
+    <script src="js/advent-ui.js"></script>
+    <script src="js/wheel-ui.js"></script>
     <script src="js/notices.js"></script>
     <script src="js/staff.js"></script>
     <script src="js/shop.js"></script>

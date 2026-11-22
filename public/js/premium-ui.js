@@ -223,7 +223,7 @@ function showCrateReveal(rev, message) {
     const crate = S.CRATES.find(c => c.key === rev.crate) || S.CRATES[0];
     const ci = document.getElementById('crate-img');
     if (ci) { ci.src = pImg(crate.img); ci.className = 'sg-crate-shake'; ci.style.setProperty('--tc', crate.color); }
-    const names = S.COSMETICS.map(c => c);
+    const names = S.COSMETICS.filter(c => !c.event);
     let i = 0, delay = 60;
     const step = () => {
         const c = names[i++ % names.length];

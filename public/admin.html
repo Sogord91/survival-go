@@ -101,6 +101,7 @@ body.embed header h1 { font-size: 15px; }
   <button data-t="prem" data-perm="premium">PRÉMIUM <span id="prem-badge" class="badge hidden"></span></button>
   <button data-t="rep">HIBAJELENTÉSEK <span id="rep-badge" class="badge hidden"></span></button>
   <button data-t="evt" data-perm="events">EVENTEK</button>
+  <button data-t="win" data-perm="events">❄ FAGYOS CSEND</button>
   <button data-t="eco">GAZDASÁG</button>
   <button data-t="log">NAPLÓ</button>
   <button data-t="srv" data-perm="server">SZERVER</button>
@@ -225,6 +226,18 @@ body.embed header h1 { font-size: 15px; }
     </div>
   </section>
 
+  <!-- FAGYOS CSEND (v0.1.18): napi bónusz, adventi naptár, szerencsekerék, menedékek -->
+  <section class="tab" id="t-win">
+    <div class="row" style="margin-bottom:8px"><button class="btn ghost" onclick="loadWinter()">↻ FRISSÍTÉS</button><span class="muted" id="win-asof"></span></div>
+    <div class="grid cards" id="win-kpis"></div>
+    <div class="grid two" style="margin-top:10px">
+      <div class="card"><h3>Adventi naptár – ablakonként (hányan nyitották ki; ebből pótlás)</h3><div id="win-advent"></div></div>
+      <div class="card"><h3>Szerencsekerék – nyeremények (tény / várt a kiírt esélyek szerint)</h3><div id="win-wheel"></div></div>
+      <div class="card"><h3>Napok szerint (utolsó 14 nap)</h3><div id="win-days"></div></div>
+      <div class="card"><h3>Jackpot nyertesek · napi bónusz sorozatok</h3><div id="win-jack"></div><div id="win-streak" style="margin-top:10px"></div></div>
+    </div>
+  </section>
+
   <!-- GAZDASÁG -->
   <section class="tab" id="t-eco">
     <div class="grid two">
@@ -260,6 +273,7 @@ body.embed header h1 { font-size: 15px; }
 <script src="/js/items.js"></script>
 <script src="/js/roles.js"></script>
 <script src="/js/shop.js"></script>
+<script src="/js/wheel.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const TOKEN_KEY = 'survival_go_token';
@@ -315,6 +329,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   if (curTab === 'chat') loadConvs();
   if (curTab === 'staff') renderStaff();
   if (curTab === 'prem') { loadPrem(); loadLedger(); }
+  if (curTab === 'win') loadWinter();
 });
 function showTab(t) { const b = document.querySelector(`#tabs button[data-t="${t}"]`); if (b && !b.classList.contains('hidden')) b.click(); }
 
@@ -701,6 +716,42 @@ async function start() {
 setInterval(() => { if ($('auto').checked && !$('app').classList.contains('hidden') && document.visibilityState === 'visible') refreshAll().catch(() => { }); }, 20000);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 start();
+
+// ---------- Fagyos Csend monitorozás (v0.1.18) ----------
+const hbar = (label, n, max, extra, color) => `<div style="display:grid;grid-template-columns:150px 1fr 90px;gap:6px;align-items:center;margin:2px 0;font:12px var(--mono)">
+  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
+  <span style="background:rgba(255,255,255,.06);height:12px"><i style="display:block;height:100%;width:${max ? Math.round(n / max * 100) : 0}%;background:${color || 'var(--green)'}"></i></span>
+  <span style="text-align:right">${extra}</span></div>`;
+async function loadWinter() {
+  const d = await api('/api/admin/winter', { quiet: true });
+  if (!d || !d.success) return;
+  $('win-asof').textContent = ' Frissítve: ' + new Date().toLocaleTimeString('hu-HU');
+  const k = (label, v, sub) => `<div class="card kpi"><h3>${label}</h3><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+  $('win-kpis').innerHTML = [
+    k('Napi bónusz ma', fmt(d.daily.today), `7 nap alatt ${fmt(d.daily.users7)} különböző játékos`),
+    k('Adventi ablak ma', fmt(d.advent.today), `összesen ${fmt(d.advent.total)} · ${fmt(d.advent.users)} játékos · pótlás ${fmt(d.advent.catchups)}`),
+    k('Kerékpörgetés ma', fmt(d.wheel.today), `összesen ${fmt(d.wheel.total)} · ${fmt(d.wheel.users)} játékos`),
+    k('Kiadott kristály (jackpot)', fmt(d.wheel.credits), `${d.wheel.jackpots.length} jackpot`),
+    k('Menedékek', fmt(d.shelter.count), `ma ${fmt(d.shelter.today)} új / költözés`)
+  ].join('');
+  const amax = Math.max(1, ...d.advent.windows.map(w => w.n));
+  $('win-advent').innerHTML = d.advent.windows.map(w => hbar(`${w.day}. ablak${w.day === 6 ? ' (Mikulás)' : w.day === 24 ? ' (Szenteste)' : ''}`, w.n, amax, `${fmt(w.n)}${w.catchup ? ` (${fmt(w.catchup)} p.)` : ''}`)).join('');
+  const W = window.SurvivalWheel;
+  if (W) {
+    const wmax = Math.max(1, ...W.PRIZES.map(p => d.wheel.prizes[p.key] || 0));
+    $('win-wheel').innerHTML = d.wheel.total ? W.PRIZES.map(p => { const n = d.wheel.prizes[p.key] || 0; return hbar(esc(p.label), n, wmax, `${fmt(n)} / ${(d.wheel.total * p.chance).toFixed(1)}`, p.rare ? 'var(--gold)' : null); }).join('')
+      : '<p class="muted">Még senki nem pörgetett. A kerék december 6-án indul a karácsonyfákkal.</p>';
+  }
+  const dmax = Math.max(1, ...d.daily.perDay.map(x => x.n), ...d.advent.perDay.map(x => x.n), ...d.wheel.perDay.map(x => x.n));
+  $('win-days').innerHTML = `<p class="muted">zöld: napi bónusz · arany: adventi ablak · kék: kerékpörgetés</p>` + d.daily.perDay.map((x, i) => {
+    const a = d.advent.perDay[i].n, w = d.wheel.perDay[i].n;
+    return `<div style="display:grid;grid-template-columns:90px 1fr;gap:6px;margin:3px 0;font:11px var(--mono)"><span>${x.day.slice(5)}</span><span>
+      <i style="display:block;height:5px;width:${x.n / dmax * 100}%;background:var(--green)"></i><i style="display:block;height:5px;margin-top:1px;width:${a / dmax * 100}%;background:var(--gold)"></i><i style="display:block;height:5px;margin-top:1px;width:${w / dmax * 100}%;background:#5aa0e0"></i>
+      </span></div>`; }).join('');
+  $('win-jack').innerHTML = d.wheel.jackpots.length ? '<table>' + d.wheel.jackpots.map(j => `<tr><td>${new Date(j.t).toLocaleString('hu-HU')}</td><td><b>${esc(j.user)}</b></td><td>💎 100</td></tr>`).join('') + '</table>' : '<p class="muted">Még nincs jackpot nyertes.</p>';
+  const smax = Math.max(1, ...Object.values(d.daily.streaks));
+  $('win-streak').innerHTML = '<h3 style="margin-top:6px">Napi bónusz: hányadik napot vették át (45 nap)</h3>' + [1, 2, 3, 4, 5, 6, 7].map(n => hbar(`${n}. nap`, d.daily.streaks[n] || 0, smax, fmt(d.daily.streaks[n] || 0))).join('');
+}
 </script>
 </body>
 </html>
