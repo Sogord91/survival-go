@@ -67,7 +67,21 @@ tr.click:hover td { background: #2a2f20; cursor: pointer; }
 .cm.player { background: #2b3021; } .cm.staff { margin-left: auto; background: #4a5427; }
 .cm small { display: block; color: var(--muted); font: 11px var(--mono); margin-bottom: 2px; }
 body.embed header h1 { font-size: 15px; }
-@media (max-width: 700px) { #chat-grid { grid-template-columns: 1fr !important; } }
+/* mobilon (v0.1.19): a rácselemek ne lógjanak ki; a csevegésben vagy a lista, vagy a beszélgetés látszik */
+.grid > *, .card, .row > * { min-width: 0; }
+.paper, .cm, .conv .muted { overflow-wrap: anywhere; }
+#chat-back { display: none; }
+@media (max-width: 700px) {
+  #chat-grid { grid-template-columns: 1fr !important; }
+  #chat-grid.open > .card:first-child { display: none; }
+  #chat-grid:not(.open) #chat-thread-card { display: none; }
+  #chat-back { display: inline-block; }
+  #chat-thread { height: 55vh !important; }
+  .cm { max-width: 90%; }
+  #chat-send-row { flex-direction: column; align-items: stretch; }
+  #chat-send-row textarea { width: 100%; }
+  #chat-who { font-size: 16px !important; }
+}
 .hidden { display: none !important; }
 @media (max-width: 600px) { .two { grid-template-columns: 1fr; } main { padding: 10px; } header { position: static; } nav { top: 0; } }
 </style>
@@ -144,9 +158,9 @@ body.embed header h1 { font-size: 15px; }
     <div class="grid" style="grid-template-columns:minmax(220px,320px) 1fr;align-items:start" id="chat-grid">
       <div class="card" style="padding:0"><div id="chat-convs" style="max-height:72vh;overflow:auto"></div></div>
       <div class="card" id="chat-thread-card">
-        <div class="row"><b id="chat-who" style="color:var(--gold);font-size:18px">Válassz egy beszélgetést</b><span id="chat-on"></span><span class="sp" style="flex:1"></span><button class="btn ghost hidden" id="chat-open-p" onclick="openPlayer(chatUser)">ADATLAP</button></div>
+        <div class="row"><button class="btn ghost" id="chat-back" onclick="chatBack()">← LISTA</button><b id="chat-who" style="color:var(--gold);font-size:18px">Válassz egy beszélgetést</b><span id="chat-on"></span><span class="sp" style="flex:1"></span><button class="btn ghost hidden" id="chat-open-p" onclick="openPlayer(chatUser)">ADATLAP</button></div>
         <div id="chat-thread" style="height:52vh;overflow:auto;margin:10px 0;padding:8px;background:#0f110c;border:1px solid var(--line)"></div>
-        <div class="row"><textarea id="chat-text" style="min-height:60px;flex:1" maxlength="1000" placeholder="Válasz… (Enter: küldés, Shift+Enter: új sor)"></textarea><button class="btn" onclick="sendChat()">KÜLDÉS</button></div>
+        <div class="row" id="chat-send-row"><textarea id="chat-text" style="min-height:60px;flex:1" maxlength="1000" placeholder="Válasz… (Enter: küldés, Shift+Enter: új sor)"></textarea><button class="btn" onclick="sendChat()">KÜLDÉS</button></div>
       </div>
     </div>
   </section>
@@ -642,8 +656,10 @@ async function loadConvs() {
   $('chat-convs').innerHTML = CONVS.map(c => `<div class="conv ${c.user === chatUser ? 'on' : ''}" onclick="openChat('${esc(c.user)}')"><div class="row"><b>${esc(c.user)}</b>${c.online ? '<span class="pill on">online</span>' : ''}<span class="sp" style="flex:1"></span>${c.unread ? `<span class="badge" style="background:var(--red);padding:0 6px;border-radius:9px">${c.unread}</span>` : ''}</div>
     <div class="muted">${c.last.from === 'staff' ? '↩ ' : ''}${esc(c.last.text)}</div><div class="muted mono" style="font-size:11px">${ago(c.last.t)}</div></div>`).join('') || '<p class="muted" style="padding:12px">Még senki nem írt. A játékosok a Menü → „Üzenet a stábnak” gombbal írhatnak.</p>';
 }
+function chatBack() { chatUser = null; $('chat-grid').classList.remove('open'); loadConvs(); }
 async function openChat(user) {
   chatUser = user;
+  $('chat-grid').classList.add('open');
   if (curTab !== 'chat') showTab('chat');
   const d = await api('/api/admin/support/' + encodeURIComponent(user), { quiet: true });
   $('chat-who').textContent = user; $('chat-on').innerHTML = d.online ? '<span class="pill on">online</span>' : '<span class="pill">offline</span>';
