@@ -11,9 +11,6 @@ const REF_TITLES = [{ at: 1, key: 'title_recruiter' }, { at: 5, key: 'title_squa
 const FRIENDS_MAX = 50;
 const GIFTS_PER_DAY = 5;                               // naponta ennyi barátnak küldhetsz ajándékot (mindegyiknek 1-et)
 const GIFT_ITEMS = [{ key: 'bandage', count: 1 }, { key: 'canned_food', count: 1 }, { key: 'water_bottle', count: 1 }, { key: 'aa_batteries', count: 1 }, { key: 'rag', count: 2 }];
-const TEAM_MAX = 15, TEAM_MIN_LEVEL = 3;
-const TEAM_GOAL_PER_MEMBER = 15000, TEAM_GOAL_MAX = 150000; // heti közös séta (méter)
-const TEAM_REWARD = { money: 150, xp: 250 };
 const SOCIAL_REWARD = { money: 100, xp: 100 };        // közösségi oldal meglátogatása (egyszer platformonként)
 const SHARE_REWARD = { money: 30, xp: 50 };            // megosztás (naponta egyszer)
 const PLATFORMS = [
@@ -26,16 +23,13 @@ const PLATFORMS = [
 ];
 const DAY = (ms) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 const pairId = (a, b) => [a, b].sort().join('|');
-const NAME_RE = /^[\p{L}\p{N} ._-]{3,24}$/u;
-const TAG_RE = /^[A-Z0-9ÁÉÍÓÖŐÚÜŰ]{2,4}$/;
 
 function makeModels() {
     const mongoose = require('mongoose');
     const friend = new mongoose.Schema({ _id: String, a: String, b: String, from: String, status: String, t: Number, gifts: mongoose.Schema.Types.Mixed });
-    const team = new mongoose.Schema({ _id: String, name: String, tag: String, owner: String, members: [String], invites: [String], t: Number, week: String, meters: Number, done: Boolean });
     return {
         FriendModel: mongoose.models.SurvivalFriend || mongoose.model('SurvivalFriend', friend),
-        TeamModel: mongoose.models.SurvivalTeam || mongoose.model('SurvivalTeam', team)
+        TeamModel: require('./teams').makeModel()
     };
 }
 
@@ -157,65 +151,11 @@ function setup(ctx) {
         return (await friendsOf(username)).filter(f => f.gifts && f.gifts[username] === today).length;
     }
 
-    // ---------- CSAPATOK ----------
-    const teamOf = new Map(); // username -> csapat id (gyorsítótár a heti közös sétához)
-    async function myTeamId(username) {
-        if (teamOf.has(username)) return teamOf.get(username);
-        const u = await PlayerModel.findOne({ username }, { team: 1 }).lean();
-        const id = (u && u.team) || null; teamOf.set(username, id); return id;
-    }
-    function teamGoal(t) { return Math.min(TEAM_GOAL_MAX, TEAM_GOAL_PER_MEMBER * Math.max(1, (t.members || []).length)); }
-    function freshWeek(t) { const wk = weekKey(Date.now()); if (t.week !== wk) { t.week = wk; t.meters = 0; t.done = false; } return t; }
-    async function teamInfo(username) {
-        const id = await myTeamId(username);
-        const u = await PlayerModel.findOne({ username }, { teamInvites: 1 }).lean();
-        const inviteIds = (u && u.teamInvites) || [];
-        const invites = [];
-        for (const tid of inviteIds.slice(0, 5)) { const t = await TeamModel.findById(tid).lean(); if (t) invites.push({ id: t._id, name: t.name, tag: t.tag, members: t.members.length }); }
-        if (!id) return { team: null, invites };
-        const t = await TeamModel.findById(id).lean();
-        if (!t) { teamOf.set(username, null); return { team: null, invites }; }
-        freshWeek(t);
-        const users = await PlayerModel.find({ username: { $in: t.members } }, { username: 1, 'playerData.level': 1, 'playerData.season': 1 }).lean();
-        const month = seasonMonth();
-        const members = t.members.map(n => { const x = users.find(v => v.username === n) || {}; const pd = x.playerData || {}; const se = pd.season && pd.season.month === month ? pd.season : {};
-            return { name: n, level: pd.level || 1, online: !!activePlayers[n], points: se.xp || 0, owner: n === t.owner }; }).sort((a, b) => b.points - a.points);
-        return { team: { id: t._id, name: t.name, tag: t.tag, owner: t.owner, members, invited: t.invites || [], meters: Math.round(t.meters || 0), goal: teamGoal(t), done: !!t.done, points: members.reduce((a, m) => a + m.points, 0), max: TEAM_MAX }, invites };
-    }
-    // séta: a csapat heti közös céljához (memóriában gyűjtjük, percenként mentjük)
-    const pendingMeters = new Map();
-    function onWalk(username, meters) {
-        if (!(meters > 0)) return;
-        const id = teamOf.get(username);
-        if (id === undefined) { myTeamId(username).catch(() => { }); return; }
-        if (!id) return;
-        pendingMeters.set(id, (pendingMeters.get(id) || 0) + meters);
-    }
-    async function flushTeams() {
-        const list = [...pendingMeters.entries()]; pendingMeters.clear();
-        for (const [id, m] of list) {
-            const t = await TeamModel.findById(id).lean(); if (!t) continue;
-            freshWeek(t);
-            const before = t.meters || 0; t.meters = before + m;
-            const reached = !t.done && t.meters >= teamGoal(t);
-            await TeamModel.updateOne({ _id: id }, { week: t.week, meters: t.meters, done: t.done || reached });
-            if (reached) {
-                Admin.logEvent('team_goal', t.owner, { team: t.name, members: t.members.length });
-                for (const n of t.members) {
-                    await reward(n, TEAM_REWARD, `🏕️ A(z) [${t.tag}] csapat teljesítette a heti közös célt!`);
-                    notify(n, '🏕️ Megvan a csapat heti célja!', `A(z) ${t.name} együtt ${Math.round(t.meters / 1000)} km-t gyalogolt. Jutalmad: +${TEAM_REWARD.xp} XP, +${TEAM_REWARD.money} $.`);
-                }
-            }
-        }
-    }
-    if (!process.env.SG_NO_TIMERS) setInterval(() => flushTeams().catch(e => console.error('Csapat mentés hiba:', e.message)), 60000);
-    // csapat-ranglista: a tagok havi szezonpontjainak összege (a stáb pontja nem számít)
-    async function teamBoard(rows) {
-        const teams = await TeamModel.find({}).lean();
-        const byUser = {}; rows.forEach(r => { byUser[r.name] = r; });
-        return teams.map(t => ({ id: t._id, name: `[${t.tag}] ${t.name}`, tag: t.tag, members: t.members.length, xp: t.members.reduce((a, n) => a + ((byUser[n] && byUser[n].xp) || 0), 0), memberNames: t.members }))
-            .filter(t => t.xp > 0).sort((a, b) => b.xp - a.xp);
-    }
+    // ---------- CSAPATOK (teams.js, v0.1.22) ----------
+    const teams = require('./teams').setup({ PlayerModel, activePlayers, Admin, weekKey, seasonMonth, reward, notify, emitTo, TeamModel });
+    const onWalk = (u, m) => teams.onWalk(u, m);
+    const flushTeams = () => teams.flush();
+    const teamBoard = (rows) => teams.board(rows);
 
     // ---------- socket ----------
     function attach(socket) {
@@ -223,18 +163,16 @@ function setup(ctx) {
         const ok = (evt, message, extra) => socket.emit(evt, { success: true, message, ...(extra || {}) });
         const bad = (evt, message) => socket.emit(evt, { success: false, message });
         const guard = (fn) => (data) => { Promise.resolve(fn(data || {})).catch(e => { console.error('Közösség hiba:', e); bad('social_result', 'Hiba történt, próbáld újra.'); }); };
-        myTeamId(username).catch(() => { });
-
         const sendAll = async () => {
-            const [friends, team, code, u] = await Promise.all([friendList(username), teamInfo(username), ensureCode(username), PlayerModel.findOne({ username }, { refDone: 1, socialClaimed: 1, shareDay: 1 }).lean()]);
+            const [friends, team, code, u] = await Promise.all([friendList(username), teams.info(username), ensureCode(username), PlayerModel.findOne({ username }, { refDone: 1, socialClaimed: 1, shareDay: 1 }).lean()]);
             const joined = await PlayerModel.countDocuments({ refBy: username });
             const host = (socket.handshake && socket.handshake.headers && socket.handshake.headers.host) || 'survivalgo.hu';
             socket.emit('social_state', {
-                friends, team: team.team, teamInvites: team.invites, giftsLeft: Math.max(0, GIFTS_PER_DAY - await giftsSentToday(username)),
+                friends, team: team.team, teamInvites: team.invites, teamApps: team.apps, giftsLeft: Math.max(0, GIFTS_PER_DAY - await giftsSentToday(username)),
                 ref: { code, link: `https://${host}/?ref=${code}`, joined, done: (u && u.refDone) || 0, level: REF_LEVEL, rewardNew: REF_REWARD_NEW, rewardInviter: REF_REWARD_INVITER },
                 platforms: platformLinks().map(p => ({ ...p, claimed: ((u && u.socialClaimed) || []).includes(p.key) })), socialReward: SOCIAL_REWARD,
                 share: { reward: SHARE_REWARD, done: !!(u && u.shareDay === DAY(Date.now())) },
-                teamRules: { max: TEAM_MAX, minLevel: TEAM_MIN_LEVEL, perMember: TEAM_GOAL_PER_MEMBER, reward: TEAM_REWARD }
+                teamRules: team.rules
             });
         };
         socket.on('social_state', guard(sendAll));
@@ -311,73 +249,8 @@ function setup(ctx) {
             ok('social_result', `🎁 Elküldted neki (${other}): ${name}.`); return sendAll();
         }));
 
-        // --- csapat ---
-        socket.on('team_create', guard(async (d) => {
-            const name = String(d.name || '').trim().replace(/\s+/g, ' '), tag = String(d.tag || '').trim().toUpperCase();
-            if (await myTeamId(username)) return bad('social_result', 'Már tagja vagy egy csapatnak.');
-            const lv = (activePlayers[username] && activePlayers[username].level) || 1;
-            if (lv < TEAM_MIN_LEVEL) return bad('social_result', `Csapatot a ${TEAM_MIN_LEVEL}. szinttől alapíthatsz.`);
-            if (!NAME_RE.test(name)) return bad('social_result', 'A csapatnév 3–24 karakter: betű, szám, szóköz, pont, kötőjel.');
-            if (!TAG_RE.test(tag)) return bad('social_result', 'A rövidítés 2–4 nagybetű vagy szám (pl. ZÓNA, ERD).');
-            if (await TeamModel.findOne({ tag }).lean()) return bad('social_result', 'Ez a rövidítés már foglalt.');
-            const id = 't' + crypto.randomBytes(5).toString('hex');
-            await TeamModel.create({ _id: id, name, tag, owner: username, members: [username], invites: [], t: Date.now(), week: weekKey(Date.now()), meters: 0, done: false });
-            await PlayerModel.updateOne({ username }, { team: id, teamInvites: [] });
-            teamOf.set(username, id);
-            Admin.logEvent('team_create', username, { name, tag });
-            ok('social_result', `🏕️ Megalapítottad: [${tag}] ${name}! Hívd meg a barátaidat.`); return sendAll();
-        }));
-        socket.on('team_invite', guard(async (d) => {
-            const id = await myTeamId(username); if (!id) return bad('social_result', 'Nem vagy csapatban.');
-            const t = await TeamModel.findById(id).lean(); const other = String(d.name || '');
-            if (t.members.length >= TEAM_MAX) return bad('social_result', `A csapat megtelt (${TEAM_MAX} fő).`);
-            const u = await PlayerModel.findOne({ username: other }, { username: 1, team: 1, teamInvites: 1 }).lean();
-            if (!u) return bad('social_result', 'Nincs ilyen nevű túlélő.');
-            if (u.team) return bad('social_result', `${other} már egy másik csapat tagja.`);
-            const inv = (u.teamInvites || []).filter(x => x !== id).concat([id]).slice(-5);
-            await PlayerModel.updateOne({ username: other }, { teamInvites: inv });
-            await TeamModel.updateOne({ _id: id }, { invites: [...new Set((t.invites || []).concat([other]))].slice(-30) });
-            emitTo(other, 'player_notice', { message: `🏕️ ${username} meghívott a(z) [${t.tag}] ${t.name} csapatba! Barátok gomb → Csapat.` });
-            emitTo(other, 'social_ping', {});
-            notify(other, '🏕️ Csapatmeghívó', `${username} meghívott a(z) ${t.name} csapatba.`);
-            ok('social_result', `Meghívó elküldve: ${other}.`); return sendAll();
-        }));
-        socket.on('team_join', guard(async (d) => {
-            if (await myTeamId(username)) return bad('social_result', 'Már tagja vagy egy csapatnak.');
-            const id = String(d.id || ''); const u = await PlayerModel.findOne({ username }, { teamInvites: 1 }).lean();
-            if (!((u && u.teamInvites) || []).includes(id)) return bad('social_result', 'Ide nincs meghívód.');
-            const t = await TeamModel.findById(id).lean(); if (!t) return bad('social_result', 'Ez a csapat már nem létezik.');
-            if (t.members.length >= TEAM_MAX) return bad('social_result', 'A csapat megtelt.');
-            await TeamModel.updateOne({ _id: id }, { members: t.members.concat([username]), invites: (t.invites || []).filter(x => x !== username) });
-            await PlayerModel.updateOne({ username }, { team: id, teamInvites: [] });
-            teamOf.set(username, id);
-            t.members.forEach(n => emitTo(n, 'player_notice', { message: `🏕️ ${username} csatlakozott a csapathoz!` }));
-            Admin.logEvent('team_join', username, { team: t.name });
-            ok('social_result', `🏕️ Csatlakoztál: [${t.tag}] ${t.name}!`); return sendAll();
-        }));
-        socket.on('team_decline', guard(async (d) => {
-            const u = await PlayerModel.findOne({ username }, { teamInvites: 1 }).lean();
-            await PlayerModel.updateOne({ username }, { teamInvites: ((u && u.teamInvites) || []).filter(x => x !== String(d.id || '')) });
-            return sendAll();
-        }));
-        const leave = async (who, byOwner) => {
-            const id = await myTeamId(who); if (!id) return null;
-            const t = await TeamModel.findById(id).lean(); if (!t) return null;
-            const members = t.members.filter(n => n !== who);
-            await PlayerModel.updateOne({ username: who }, { team: null });
-            teamOf.set(who, null);
-            if (!members.length) { await TeamModel.deleteOne({ _id: id }); return t; }
-            await TeamModel.updateOne({ _id: id }, { members, owner: t.owner === who ? members[0] : t.owner });
-            if (byOwner) emitTo(who, 'player_notice', { message: `🏕️ Kikerültél a(z) [${t.tag}] csapatból.` });
-            return t;
-        };
-        socket.on('team_leave', guard(async () => { const t = await leave(username); if (!t) return bad('social_result', 'Nem vagy csapatban.'); ok('social_result', 'Kiléptél a csapatból.'); return sendAll(); }));
-        socket.on('team_kick', guard(async (d) => {
-            const id = await myTeamId(username); const t = id && await TeamModel.findById(id).lean();
-            if (!t || t.owner !== username) return bad('social_result', 'Csak az alapító küldhet el tagot.');
-            const other = String(d.name || ''); if (!t.members.includes(other) || other === username) return bad('social_result', 'Nincs ilyen tag.');
-            await leave(other, true); ok('social_result', `${other} már nem tag.`); return sendAll();
-        }));
+        // --- csapat (teams.js) ---
+        teams.attach(socket, { ok, bad, guard, sendAll });
 
         // --- közösségi oldalak és megosztás ---
         const visits = {};
@@ -406,7 +279,7 @@ function setup(ctx) {
         }));
     }
 
-    return { attach, onRegister, checkReferral, onWalk, flushTeams, teamBoard, friendsOf, REF_LEVEL, models: { FriendModel, TeamModel } };
+    return { attach, onRegister, checkReferral, onWalk, flushTeams, teamBoard, friendsOf, teams, onTeamEvent: (u, k, n) => teams.onEvent(u, k, n), REF_LEVEL, models: { FriendModel, TeamModel } };
 }
 
 module.exports = { setup, PLATFORMS, REF_LEVEL, GIFT_ITEMS };

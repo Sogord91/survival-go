@@ -691,7 +691,7 @@ function otherPlayerIcon(pData) {
         className: 'other-player-icon',
         // Hímzett folt rozsdabarna peremmel; a sarkában a játékos rangja (v0.1.11)
         html: `
-            <div class="sg-marker sg-marker-other${st.cls}${window.sgFriendSet && window.sgFriendSet.has(pData.username) ? ' sg-marker-friend' : ''}"${st.style}><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
+            <div class="sg-marker sg-marker-other${st.cls}${window.sgFriendSet && window.sgFriendSet.has(pData.username) ? ' sg-marker-friend' : window.sgTeamSet && window.sgTeamSet.has(pData.username) ? ' sg-marker-team' : ''}"${st.style}><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
                 ${typeof rankPatchSvg === 'function' ? `<span class="sg-marker-rank">${rankPatchSvg(rankIndexForLevel(Number(pData.level) || 1))}</span>` : ''}
                 ${st.tag}
                 ${pData.early === true ? '<span class="early-badge" style="position: absolute; left: -6px; bottom: -4px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 2px #000);">🎖️</span>' : ''}

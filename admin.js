@@ -577,6 +577,25 @@ function setup(c) {
         res.json({ success: true, message: a ? 'Elküldve (online, azonnal látja).' : pushed ? 'Elküldve, és értesítést kapott a telefonjára.' : 'Elküldve (a következő belépéskor látja; értesítést nem kapcsolt be).' });
     }, 'support');
 
+    // ---- csapatok (v0.1.22): lista, részletek (tagok aktivitása, küldetések, csevegés, napló), moderálás ----
+    const teamsApi = () => (ctx.teams ? ctx.teams() : null);
+    route('get', '/api/admin/teams', async (req, res) => {
+        const T = teamsApi(); if (!T) return res.json({ success: true, teams: [] });
+        res.json({ success: true, teams: await T.adminList() });
+    });
+    route('get', '/api/admin/team/:id', async (req, res) => {
+        const T = teamsApi(); const d = T && await T.adminDetail(String(req.params.id));
+        if (!d) return res.status(404).json({ success: false, message: 'Nincs ilyen csapat.' });
+        res.json({ success: true, team: d });
+    });
+    route('post', '/api/admin/team/:id', async (req, res) => {
+        const T = teamsApi(); if (!T) return res.status(400).json({ success: false, message: 'Nem elérhető.' });
+        const r = await T.adminAction(req.admin, String(req.params.id), req.body || {});
+        if (!r || r.error) return res.status(400).json({ success: false, message: (r && r.error) || 'Hiba.' });
+        audit(req, 'team_' + String((req.body || {}).action || ''), String(req.params.id), { name: (req.body || {}).name || null });
+        res.json({ success: true, message: r.message });
+    }, 'kick');
+
     // ---- telefonos értesítés (push) mindenkinek ----
     route('get', '/api/admin/push', async (req, res) => {
         res.json({ success: true, ...(await ctx.push.stats()) });

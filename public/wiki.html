@@ -368,10 +368,28 @@ const GUIDES = [
       <li><b>Napi ajándék:</b> minden barátodnak naponta 1 ajándékot küldhetsz (kötszer, konzerv, víz, elem vagy rongy), összesen naponta 5-öt. Ha nincs nála hely, a menedéke raktárába kerül.</li>
       <li>A barátaid jelölője a térképen <b>arany keretet</b> kap, ha a közeledben járnak. A pontos helyüket továbbra sem látod, csak ha a közeledben vannak.</li></ul>
     <h2>🏕️ Csapat</h2>
-    <ul><li>Csapatot a 3. szinttől alapíthatsz: név és 2–4 betűs rövidítés (pl. <b>[ÉRD]</b>). Legfeljebb 15 tag lehet benne.</li>
-      <li>Belépni meghívóval lehet: bármelyik tag meghívhat valakit a nevével vagy a barátlistáról.</li>
-      <li><b>Heti közös cél:</b> tagonként 15 km közös séta (legfeljebb 150 km). Ha a csapat együtt megcsinálja, <b>mindenki +250 XP-t és 150 $-t</b> kap. Hétfőn új cél indul.</li>
-      <li>A csapatok a <a href="#/oldal/ranglista">ranglistán</a> is versenyeznek: a tagok havi szezonpontjai összeadódnak.</li></ul>
+    <ul><li>Csapatot a 3. szinttől alapíthatsz: név, 2–4 betűs rövidítés (pl. <b>[ÉRD]</b>) és <b>címer</b> (32 jelkép, 12 szín, 4 forma). Legfeljebb 15 tag lehet benne.</li>
+      <li><b>Csapatkereső:</b> Barátok → Csapat → 🔎 Csapatkereső. Név vagy rövidítés alapján keresel (ékezet nélkül is megtalálja). Egyszerre legfeljebb 3 csapathoz jelentkezhetsz.</li>
+      <li>A csatlakozás módját a vezető állítja: <b>nyitott</b> (bárki azonnal beléphet), <b>jelentkezéssel</b> (a vezető vagy a helyettes fogad el) vagy <b>zárt</b> (csak meghívóval). Minimum szintet is megadhat.</li>
+      <li>Meghívni bármelyik tag tud a játékos nevével vagy a barátlistáról (zárt csapatban csak a vezető és a helyettes). A térképen egy játékosra koppintva is meghívhatod.</li></ul>
+    <h3>Szerepek</h3>
+    <ul><li><b>👑 Vezető:</b> mindent állíthat: név, rövidítés, csatlakozás módja, minimum szint; helyettest nevez ki, átadhatja a vezetést, feloszlathatja a csapatot.</li>
+      <li><b>⭐ Helyettes:</b> felveszi a jelentkezőket, elküldheti a sima tagokat, kitűzhet a hirdetőtáblára, és módosíthatja a címert és a leírást.</li>
+      <li><b>Tag:</b> meghívhat, csevegőt használ, és segít a heti küldetésekben.</li>
+      <li>Ha a vezető kilép, a helyettes (ha nincs, a legrégebbi tag) lesz az új vezető.</li></ul>
+    <h3>Heti csapatküldetések</h3>
+    <ul><li>Minden héten <b>3 közös küldetés</b>: mindig van egy <b>🚶 közös séta</b> (tagonként 15 km), és kettő a következők közül: 🏚️ közös kutatás, ⚔️ közös harc, 🗺️ közös felfedezés, 🔨 közös műhely, 📜 szorgos csapat (egyéni küldetések).</li>
+      <li>A cél a tagok számával nő (legalább 2, legfeljebb 10 főre számolva).</li>
+      <li>Jutalom: a közös sétáért <b>+250 XP és 150 $</b>, a többiért <b>+150 XP és 100 $</b>, mind a háromért még <b>+300 XP és 200 $</b>.</li>
+      <li><b>Jutalmat az kap, aki a héten bármivel hozzájárult</b> (sétált, kutatott, harcolt…). Aki egész héten nem segített, nem kap.</li>
+      <li>Hétfőn új küldetések indulnak.</li></ul>
+    <h3>Csapat ablak</h3>
+    <ul><li><b>🏕️ Csapat:</b> hirdetőtábla (a vezetők kitűzött üzenete), heti küldetések, statisztika és csapatnapló.</li>
+      <li><b>👥 Tagok:</b> ki mennyit segített a héten, mikor játszott utoljára. A ⚠️ jelölt tag több mint egy hete nem játszott.</li>
+      <li><b>💬 Csevegés:</b> csak a csapattagok látják. Ha nem vagy a játékban, értesítést kapsz (legfeljebb félóránként egyet).</li>
+      <li><b>⚙️ Kezelés</b> (vezetőknek): jelentkezők, hirdetőtábla, meghívás, címer, csatlakozás módja, átnevezés.</li>
+      <li>A csapattársaid jelölője a térképen <b>kék keretet</b> kap.</li>
+      <li>A csapatok a <a href="#/oldal/ranglista">ranglistán</a> is versenyeznek: a tagok havi szezonpontjai összeadódnak (a stáb pontja nem számít).</li></ul>
     <h2>🤝 Hozd a barátod</h2>
     <ul><li>A Meghívás fülön megtalálod a saját linkedet. Küldd el Messengeren, WhatsAppon, Viberen vagy bárhol.</li>
       <li>Aki a linkeddel regisztrál, automatikusan a barátod lesz. Ha eléri az <b>5. szintet</b>: te <b>+300 XP-t és 300 $-t</b>, ő <b>+150 XP-t és 200 $-t</b> kap.</li>
@@ -445,7 +463,7 @@ const GUIDES = [
       <li>Egy kifosztott épület mindenkinek zárva van egy ideig – aki előbb ér oda, azé a zsákmány.</li>
       <li>A más által ott hagyott holmit te is elviheted.</li>
       <li>A <b>stáb tagjait</b> színes keret és felirat jelzi. Lásd: <a href="#/oldal/stab">Stáb</a>.</li></ul>
-    <div class="box">⚔️ PvP (játékos a játékos ellen), csapatok és klánok egy későbbi frissítésben jönnek.</div>` },
+    <div class="box">🏕️ Csapatot alapíthatsz vagy kereshetsz: lásd <a href="#/oldal/kozosseg">Barátok, csapatok, meghívás</a>. ⚔️ PvP (játékos a játékos ellen) egy későbbi frissítésben jön.</div>` },
   { slug: 'premium', title: 'Prémium bolt és credit', group: 'Útmutatók', render: () => {
     const S = window.SurvivalShop;
     return `<h1>💎 Prémium bolt és credit</h1>
@@ -503,7 +521,11 @@ const GUIDES = [
     <ul><li>Az „Üzenet a stábnak” csevegésben és a hibajelentésben légy tisztelettudó: nincs sértegetés, fenyegetés, trágárság.</li>
       <li>Ne küldj ismétlődő, tartalom nélküli vagy szándékosan hamis üzenetet.</li>
       <li>Ne adj meg magadról vagy másokról érzékeny adatot (lakcím, telefonszám, jelszó). <b>A stáb soha nem kéri el a jelszavadat.</b></li></ul>
-    <h2>6. Biztonság a valóságban</h2>
+    <h2>6. Csapatok</h2>
+    <ul><li>A csapat neve, rövidítése és leírása, a hirdetőtábla és a csapat-csevegés is a 3. pont szerint nem lehet sértő, trágár vagy gyűlöletkeltő.</li>
+      <li>A csevegésben ne adj meg érzékeny adatot (lakcím, telefonszám). Közös sétát nyilvános, biztonságos helyre szervezzetek.</li>
+      <li>A stáb a szabálytalan csapatot átnevezheti, üzenetet törölhet, tagot eltávolíthat vagy a csapatot feloszlathatja.</li></ul>
+    <h2>7. Biztonság a valóságban</h2>
     <ul><li>Az épületeket nem kell megközelítened jobban, mint ${R().lootRangeMeters} méter: <b>soha ne menj be</b> idegen épületbe, magánterületre, lezárt vagy veszélyes helyre a játék miatt.</li>
       <li>Figyelj a forgalomra és a környezetedre, tartsd be a helyi szabályokat.</li></ul>
     <h2>Következmények</h2>

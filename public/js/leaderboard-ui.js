@@ -29,7 +29,7 @@ function lbRowHtml(r, board, mine) {
     const rw = lbData && lbData.rewarded && board === 'xp' ? SurvivalSeason.rewardFor(r.rank) : null;
     return `<div class="sg-lb-row${mine ? ' me' : ''}${r.rank <= 3 ? ' top' : ''}${rw ? ' rw' : ''}">
         <span class="sg-lb-rank">${medal}</span>
-        <span class="sg-lb-av" style="${fr ? `border-color:${fr.color};box-shadow:0 0 6px ${fr.color}` : ''}">${escapeAttr(r.name.slice(0, 1).toUpperCase())}</span>
+        ${r.team && typeof teamEmblemHtml === 'function' ? `<span class="sg-lb-av emb">${teamEmblemHtml(r.emblem, 38)}</span>` : `<span class="sg-lb-av" style="${fr ? `border-color:${fr.color};box-shadow:0 0 6px ${fr.color}` : ''}">${escapeAttr(r.name.slice(0, 1).toUpperCase())}</span>`}
         <span class="sg-lb-nm"><b>${escapeAttr(r.name)}${r.early ? ' <i title="Korai túlélő">✦</i>' : ''}</b>
             <small>${r.team ? `${r.level} tag` : `${ti ? `<em style="color:${ti.color}">${escapeAttr(ti.name)}</em> · ` : ''}${r.level}. szint`}</small></span>
         <span class="sg-lb-v">${lbValue(r.value, board)}</span></div>`;
@@ -55,9 +55,14 @@ function lbRender(loading) {
         html += d.top.map(r => lbRowHtml(r, lbBoard, d.me && r.name === d.me.name)).join('');
         if (d.me && d.me.rank > 50) html += `<div class="sg-lb-gap">⋯</div>` + lbRowHtml(d.me, lbBoard, true);
     }
-    if (d && !d.me && !d.staff) html += `<div class="sg-lb-empty">Még nem vagy a listán: indulj el, és gyűjts pontot!</div>`;
-    if (d && d.staff) html += `<div class="sg-lb-empty">Stábtagként nem kerülsz a ranglistára.</div>`;
-    if (d) html += `<div class="sg-lb-foot">${d.total} túlélő a listán · a stáb nem szerepel</div>`;
+    if (d && lbBoard === 'teams') {
+        if (!d.me) html += `<div class="sg-lb-empty">${d.hasTeam ? 'A csapatod még nincs a listán: gyűjtsetek szezonpontot!' : 'Még nincs csapatod. <button class="sg-lb-join" onclick="closeLeaderboard();openSocial(\'team\')">🏕️ CSAPATOT KERESEK</button>'}</div>`;
+        html += `<div class="sg-lb-foot">${d.total} csapat a listán · a stáb pontja nem számít</div>`;
+    } else {
+        if (d && !d.me && !d.staff) html += `<div class="sg-lb-empty">Még nem vagy a listán: indulj el, és gyűjts pontot!</div>`;
+        if (d && d.staff) html += `<div class="sg-lb-empty">Stábtagként nem kerülsz a ranglistára.</div>`;
+        if (d) html += `<div class="sg-lb-foot">${d.total} túlélő a listán · a stáb nem szerepel</div>`;
+    }
     body.innerHTML = html;
 }
 socket.on('leaderboard', (d) => { lbData = d; if (d && d.board === lbBoard) lbRender(false); });

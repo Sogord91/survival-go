@@ -86,6 +86,7 @@ const userSchema = new mongoose.Schema({
     refDone: { type: Number, default: 0 },
     team: { type: String, default: null },
     teamInvites: { type: [String], default: [] },
+    teamApps: { type: [String], default: [] },   // csapatjelentkezések (v0.1.22)
     socialClaimed: { type: [String], default: [] },
     shareDay: { type: String, default: null },
     premium: { type: mongoose.Schema.Types.Mixed, default: null }, // credit, megvett kinézetek, ládák (v0.1.16, premium.js)               // stáb rang (public/js/roles.js); a tulajdonos az ADMIN_USERS-ből jön (v0.1.14)
@@ -788,6 +789,12 @@ function questEvent(p, username, kind, data, winter) {
     let levels = 0;
     if (r.newCell) seasonAdd(p, 'cells', 1);
     if (r.completed.length) seasonAdd(p, 'quests', r.completed.length);
+    if (socialHooks && !process.env.SG_NO_TEAMQ) { // heti csapatküldetések (teams.js, v0.1.22)
+        if (kind === 'loot' || kind === 'win') socialHooks.onTeamEvent(username, kind, 1);
+        if (kind === 'craft') socialHooks.onTeamEvent(username, 'craft', (data && data.count) || 1);
+        if (r.newCell) socialHooks.onTeamEvent(username, 'cell', 1);
+        if (r.completed.length) socialHooks.onTeamEvent(username, 'quest', r.completed.length);
+    }
     const fx = skillFx(p);
     if (r.exploreXp) levels += grantXp(p, Math.round(r.exploreXp * (1 + (fx.exploreXp || 0))));
     const qb = 1 + (fx.questBonus || 0); // Megbízható (Felderítő)
@@ -2753,9 +2760,9 @@ io.on('connection', (socket) => {
             if (board === 'teams') { // csapatok: a tagok szezonpontjainak összege
                 const teams = socialHooks ? await socialHooks.teamBoard(await leaderboardRows(month)) : [];
                 const mi = teams.findIndex(t => t.memberNames.includes(username));
-                const pick = (t, i) => ({ rank: i + 1, name: t.name, value: t.xp, level: t.members, team: true });
+                const pick = (t, i) => ({ rank: i + 1, name: t.name, value: t.xp, level: t.members, team: true, emblem: t.emblem });
                 return io.to(socket.id).emit('leaderboard', { board, month, monthName: SurvivalSeason.monthName(month), rewarded: SurvivalSeason.rewarded(month), msLeft: SurvivalSeason.msLeft(now),
-                    total: teams.length, top: teams.slice(0, 50).map(pick), me: mi >= 0 ? pick(teams[mi], mi) : null, staff: false });
+                    total: teams.length, top: teams.slice(0, 50).map(pick), me: mi >= 0 ? pick(teams[mi], mi) : null, staff: false, hasTeam: !!(socialHooks && await socialHooks.teams.myTeamId(username)) });
             }
             const ranked = rankBoard(await leaderboardRows(month), board);
             const meIdx = ranked.findIndex(r => r.name === username);
@@ -3211,6 +3218,7 @@ adminHooks = Admin.setup({
         notifyAll: (msg) => (pushHooks ? pushHooks.notifyAll(msg) : Promise.resolve({ tried: 0, ok: 0, total: 0 })),
         stats: () => (pushHooks ? pushHooks.stats() : Promise.resolve({ subs: 0, users: 0 }))
     },
+    teams: () => (socialHooks ? socialHooks.teams : null), // csapatok admin nézete (v0.1.22)
     usernameValid: (n) => USERNAME_RE.test(n),
     season: {
         close: seasonCloseIfNeeded,
@@ -3227,7 +3235,8 @@ adminHooks = Admin.setup({
         const steps = [
             () => BuildingModel.updateMany({ lastLootedBy: from }, { lastLootedBy: to }),
             () => Premium.models.OrderModel.updateMany({ user: from }, { user: to }),
-            () => Premium.models.TxModel.updateMany({ user: from }, { user: to })
+            () => Premium.models.TxModel.updateMany({ user: from }, { user: to }),
+            () => (socialHooks ? socialHooks.teams.renameUser(from, to) : null)
         ];
         for (const step of steps) { try { await step(); } catch (e) { /* folytatjuk */ } }
     },

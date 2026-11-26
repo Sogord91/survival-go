@@ -12,13 +12,13 @@ function openSocial(tab) {
     renderSocial();
 }
 function closeSocial() { document.getElementById('social-modal').classList.add('hidden'); }
-function socialSetTab(t) { socialTab = t; renderSocial(); }
+function socialSetTab(t) { socialTab = t; renderSocial(); const b = document.getElementById('social-body'); if (b) b.scrollTop = 0; }
 const sEsc = (s) => (typeof escapeAttr === 'function' ? escapeAttr(String(s)) : String(s));
 const sJs = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 function socialBadge() {
     const st = socialState; if (!st) return;
-    const n = (st.friends || []).filter(f => f.incoming).length + (st.teamInvites || []).length;
+    const n = (st.friends || []).filter(f => f.incoming).length + (typeof teamAlerts === 'function' ? teamAlerts(st) : (st.teamInvites || []).length);
     const b = document.getElementById('nav-social-badge');
     if (b) { b.textContent = String(n); b.classList.toggle('hidden', n <= 0); }
 }
@@ -28,15 +28,20 @@ function renderSocial() {
     if (!body) return;
     const st = socialState;
     const tabs = [['friends', '👥', 'Barátok'], ['team', '🏕️', 'Csapat'], ['invite', '🤝', 'Meghívás'], ['share', '📸', 'Megosztás']];
-    let html = `<div class="sg-so-tabs">${tabs.map(([k, ic, n]) => `<button class="${k === socialTab ? 'on' : ''}" onclick="socialSetTab('${k}')">${ic}<span>${n}</span></button>`).join('')}</div>`;
+    const badge = (k) => { if (!st) return 0; if (k === 'friends') return (st.friends || []).filter(f => f.incoming).length; if (k === 'team' && typeof teamAlerts === 'function') return teamAlerts(st); return 0; };
+    let html = `<div class="sg-so-tabs">${tabs.map(([k, ic, n]) => { const b = badge(k); return `<button class="${k === socialTab ? 'on' : ''}" onclick="socialSetTab('${k}')">${ic}<span>${n}</span>${b ? `<i class="sg-tm-dot">${b}</i>` : ''}</button>`; }).join('')}</div>`;
     if (!st) { body.innerHTML = html + '<p class="sg-so-muted">Betöltés…</p>'; return; }
     if (socialTab === 'friends') html += friendsHtml(st);
     else if (socialTab === 'team') html += teamHtml(st);
     else if (socialTab === 'invite') html += inviteHtml(st);
     else html += shareHtml(st);
-    const typing = document.activeElement && document.activeElement.id === 'so-friend-name';
+    // gépelés közben érkező frissítés ne vigye el a fókuszt és a beírt szöveget
+    const ae = document.activeElement, keepId = ae && ae.id && body.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName) ? ae.id : null;
+    const keepVal = keepId ? ae.value : null;
+    const scroll = body.scrollTop;
     body.innerHTML = html;
-    if (typing) { const i = document.getElementById('so-friend-name'); if (i) { i.focus(); const L = i.value.length; try { i.setSelectionRange(L, L); } catch (e) { /* */ } } }
+    body.scrollTop = scroll;
+    if (keepId) { const i = document.getElementById(keepId); if (i) { if (i.type !== 'number' && i.type !== 'radio') i.value = keepVal; i.focus(); const L = i.value.length; try { i.setSelectionRange(L, L); } catch (e) { /* */ } } }
 }
 
 // ---------- Barátok ----------
@@ -72,32 +77,7 @@ function socialSendReq(n) { socialMsg = { ok: true, text: 'Küldés…' }; socke
 function socialAddFriend() { const i = document.getElementById('so-friend-name'); const n = i && i.value.trim(); if (n) socialSendReq(n); }
 function socialRemoveFriend(n) { if (confirm(`Eltávolítod a barátaid közül: ${n}?`)) socket.emit('friend_remove', { name: n }); }
 
-// ---------- Csapat ----------
-function teamHtml(st) {
-    const t = st.team, r = st.teamRules || {};
-    let h = '';
-    if ((st.teamInvites || []).length) h += `<div class="sg-so-h">CSAPATMEGHÍVÓK</div>` + st.teamInvites.map(i => `<div class="sg-so-row"><b>[${sEsc(i.tag)}] ${sEsc(i.name)}</b><small class="sg-so-muted">${i.members} tag</small><span class="sg-so-sp"></span><button class="ok" onclick="socket.emit('team_join',{id:'${sJs(i.id)}'})">BELÉPEK</button><button onclick="socket.emit('team_decline',{id:'${sJs(i.id)}'})">✕</button></div>`).join('');
-    if (!t) {
-        h += `<div class="sg-so-card"><b>🏕️ Alapíts csapatot!</b><p>Legfeljebb ${r.max} fő. Minden héten közös séta-cél: tagonként ${Math.round((r.perMember || 15000) / 1000)} km. Ha együtt megvan, mindenki kap <b>+${r.reward ? r.reward.xp : 250} XP-t és ${r.reward ? r.reward.money : 150} $-t</b>. A csapatok havi ranglistán is versenyeznek.</p>
-            <input id="so-team-name" maxlength="24" placeholder="Csapat neve (pl. Érdi Farkasok)"><input id="so-team-tag" maxlength="4" placeholder="Rövidítés (2–4 betű, pl. ÉRD)" style="text-transform:uppercase">
-            <button class="ok wide" onclick="socialCreateTeam()">CSAPAT ALAPÍTÁSA</button><small class="sg-so-muted">A ${r.minLevel}. szinttől. Csatlakozni meghívóval lehet.</small></div>`;
-        return h;
-    }
-    const pct = Math.min(100, Math.round(t.meters / t.goal * 100));
-    h += `<div class="sg-so-team"><div class="sg-so-tag">${sEsc(t.tag)}</div><div><b>${sEsc(t.name)}</b><small>${t.members.length} / ${t.max} tag · ${t.points} szezonpont a hónapban</small></div></div>
-        <div class="sg-so-h">HETI KÖZÖS CÉL</div>
-        <div class="sg-so-goal"><div class="sg-qs-bar"><i style="width:${pct}%"></i><span>${(t.meters / 1000).toFixed(1).replace('.', ',')} / ${Math.round(t.goal / 1000)} km</span></div>
-        <small>${t.done ? '✓ Megvan a héten! Hétfőn új cél jön.' : `Ha együtt meglesz, mindenki kap +${r.reward.xp} XP-t és ${r.reward.money} $-t.`}</small></div>
-        <div class="sg-so-h">TAGOK</div>` +
-        t.members.map(m => `<div class="sg-so-row"><span class="sg-so-dot ${m.online ? 'on' : ''}"></span><div class="sg-so-who"><b>${m.owner ? '👑 ' : ''}${sEsc(m.name)}</b><small>${m.level}. szint · ${m.points} pont</small></div>
-            ${t.owner === player.username && !m.owner ? `<button class="x" onclick="if(confirm('Elküldöd a csapatból: ${sJs(m.name)}?'))socket.emit('team_kick',{name:'${sJs(m.name)}'})">✕</button>` : ''}</div>`).join('') +
-        `<div class="sg-so-add" style="margin-top:8px"><input id="so-team-inv" maxlength="24" placeholder="Meghívás: játékos neve…"><button onclick="socialTeamInvite()">MEGHÍVOM</button></div>
-        ${(st.friends || []).filter(f => f.status === 'ok' && !t.members.some(m => m.name === f.name)).slice(0, 6).map(f => `<button class="sg-so-chip" onclick="socket.emit('team_invite',{name:'${sJs(f.name)}'})">+ ${sEsc(f.name)}</button>`).join('')}
-        <button class="sg-so-leave" onclick="if(confirm('Biztosan kilépsz a csapatból?'))socket.emit('team_leave')">KILÉPÉS A CSAPATBÓL</button>`;
-    return h;
-}
-function socialCreateTeam() { socket.emit('team_create', { name: (document.getElementById('so-team-name') || {}).value || '', tag: (document.getElementById('so-team-tag') || {}).value || '' }); }
-function socialTeamInvite() { const i = document.getElementById('so-team-inv'); if (i && i.value.trim()) socket.emit('team_invite', { name: i.value.trim() }); }
+// ---------- Csapat: js/teams-ui.js (v0.1.22) ----------
 
 // ---------- Meghívás ----------
 function inviteHtml(st) {
@@ -214,7 +194,8 @@ function socialPlayerCard(pData) {
     if (!pop) return;
     pop.innerHTML = `<b>👤 ${sEsc(pData.username)}</b><small>${pData.level || 1}. szintű túlélő</small>
         ${isFriend ? '<small>✓ a barátod</small>' : `<button onclick="socket.emit('friend_request',{name:'${sJs(pData.username)}'});document.getElementById('social-pop').classList.add('hidden')">+ BARÁTNAK JELÖLÖM</button>`}
-        ${myTeam ? `<button onclick="socket.emit('team_invite',{name:'${sJs(pData.username)}'});document.getElementById('social-pop').classList.add('hidden')">🏕️ MEGHÍVOM A CSAPATBA</button>` : ''}
+        ${window.sgTeamSet && window.sgTeamSet.has(pData.username) ? '<small>🏕️ csapattársad</small>' : ''}
+        ${myTeam && !(window.sgTeamSet && window.sgTeamSet.has(pData.username)) ? `<button onclick="socket.emit('team_invite',{name:'${sJs(pData.username)}'});document.getElementById('social-pop').classList.add('hidden')">🏕️ MEGHÍVOM A CSAPATBA</button>` : ''}
         <button class="x" onclick="document.getElementById('social-pop').classList.add('hidden')">BEZÁR</button>`;
     pop.classList.remove('hidden');
     clearTimeout(window.__socialPopT); window.__socialPopT = setTimeout(() => pop.classList.add('hidden'), 9000);
@@ -223,6 +204,7 @@ function socialPlayerCard(pData) {
 socket.on('social_state', (d) => {
     socialState = d;
     window.sgFriendSet = new Set((d.friends || []).filter(f => f.status === 'ok').map(f => f.name));
+    if (typeof teamAfterState === 'function') teamAfterState(d);
     socialBadge();
     const m = document.getElementById('social-modal'); if (m && !m.classList.contains('hidden')) renderSocial();
 });
@@ -239,7 +221,8 @@ socket.on('social_result', (d) => {
         const el = document.getElementById('so-msg'); if (el) { el.textContent = d.message; el.classList.toggle('bad', !d.success); }
         clearTimeout(window.__soMsgT); window.__soMsgT = setTimeout(() => { socialMsg = null; const e = document.getElementById('so-msg'); if (e) e.textContent = ''; }, 7000);
     }
-    if (d && !d.success && typeof showToast === 'function') showToast(d.message);
+    if (d && d.message && typeof showToast === 'function') showToast((d.success ? '' : '⚠️ ') + d.message);
+    if (d && d.success && socialTab === 'team' && typeof teamSearchQ !== 'undefined') setTimeout(() => socket.emit('team_search', { q: teamSearchQ }), 300);
 });
 socket.on('social_ping', () => socket.emit('social_state'));
 socket.on('connect', () => setTimeout(() => socket.emit('social_state'), 1500));

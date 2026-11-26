@@ -117,6 +117,7 @@ body.embed header h1 { font-size: 15px; }
   <button data-t="evt" data-perm="events">EVENTEK</button>
   <button data-t="win" data-perm="events">❄ FAGYOS CSEND</button>
   <button data-t="prog" data-perm="events">⭐ FEJLŐDÉS</button>
+  <button data-t="teams">🏕 CSAPATOK</button>
   <button data-t="eco">GAZDASÁG</button>
   <button data-t="log">NAPLÓ</button>
   <button data-t="srv" data-perm="server">SZERVER</button>
@@ -288,6 +289,14 @@ body.embed header h1 { font-size: 15px; }
     </div>
   </section>
 
+  <!-- CSAPATOK (v0.1.22): lista, tagok aktivitása, küldetések, csevegés, napló, moderálás -->
+  <section class="tab" id="t-teams">
+    <div class="row" style="margin-bottom:8px"><button class="btn ghost" onclick="loadTeams()">↻ FRISSÍTÉS</button><span class="muted" id="teams-asof"></span></div>
+    <div class="grid cards" id="teams-kpis"></div>
+    <div class="card" style="margin-top:10px"><h3>Csapatok (havi szezonpont szerint)</h3><div id="teams-list" style="overflow-x:auto"></div></div>
+    <div id="team-detail" style="margin-top:10px"></div>
+  </section>
+
   <!-- GAZDASÁG -->
   <section class="tab" id="t-eco">
     <div class="grid two">
@@ -382,6 +391,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   if (curTab === 'prem') { loadPrem(); loadLedger(); }
   if (curTab === 'win') loadWinter();
   if (curTab === 'prog') { loadProgress(); loadSeasonAdmin(); }
+  if (curTab === 'teams') loadTeams();
 });
 function showTab(t) { const b = document.querySelector(`#tabs button[data-t="${t}"]`); if (b && !b.classList.contains('hidden')) b.click(); }
 
@@ -840,6 +850,70 @@ function spExample() {
 async function saveSkillPrices() {
   const d = await api('/api/admin/skill-prices', { method: 'POST', body: { moneyPerLevel: +$('sp-money').value, crystalBase: +$('sp-cb').value, crystalPerLevel: +$('sp-cl').value } });
   toast(d.message); loadProgress();
+}
+
+// ---------- CSAPATOK (v0.1.22) ----------
+let TEAM_OPEN = null;
+const tAgo = (t) => { if (!t) return '–'; const m = Math.floor((Date.now() - t) / 60000); if (m < 2) return 'most'; if (m < 60) return m + ' perce'; const h = Math.floor(m / 60); if (h < 24) return h + ' órája'; return Math.floor(h / 24) + ' napja'; };
+const tEmb = (e) => { e = e || {}; return `<span style="display:inline-grid;place-items:center;width:30px;height:30px;border-radius:${e.shape === 'circle' ? '50%' : '6px'};background:${esc(e.color || '#7d8f3a')};font-size:16px;vertical-align:middle">${esc(e.icon || '☢️')}</span>`; };
+const tMode = { open: 'nyitott', request: 'jelentkezős', invite: 'zárt' };
+const tQ = (q) => q.map(x => `<span title="${esc(x.title)}" style="margin-right:6px;${x.done ? 'color:var(--green)' : ''}">${x.icon} ${Math.min(100, Math.round(x.progress / x.target * 100))}%${x.done ? ' ✓' : ''}</span>`).join('');
+async function loadTeams() {
+  const d = await api('/api/admin/teams', { quiet: true });
+  if (!d || !d.success) return;
+  $('teams-asof').textContent = ' Frissítve: ' + new Date().toLocaleTimeString('hu-HU');
+  const T = d.teams, k = (label, v, sub) => `<div class="card kpi"><h3>${label}</h3><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+  const members = T.reduce((a, t) => a + t.members, 0), act = T.reduce((a, t) => a + t.active7, 0);
+  $('teams-kpis').innerHTML = [
+    k('Csapatok', fmt(T.length), `${T.filter(t => t.members >= 3).length} legalább 3 fős`),
+    k('Csapattagok', fmt(members), `7 napon belül aktív: ${fmt(act)}`),
+    k('Csapatküldetés kész', fmt(T.reduce((a, t) => a + (t.stats.quests || 0), 0)), 'összesen'),
+    k('Közös km', fmt(T.reduce((a, t) => a + (t.stats.km || 0), 0)), 'összesen'),
+    k('Függő jelentkezés', fmt(T.reduce((a, t) => a + t.requests, 0)), '')
+  ].join('');
+  $('teams-list').innerHTML = T.length ? `<table><tr><th></th><th>Csapat</th><th>Vezető</th><th>Tagok</th><th>Aktív 7 nap</th><th>Mód</th><th>Pont</th><th>E heti küldetések</th><th>Csevegés</th></tr>` + T.map(t => `<tr style="cursor:pointer" onclick="openTeam('${esc(t.id)}')">
+      <td>${tEmb(t.emblem)}</td><td><b>[${esc(t.tag)}] ${esc(t.name)}</b><br><span class="muted">${esc(t.desc || '')}</span></td><td>${esc(t.owner)}</td><td>${t.members} / ${t.max}${t.online ? ` · <span style="color:var(--green)">${t.online} online</span>` : ''}</td>
+      <td>${t.active7}</td><td>${tMode[t.mode] || t.mode}${t.minLevel > 1 ? ` · ${t.minLevel}.+` : ''}${t.requests ? ` · <b>${t.requests} jelentkező</b>` : ''}</td><td>${fmt(t.points)}</td><td>${tQ(t.quests)}</td><td>${t.chat} üz. · ${tAgo(t.lastChat)}</td></tr>`).join('') + '</table>'
+    : '<p class="muted">Még nincs csapat.</p>';
+  if (TEAM_OPEN) openTeam(TEAM_OPEN, true);
+}
+async function openTeam(id, quiet) {
+  TEAM_OPEN = id;
+  let d; try { d = await api('/api/admin/team/' + encodeURIComponent(id), { quiet: true }); } catch (e) { $('team-detail').innerHTML = ''; TEAM_OPEN = null; return; }
+  const t = d.team, mod = can('kick');
+  const act = (action, extra, label, confirmText, cls) => mod ? `<button class="btn ${cls || 'ghost'}" style="padding:3px 8px" onclick='teamAct(${JSON.stringify(id)}, ${JSON.stringify({ action, ...(extra || {}) })}, ${JSON.stringify(confirmText || '')})'>${label}</button>` : '';
+  const role = { owner: '👑 vezető', officer: '⭐ helyettes', member: 'tag' };
+  $('team-detail').innerHTML = `<div class="card"><div class="row" style="gap:10px;align-items:center">${tEmb(t.emblem)}<h3 style="margin:0;font-size:16px">[${esc(t.tag)}] ${esc(t.name)}</h3>
+      <span class="muted">alapítva ${new Date(t.created).toLocaleDateString('hu-HU')} · ${tMode[t.mode]}${t.minLevel > 1 ? ` · ${t.minLevel}. szinttől` : ''} · ${t.stats.weeks + 1}. hét · ${fmt(t.stats.km)} km · ${t.stats.quests} csapatküldetés</span>
+      <span style="flex:1"></span>${act('rename', null, '✏️ Átnevezés', '')}${act('disband', null, '✕ Feloszlatás', 'Biztosan feloszlatod a csapatot? Minden tag kikerül.', 'red')}<button class="btn ghost" style="padding:3px 8px" onclick="TEAM_OPEN=null;$('team-detail').innerHTML=''">BEZÁR</button></div>
+    ${t.desc ? `<p>${esc(t.desc)} ${act('desc_clear', null, 'leírás törlése', 'Törlöd a leírást?')}</p>` : ''}
+    ${t.board ? `<p style="background:#e8dfc2;color:#2a2620;padding:6px 8px">📌 ${esc(t.board.text)} <span style="color:#6b6250">– ${esc(t.board.by)}, ${tAgo(t.board.t)}</span> ${act('board_clear', null, 'törlés', 'Törlöd a hirdetőtáblát?')}</p>` : ''}
+    <div class="grid two" style="margin-top:8px">
+      <div class="card" style="grid-column:1/-1"><h3>Tagok · e heti hozzájárulás</h3><div style="overflow-x:auto"><table><tr><th>Név</th><th>Szerep</th><th>Szint</th><th>Utoljára</th><th>Hónap pont</th><th>E hét</th><th></th></tr>${t.members.map(m => `<tr>
+        <td><a href="#" onclick="openPlayer('${esc(m.name)}');return false"><b>${esc(m.name)}</b></a>${m.staff ? ' <span class="muted">(stáb)</span>' : ''}</td><td>${role[m.role]}</td><td>${m.level}</td>
+        <td>${m.online ? '<span style="color:var(--green)">online</span>' : tAgo(m.lastSeen)}</td><td>${fmt(m.points)}</td>
+        <td style="font:11px var(--mono)">${m.week.active ? `${m.week.km} km · ${m.week.loot} ép. · ${m.week.win} győz. · ${m.week.cells} ter. · ${m.week.craft} bark. · ${m.week.quests} kül.` : '<span class="muted">nem segített</span>'}</td>
+        <td style="white-space:nowrap">${m.role !== 'owner' ? act('owner', { name: m.name }, '👑', `Kinevezed vezetőnek: ${m.name}?`) : ''} ${act('kick', { name: m.name }, '✕', `Eltávolítod a csapatból: ${m.name}?`, 'red')}</td></tr>`).join('')}</table></div>
+        <p class="muted">Csatlakozott: ${t.members.map(m => `${esc(m.name)} ${m.joined ? new Date(m.joined).toLocaleDateString('hu-HU') : '?'}`).join(' · ')}</p></div>
+      <div class="card"><h3>E heti csapatküldetések (${esc(t.week)})</h3>${t.quests.map(q => hbar(`${q.icon} ${esc(q.title)}`, q.progress, q.target, `${q.div > 1 ? (q.progress / q.div).toFixed(1) : q.progress} / ${q.div > 1 ? q.target / q.div : q.target}${q.done ? ' ✓' : ''}`, q.done ? 'var(--green)' : 'var(--gold)')).join('')}
+        <h3 style="margin-top:10px">Jelentkezők (${t.requests.length})</h3>${t.requests.length ? '<table>' + t.requests.map(r => `<tr><td><b>${esc(r.name)}</b></td><td>${r.level}. szint</td><td>${tAgo(r.t)}</td><td>${esc(r.msg || '')}</td></tr>`).join('') + '</table>' : '<p class="muted">nincs</p>'}
+        ${t.invites.length ? `<p class="muted">Meghívottak: ${t.invites.map(esc).join(', ')}</p>` : ''}</div>
+      <div class="card"><h3>Csevegés (utolsó ${t.chat.length})</h3><div style="max-height:360px;overflow-y:auto">${t.chat.length ? t.chat.slice().reverse().map(m => `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span class="muted">${new Date(m.t).toLocaleString('hu-HU')}</span> <b>${esc(m.from)}:</b> ${esc(m.text)} ${act('chat_del', { msg: m.id }, '🗑', 'Törlöd ezt az üzenetet?')}</div>`).join('') : '<p class="muted">Még nincs üzenet.</p>'}</div></div>
+      <div class="card"><h3>Csapatnapló</h3><div style="max-height:360px;overflow-y:auto">${t.log.map(l => `<div style="padding:2px 0"><span class="muted">${new Date(l.t).toLocaleString('hu-HU')}</span> ${esc(l.text)}</div>`).join('')}</div></div>
+    </div></div>`;
+  if (!quiet) $('team-detail').scrollIntoView({ behavior: 'smooth' });
+}
+async function teamAct(id, body, confirmText) {
+  if (confirmText && !confirm(confirmText)) return;
+  if (body.action === 'rename') {
+    const name = prompt('Új csapatnév (üresen hagyva marad):', ''); if (name === null) return;
+    const tag = prompt('Új rövidítés, 2–4 nagybetű (üresen hagyva marad):', ''); if (tag === null) return;
+    body = { ...body, name, tag };
+  }
+  const d = await api('/api/admin/team/' + encodeURIComponent(id), { method: 'POST', body });
+  toast(d.message);
+  if (body.action === 'disband') { TEAM_OPEN = null; $('team-detail').innerHTML = ''; }
+  loadTeams();
 }
 
 async function loadWinter() {
