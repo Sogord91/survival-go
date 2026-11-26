@@ -342,6 +342,15 @@ const GUIDES = [
     const E = window.SurvivalSeason;
     return `<h1>🏆 Ranglista és havi szezon</h1>
     <p class="lead">A ranglista minden hónapban tiszta lappal indul. A <b>szezonpont</b> a hónapban szerzett XP-d: séta, kutatás, harc, küldetések. A halál nem nullázza.</p>
+    <h2>Mivel gyűlik a szezonpont?</h2>
+    <p>Minden XP, amit a hónapban szerzel, egyben szezonpont is:</p>
+    <ul><li>🚶 <b>séta</b> (a legtöbb pont ebből jön) és a 🧭 <b>felfedező bónusz</b> új területekért,</li>
+      <li>📜 <b>napi és heti küldetések</b> és a teljesítésükért járó bónuszok,</li>
+      <li>⚔️ <b>győzelem</b> az épületekben,</li>
+      <li>☀️ napi bónusz, 🗓️ adventi naptár, 🎁 ajándékcsomagok, 🎡 szerencsekerék XP-nyereményei,</li>
+      <li>🔨 barkácsolás a <i>Mesterremek</i> képességgel, és az Első lépések feladatai.</li></ul>
+    <p class="muted">Ha éppen dupla XP event fut, a szezonpont is duplán jár. A stáb ajándék-XP-je nem számít bele. A szezon a ranglista bevezetésének pillanatától számol, ezért aki azóta játszott, már szerepel a listán.</p>
+    <h2>A listák</h2>
     <ul>${E.BOARDS.map(b => `<li>${b.icon} <b>${b.name}</b>: ${esc(b.desc)}</li>`).join('')}</ul>
     <p>A stáb tagjai nem szerepelnek a ranglistán.</p>
     <h2>🟫 Rozsdás szett – a szezon jutalma</h2>
@@ -349,6 +358,18 @@ const GUIDES = [
     <div class="tbl"><table><tr><th>Helyezés</th><th>Jutalom</th></tr>${E.REWARDS.map(r => `<tr><td class="n">${r.from}–${r.to}.</td><td>${esc(r.label)}</td></tr>`).join('')}</table></div>
     <p class="muted">A szett darabjai csak szezonjutalomként szerezhetők meg, ládából nem jönnek. A Gyűjteményedbe kerülnek, és halálkor sem vesznek el.</p>`;
   } },
+  { slug: 'telefon', title: 'Telepítés és értesítések', group: 'Útmutatók', render: () => `
+    <h1>📲 Telepítés és értesítések</h1>
+    <h2>Tedd ki a kezdőképernyőre</h2>
+    <p>A játék böngészőben fut, de kiteheted a telefonod kezdőképernyőjére, így egy koppintással indul, mint egy alkalmazás: <b>Menü → Letöltés a telefonra</b>.</p>
+    <ul><li><b>Android</b> (Chrome, Samsung Internet, Brave, Edge): a gomb megnyitja a telepítő ablakot.</li>
+      <li><b>iPhone</b>: Safariban nyomd meg alul a Megosztás gombot (négyzet felfelé nyíllal), majd válaszd a <b>Főképernyőhöz adás</b> lehetőséget.</li></ul>
+    <h2>🔔 Értesítések</h2>
+    <p><b>Menü → Értesítések bekapcsolása.</b> Csak a fontosakról szólunk:</p>
+    <ul><li>naponta legfeljebb egy emlékeztető 17:30-kor, ha aznap még nem jártál a Zónában (például: kinyílt a mai adventi ablak, ajándékvadászat van a környékeden, új küldetések várnak),</li>
+      <li>ha a stáb válaszolt az üzenetedre vagy a hibajelentésedre,</li>
+      <li>néha egy-egy fontos bejelentés (új esemény, frissítés).</li></ul>
+    <p>iPhone-on értesítést csak akkor kapsz, ha a játékot kitetted a kezdőképernyőre, és onnan indítod (iOS 16.4 vagy újabb). Ugyanitt kapcsolhatod ki is bármikor.</p>` },
   { slug: 'fagyos-csend', title: 'Fagyos Csend (téli esemény)', group: 'Útmutatók', render: () => {
     const A = window.SurvivalAdvent, Wh = window.SurvivalWheel, Wi = window.SurvivalWinter, Sh = window.SurvivalShop;
     const orn = Object.entries(ITEMS).filter(([k, it]) => it.ornament);
@@ -371,12 +392,28 @@ const GUIDES = [
     <ul><li>A <b>kis csomagot</b> mindenki egyszer kinyithatja: étel, ital, kötszer, elem, pénz, XP vagy dísz lehet benne.</li>
       <li>Kb. ${Math.round(window.SurvivalGifts.GOLD_CHANCE * 100)}% eséllyel <b>arany láda</b> jelenik meg: 3 jobb ajándék van benne, de <b>csak az első</b> túlélő viheti el, aki odaér.</li>
       <li>Egy csomag ${window.SurvivalGifts.LIFETIME_MIN} percig marad, aztán eltűnik, és újak jönnek. Naponta legfeljebb ${window.SurvivalGifts.DAILY_MAX} csomagot nyithatsz.</li></ul>
+    <h2>📜 Téli küldetések</h2>
+    <p>Az esemény alatt a napi és heti <a href="#/oldal/kuldetesek">küldetések</a> között mindig van téli feladat is: díszt akasztani egy (akár másik település) fájára, hétvégén ajándékcsomagokat nyitni, kinyitni a mai adventi ablakot vagy díszt barkácsolni.</p>
     <h2>❄ Havas térkép</h2>
     <p>December 1-jétől január 6-ig finom hóesés hullik a térképre. Ha zavar, vagy kíméled az akkumulátort, a Menüben kikapcsolhatod.</p>
     <h2>🧊 Fagyos szett</h2>
     <p>Jégkék, deres festések ruhákra és fegyverekre – december közepén érkezik a skinrendszerrel.</p>`; } },
-  { slug: 'eventek', title: 'Eventek', group: 'Útmutatók', render: () => `
-    <h1>🎉 Eventek</h1><p>Időnként különleges időszakok vannak, például <b>dupla XP hétvége</b> vagy <b>dupla zsákmány</b> ünnepnapokon. Ilyenkor a térkép tetején egy sáv mutatja, mi fut és meddig.</p>
+  { slug: 'eventek', title: 'Eventek és naptár', group: 'Útmutatók', render: () => `
+    <h1>🎉 Eventek és naptár</h1>
+    <h2>📅 Ami most és a közeljövőben fut</h2>
+    <div class="tbl"><table><tr><th>Mikor</th><th>Mi</th></tr>
+      <tr><td>dec. 1. – jan. 6.</td><td><a href="#/oldal/fagyos-csend">❄️ Fagyos Csend</a> téli eseménysorozat, havas térkép, téli küldetések</td></tr>
+      <tr><td>dec. 1–24.</td><td>🗓️ Adventi naptár – minden nap egy ablak; a kihagyottat naponta egyet pótolhatod dec. 26-ig</td></tr>
+      <tr><td>dec. 5. – jan. 6., hétvégén</td><td>🎁 Ajándékvadászat szombaton és vasárnap ${window.SurvivalGifts ? window.SurvivalGifts.HOURS[0] + '–' + window.SurvivalGifts.HOURS[1] : '9–19'} óra között</td></tr>
+      <tr><td>dec. 6. – jan. 6.</td><td>🎄 Karácsonyfák minden településen és 🎡 szerencsekerék (minden felakasztott dísz után egy pörgetés)</td></tr>
+      <tr><td>minden hónap</td><td>🏆 <a href="#/oldal/ranglista">Ranglista-szezon</a> – december próbaszezon, 2027 januárjától a hónap legjobbjai a Rozsdás szettet kapják</td></tr>
+    </table></div>
+    <h2>⏰ Napi és heti ritmus (magyar idő)</h2>
+    <ul><li><b>Éjfélkor</b> új <a href="#/oldal/kuldetesek">napi küldetések</a> és új <a href="#/oldal/napi-bonusz">napi bónusz</a>.</li>
+      <li><b>Hétfőn</b> új heti küldetések.</li>
+      <li><b>Hónap 1-jén</b> új ranglista-szezon; a lezárt hónap jutalmait a játék magától kiosztja.</li>
+      <li><b>17:30-kor</b> egy emlékeztető értesítést kapsz (ha bekapcsoltad, és aznap még nem jártál a Zónában).</li></ul>
+    <h2>✨ Különleges időszakok</h2><p>Időnként különleges időszakok vannak, például <b>dupla XP hétvége</b> vagy <b>dupla zsákmány</b> ünnepnapokon. Ilyenkor a térkép tetején egy sáv mutatja, mi fut és meddig.</p>
     ${W.event ? `<div class="box tip"><b>Most fut:</b> ${esc(W.event.name || 'event')} – ${W.event.xp > 1 ? W.event.xp + '× XP ' : ''}${W.event.loot > 1 ? W.event.loot + '× zsákmány' : ''}${W.event.until ? ' · ' + new Date(W.event.until).toLocaleString('hu-HU') + '-ig' : ''}</div>` : '<div class="box">Most nincs futó event. Kövesd a Discordot és a játékon belüli bejelentéseket!</div>'}` },
   { slug: 'jatekosok', title: 'A többi játékos', group: 'Útmutatók', render: () => `
     <h1>A többi játékos</h1>
@@ -388,7 +425,7 @@ const GUIDES = [
   { slug: 'premium', title: 'Prémium bolt és credit', group: 'Útmutatók', render: () => {
     const S = window.SurvivalShop;
     return `<h1>💎 Prémium bolt és credit</h1>
-    ${W.premiumMode !== 'on' ? '<div class="box warn">A prémium bolt még nem érhető el – hamarosan indul.</div>' : ''}
+    ${W.premiumMode !== 'on' ? '<div class="box warn">A prémium bolt még nem érhető el – később indul. A játékban nyert keretek, címek és kristályok addig is megmaradnak: a Menü → <b>Gyűjteményem</b> gombbal felveheted a nyert kereteidet és címeidet.</div>' : ''}
     <p class="lead">A prémium credittel kinézetet és kényelmi szolgáltatásokat vehetsz. <b>Harcban és zsákmányban nem ad előnyt</b> – a játék ingyen is teljes értékű.</p>
     <ul><li><b>1 credit = ${S.CREDIT_HUF} Ft.</b> Minden ár mellett ott a forintos összeg.</li>
       <li>Vásárlás: Menü → Prémium bolt → Credit vásárlás. Banki átutalással fizetsz, egyedi közleménnyel; a credit az utalás beérkezése után kerül a fiókodra.</li>
