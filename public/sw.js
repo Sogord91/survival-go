@@ -31,7 +31,7 @@ self.addEventListener('push', (event) => {
     event.waitUntil(self.registration.showNotification(title, {
         body: d.body || '',
         icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
+        badge: '/icons/badge-96.png', // egyszínű, átlátszó sziluett: az Android ezt teszi a kis körbe
         tag: d.tag || 'sg',
         renotify: true,
         data: { url: d.url || '/' }
