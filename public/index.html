@@ -388,13 +388,15 @@
         .sg-sk-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--c); color: var(--sg-thread); }
         .sg-sk-desc { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; margin: 6px 2px 4px; }
         .sg-sk-tree { position: relative; padding: 14px 0 6px; margin-top: 6px; }
-        /* törzs: vékony fényvonal soronként; a nyitott sorokban az ág színében világít */
-        .sg-sk-row::before, .sg-sk-sep::before { content: ''; position: absolute; left: 50%; width: 4px; margin-left: -2px; border-radius: 2px; background: rgba(233,227,207,.13); z-index: -1; }
-        .sg-sk-row::before { top: -8px; bottom: -8px; }
-        .sg-sk-row.top::before { top: 70px; }
-        .sg-sk-sep::before { top: 0; bottom: 0; }
-        .sg-sk-row.open::before, .sg-sk-sep.open::before { background: var(--c); box-shadow: 0 0 8px var(--c); }
-        .sg-sk-sep { position: relative; text-align: center; margin: 6px 0 8px; z-index: 1; }
+        .sg-sk-tree > .sg-sk-row, .sg-sk-tree > .sg-sk-sep { position: relative; z-index: 1; }
+        /* vonalak: egyetlen SVG a fa mögött, a skills-ui.js rajzolja az érmek valódi helyéhez */
+        .sg-sk-lines { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
+        .sg-sk-lines path { fill: none; stroke-linecap: round; }
+        .sg-sk-lines path.off { stroke: rgba(233,227,207,.18); stroke-width: 2; stroke-dasharray: 5 5; }
+        .sg-sk-lines path.avail { stroke: color-mix(in srgb, var(--c) 55%, transparent); stroke-width: 2.5; }
+        .sg-sk-lines path.lit { stroke: var(--c); stroke-width: 3.5; filter: drop-shadow(0 0 4px var(--c)); }
+        .sg-sk-root { position: relative; width: 10px; height: 10px; margin: 2px auto 0; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); z-index: 1; }
+        .sg-sk-sep { position: relative; text-align: center; margin: 4px 0 10px; z-index: 1; }
         .sg-sk-sep span { position: relative; padding: 2px 8px; background: #2a2e20; border: 1px solid rgba(21,23,15,.9); font: 800 10px var(--sg-font); letter-spacing: .16em; color: #8f8a7a; }
         .sg-sk-sep.open span { color: var(--sg-gold); }
         .sg-sk-row { position: relative; display: flex; justify-content: space-between; gap: 0; z-index: 1; }
@@ -404,11 +406,6 @@
         .sg-sk-limb.l { justify-content: center; padding-right: 30px; }
         .sg-sk-limb.r { justify-content: center; padding-left: 30px; }
         .sg-sk-limb.mid { width: auto; justify-content: center; }
-        .sg-sk-br { position: absolute; top: 22px; height: 40px; z-index: -1; overflow: visible; }
-        .sg-sk-limb.l .sg-sk-br { left: calc(50% + 15px); width: calc(50% - 15px); }
-        .sg-sk-limb.r .sg-sk-br { left: 0; width: calc(50% - 15px); }
-        .sg-sk-br path { fill: none; stroke: rgba(233,227,207,.2); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; }
-        .sg-sk-limb.open .sg-sk-br path { stroke: var(--c); stroke-width: 3; stroke-dasharray: none; filter: drop-shadow(0 0 3px var(--c)); }
         /* csomópont: kerek érem gyűrűvel (rang), alatta név és hatás – nincs kockás doboz */
         .sg-sk-node { position: relative; width: 100%; max-width: 150px; padding: 0 2px; background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--sg-thread); }
         .sg-sk-orb { position: relative; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center;
@@ -444,7 +441,7 @@
         #skills-confirm { position: absolute; left: 16px; right: 16px; bottom: 16px; }
         .sg-sk-conf { padding: 12px; background: #1d2016; border: 2px solid var(--sg-gold); font: 600 13px/1.4 var(--sg-font); color: var(--sg-thread); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
         /* RANGLISTA (v0.1.20) */
-        .sg-lb-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+        .sg-lb-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
         .sg-lb-tabs button { padding: 5px 1px 4px; background: rgba(0,0,0,.3); border: 1px solid rgba(21,23,15,.9); border-bottom: 3px solid transparent; color: var(--sg-muted); font-size: 15px; line-height: 1.1; }
         .sg-lb-tabs button span { display: block; font: 800 9px var(--sg-font); letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
         .sg-lb-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--sg-gold); color: var(--sg-thread); }
@@ -475,6 +472,47 @@
         .sg-app-done { font: 700 12px var(--sg-font); color: #a7c35a; padding: 6px 2px; }
         .sg-app-lead { font: 500 13px/1.45 var(--sg-font); color: #d8d2bf; }
         #btn-push.sg-push-on { background: rgba(40,70,30,.55); border-color: #6f8f3a; color: #cfe3a0; }
+        /* KÖZÖSSÉG (v0.1.21) */
+        .sg-so-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; }
+        .sg-so-tabs button { padding: 6px 2px 5px; background: rgba(0,0,0,.3); border: 1px solid rgba(21,23,15,.9); border-bottom: 3px solid transparent; color: var(--sg-muted); font-size: 16px; line-height: 1.1; }
+        .sg-so-tabs button span { display: block; font: 800 10px var(--sg-font); letter-spacing: .06em; text-transform: uppercase; margin-top: 2px; }
+        .sg-so-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--sg-gold); color: var(--sg-thread); }
+        .sg-so-h { font: 800 11px var(--sg-font); letter-spacing: .16em; color: var(--sg-gold); margin: 12px 2px 6px; }
+        .sg-so-h small { letter-spacing: .02em; color: #8f8a7a; font-weight: 600; }
+        .sg-so-muted { font: 500 12px/1.45 var(--sg-font); color: #8f8a7a; }
+        .sg-so-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; margin-bottom: 4px; background: rgba(0,0,0,.28); border: 1px solid rgba(21,23,15,.8); font: 600 13px var(--sg-font); color: var(--sg-thread); }
+        .sg-so-row button, .sg-so-add button, .sg-so-link button { padding: 5px 8px; font: 800 10px var(--sg-font); letter-spacing: .06em; color: var(--sg-thread); background: rgba(0,0,0,.35); border: 1px solid rgba(217,197,138,.5); white-space: nowrap; }
+        .sg-so-row button.ok, .sg-so-card button.ok { background: #5a6b2c; border-color: #8fa84a; }
+        .sg-so-row button.gift { background: #6b4a20; border-color: #c99a4a; }
+        .sg-so-row button:disabled { opacity: .45; }
+        .sg-so-row button.x { padding: 5px 7px; }
+        .sg-so-sp { flex: 1; }
+        .sg-so-who { flex: 1; min-width: 0; }
+        .sg-so-who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sg-so-who small { display: block; font: 500 11px var(--sg-font); color: #8f8a7a; }
+        .sg-so-dot { width: 9px; height: 9px; border-radius: 50%; background: #444; flex: none; }
+        .sg-so-dot.on { background: #8fd16a; box-shadow: 0 0 6px #8fd16a; }
+        .sg-so-add, .sg-so-link { display: flex; gap: 6px; margin: 4px 0; }
+        .sg-so-add input, .sg-so-link input, .sg-so-card input { flex: 1; min-width: 0; padding: 7px; background: #ece6d6; color: #2a2620; border: 2px solid #15170f; font: 600 13px var(--sg-font); }
+        .sg-so-card { padding: 10px; margin: 6px 0; background: rgba(21,23,15,.55); border: 1px solid rgba(217,197,138,.35); font: 500 13px/1.45 var(--sg-font); color: #d8d2bf; display: flex; flex-direction: column; gap: 6px; }
+        .sg-so-card > b { font: 800 14px var(--sg-font); color: var(--sg-thread); }
+        .sg-so-card ul { margin: 0 0 0 18px; list-style: disc; }
+        .sg-so-card button.wide { width: 100%; padding: 9px; font: 800 12px var(--sg-font); letter-spacing: .08em; color: var(--sg-thread); border: 1px solid #8fa84a; }
+        .sg-so-team { display: flex; gap: 10px; align-items: center; padding: 10px; background: rgba(0,0,0,.35); border: 1px solid rgba(217,197,138,.4); }
+        .sg-so-team b { display: block; font: 800 16px var(--sg-font); color: var(--sg-thread); }
+        .sg-so-team small { font: 500 12px var(--sg-font); color: #8f8a7a; }
+        .sg-so-tag { min-width: 56px; height: 56px; display: grid; place-items: center; border-radius: 12px; background: #5a4a2a; border: 2px solid var(--sg-gold); font: 900 15px var(--sg-font); color: var(--sg-gold); }
+        .sg-so-goal small { display: block; margin-top: 4px; font: 500 12px var(--sg-font); color: #bdb8a8; }
+        .sg-so-chip { margin: 4px 4px 0 0; padding: 4px 8px; font: 700 11px var(--sg-font); color: var(--sg-thread); background: rgba(0,0,0,.3); border: 1px dashed rgba(217,197,138,.5); }
+        .sg-so-leave { width: 100%; margin-top: 14px; padding: 7px; font: 800 10px var(--sg-font); letter-spacing: .1em; color: #e3a27a; background: transparent; border: 1px solid rgba(227,162,122,.5); }
+        .sg-so-prev { border: 1px solid rgba(217,197,138,.35); max-width: 240px; margin: 4px auto; }
+        .sg-so-pl { font-size: 18px; }
+        #social-pop { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); z-index: 4000; min-width: 250px; padding: 10px 12px; background: #1d2016; border: 2px solid var(--sg-gold); box-shadow: 0 10px 30px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: 6px; font: 600 13px var(--sg-font); color: var(--sg-thread); }
+        #social-pop.hidden { display: none; }
+        #social-pop small { color: #8f8a7a; }
+        #social-pop button { padding: 7px; font: 800 11px var(--sg-font); letter-spacing: .06em; color: var(--sg-thread); background: #5a6b2c; border: 1px solid #8fa84a; }
+        #social-pop button.x { background: transparent; border-color: rgba(233,227,207,.3); }
+        .sg-marker-friend { box-shadow: 0 0 0 3px #e8c35a, 0 0 12px #e8c35a !important; }
         .sg-q-reward { margin-top: 12px; padding: 10px; border: 2px dashed rgba(217,197,138,.6); text-align: center; }
         .sg-q-reward .sg-q-items { display: flex; justify-content: center; gap: 6px; margin: 8px 0; }
         .sg-q-reward .sg-q-items span { position: relative; width: 44px; height: 44px; border: 1.5px solid var(--sg-dark); background: var(--sg-pocket); display: flex; align-items: center; justify-content: center; }
@@ -1243,7 +1281,7 @@
             <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Barkács</span></button>
             <button id="btn-open-skills" class="nav-btn"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span><b id="nav-skill-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-leaderboard" class="nav-btn"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
-            <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Rádió</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
+            <button id="btn-open-chat" class="nav-btn"><img src="/images/ui/nav-friends.svg" alt=""><span>Barátok</span><b id="nav-social-badge" class="nav-badge hidden">0</b><b id="nav-chat-badge" class="nav-badge hidden" style="display:none">0</b></button>
             <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span><b id="nav-menu-badge" class="nav-badge hidden">0</b></button>
         </nav>
@@ -1460,6 +1498,17 @@
     </div>
     <canvas id="snow-canvas" class="hidden" aria-hidden="true"></canvas>
     <button id="gift-chip" class="hidden" onclick="logMessage('🎁 Hétvégi ajándékvadászat: a csomagok a térképen, a közeledben vannak. Sétálj oda, és koppints rájuk! Csak közterületen – vigyázz magadra!')">🎁 AJÁNDÉKVADÁSZAT · <b id="gift-chip-n">0</b></button>
+    <!-- KÖZÖSSÉG: barátok, csapat, meghívás, megosztás (v0.1.21, js/social-ui.js) -->
+    <div id="social-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 flex flex-col max-h-[90vh] clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">👥 KÖZÖSSÉG</h2>
+                <button onclick="closeSocial()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="social-body" class="overflow-y-auto pr-1 flex-1" style="min-height:0"></div>
+        </div>
+    </div>
+    <div id="social-pop" class="hidden"></div>
     <!-- RANGLISTA (v0.1.20, js/leaderboard-ui.js) -->
     <div id="lb-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
         <div class="hud-panel w-full max-w-md rounded-2xl p-4 flex flex-col max-h-[90vh] clipped-panel shadow-2xl">
@@ -1598,6 +1647,7 @@
     <script src="js/quests-ui.js"></script>
     <script src="js/skills-ui.js"></script>
     <script src="js/leaderboard-ui.js"></script>
+    <script src="js/social-ui.js"></script>
     <script src="js/tutorial-ui.js"></script>
     <script src="js/advent-ui.js"></script>
     <script src="js/wheel-ui.js"></script>

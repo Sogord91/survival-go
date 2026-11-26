@@ -1199,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ezek a következő nagy frissítésben jönnek, addig csak jelzik
     safeAddEvent('btn-open-skills', 'click', () => openSkills());
     safeAddEvent('btn-open-leaderboard', 'click', () => openLeaderboard());
-    safeAddEvent('btn-open-chat', 'click', () => showToast('📻 A csevegés hamarosan érkezik!'));
+    safeAddEvent('btn-open-chat', 'click', () => openSocial());
     safeAddEvent('btn-open-quests', 'click', () => openQuestModal());
 
     safeAddEvent('btn-open-settings', 'click', () => { 

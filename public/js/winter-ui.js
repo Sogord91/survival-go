@@ -80,6 +80,7 @@ function renderTree() {
         <div class="sg-tr-h">A DÍSZEID</div>
         ${orn || '<p class="sg-tr-empty">Nincs nálad dísz. Átkutatáskor találhatsz, a Barkács → Karácsony fülön készíthetsz, és az adventi naptárban is akad.</p>'}
         <button class="sg-tr-wheel" onclick="openWheel()">🎡 SZERENCSEKERÉK <span>${spin.available} pörgetés</span></button>
+        <button class="sg-sh-link" onclick="shareTreeCard()">📸 Megosztom ezt a fát – hívd ide a többieket!</button>
         <div class="sg-tr-h">LEGTÖBBET DÍSZÍTETTÉK</div>
         ${(t.top || []).length ? `<ol class="sg-tr-top">${t.top.map(c => `<li><b>${escapeAttr(c.name)}</b><span>${c.pts} pont</span></li>`).join('')}</ol>` : '<p class="sg-tr-empty">Még senki. Légy te az első!</p>'}
         ${t.mine ? `<p class="sg-tr-empty">A te hozzájárulásod: <b>${t.mine} pont</b></p>` : ''}

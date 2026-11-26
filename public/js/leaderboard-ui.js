@@ -31,7 +31,7 @@ function lbRowHtml(r, board, mine) {
         <span class="sg-lb-rank">${medal}</span>
         <span class="sg-lb-av" style="${fr ? `border-color:${fr.color};box-shadow:0 0 6px ${fr.color}` : ''}">${escapeAttr(r.name.slice(0, 1).toUpperCase())}</span>
         <span class="sg-lb-nm"><b>${escapeAttr(r.name)}${r.early ? ' <i title="Korai túlélő">✦</i>' : ''}</b>
-            <small>${ti ? `<em style="color:${ti.color}">${escapeAttr(ti.name)}</em> · ` : ''}${r.level}. szint</small></span>
+            <small>${r.team ? `${r.level} tag` : `${ti ? `<em style="color:${ti.color}">${escapeAttr(ti.name)}</em> · ` : ''}${r.level}. szint`}</small></span>
         <span class="sg-lb-v">${lbValue(r.value, board)}</span></div>`;
 }
 function lbRender(loading) {

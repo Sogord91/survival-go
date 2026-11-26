@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Az ország legszebb karácsonyfái – Survival GO</title>
+<meta name="description" content="Melyik település fája a legszebb? A Survival GO játékosai közösen díszítik a településük karácsonyfáját. Csatlakozz ingyen!">
+<meta property="og:title" content="Az ország legszebb karácsonyfái – Survival GO">
+<meta property="og:description" content="Melyik település fája vezet? Segíts feldíszíteni a tiédet! Ingyenes GPS-túlélőjáték.">
+<meta property="og:image" content="/images/winter/fagyos_csend_banner.webp">
+<link rel="icon" href="/favicon.ico">
+<style>
+  :root { --gold: #e8c35a; --text: #f1ecd8; --muted: #a6a08a; --line: rgba(217,197,138,.25); }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #1f2a33 0%, #0d1117 60%); color: var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+  .hero { position: relative; height: 230px; background: url('/images/winter/fagyos_csend_banner.webp') center/cover; }
+  .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13,17,23,.1), #0d1117); }
+  .wrap { max-width: 640px; margin: -90px auto 0; padding: 0 16px 40px; position: relative; z-index: 1; }
+  h1 { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: .02em; text-shadow: 0 2px 12px #000; }
+  .sub { color: #bcd3e8; font-weight: 700; letter-spacing: .12em; font-size: 13px; margin: 6px 0 18px; }
+  .stats { display: flex; gap: 10px; margin-bottom: 16px; }
+  .stat { flex: 1; padding: 12px; border: 1px solid var(--line); background: rgba(20,26,34,.85); border-radius: 12px; }
+  .stat b { display: block; font-size: 24px; color: var(--gold); }
+  .stat span { font-size: 12px; color: var(--muted); }
+  ol { list-style: none; padding: 0; margin: 0; }
+  li { display: grid; grid-template-columns: 44px 44px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 6px; background: rgba(20,26,34,.85); border: 1px solid var(--line); border-radius: 12px; }
+  li .n { font-weight: 900; font-size: 18px; text-align: center; color: var(--muted); }
+  li:nth-child(-n+3) { border-color: rgba(232,195,90,.6); }
+  li img { width: 44px; height: 44px; object-fit: contain; }
+  li .nm b { display: block; font-size: 16px; }
+  li .nm small { color: var(--muted); }
+  li .pt { font-weight: 900; color: var(--gold); white-space: nowrap; }
+  .empty { padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
+  .cta { display: block; margin: 20px 0 8px; padding: 16px; text-align: center; font-weight: 900; font-size: 18px; color: #15170f; background: var(--gold); border-radius: 40px; text-decoration: none; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.5; text-align: center; }
+  .note a { color: #bcd3e8; }
+</style>
+</head>
+<body>
+<div class="hero"></div>
+<div class="wrap">
+  <h1>🎄 Az ország legszebb fái</h1>
+  <div class="sub">FAGYOS CSEND · SURVIVAL GO</div>
+  <div class="stats"><div class="stat"><b id="s-trees">–</b><span>díszített fa</span></div><div class="stat"><b id="s-points">–</b><span>pont összesen</span></div></div>
+  <ol id="list"><li class="empty" style="display:block">Betöltés…</li></ol>
+  <a class="cta" href="/">Segíts feldíszíteni a te településed fáját! →</a>
+  <p class="note">A Survival GO ingyenes, GPS-alapú túlélőjáték: a pálya a te utcád. Minden településen áll egy közös karácsonyfa – a játékosok a díszeiket a fánál akaszthatják fel, és minden díszért szerencsekerék-pörgetés jár.<br><a href="/wiki#/oldal/fagyos-csend">Mi a Fagyos Csend?</a></p>
+</div>
+<script>
+const STAGE = ['üres fa', 'félig díszítve', 'teljesen feldíszítve'];
+const PLACE = { city: 'város', town: 'város', village: 'falu', suburb: 'városrész', hamlet: 'település' };
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+fetch('/api/public/trees').then(r => r.json()).then(d => {
+  if (!d || !d.success) throw new Error();
+  document.getElementById('s-trees').textContent = d.total.toLocaleString('hu-HU');
+  document.getElementById('s-points').textContent = d.points.toLocaleString('hu-HU');
+  const el = document.getElementById('list');
+  if (!d.top.length) { el.innerHTML = `<li class="empty" style="display:block">${d.active ? 'Még egyik fát sem díszítették. Légy te az első!' : 'A karácsonyfák december 6-án állnak fel minden településen. Gyere vissza akkor!'}</li>`; return; }
+  el.innerHTML = d.top.map((t, i) => `<li><span class="n">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span><img src="/images/winter/tree_${t.stage}.webp" alt=""><span class="nm"><b>${esc(t.name)}</b><small>${PLACE[t.place] || ''} · ${STAGE[t.stage] || ''} · ${t.people} díszítő</small></span><span class="pt">${t.points} pont</span></li>`).join('');
+}).catch(() => { document.getElementById('list').innerHTML = '<li class="empty" style="display:block">Most nem sikerült betölteni. Próbáld újra kicsit később!</li>'; });
+</script>
+</body>
+</html>

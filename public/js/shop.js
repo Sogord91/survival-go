@@ -46,6 +46,9 @@
         { key: 'frame_rust_s1',  kind: 'frame', name: 'Rozsdás Bajnok keret', rarity: 'legendary', price: null, event: true, season: true, color: '#c0622a', glow: true, desc: 'Szezonjutalom: a havi ranglista első 10 helyezettje kapja.' },
         { key: 'title_rust_s1',  kind: 'title', name: 'Rozsdás Bajnok',       rarity: 'legendary', price: null, event: true, season: true, color: '#d9733a', desc: 'Szezonjutalom: a havi ranglista első 3 helyezettje kapja.' },
         { key: 'title_rust_vet', kind: 'title', name: 'Rozsdás Veterán',      rarity: 'epic',      price: null, event: true, season: true, color: '#b86a3c', desc: 'Szezonjutalom: a havi ranglista 4–10. helyezettje kapja.' },
+        // Közösség (v0.1.21): toborzásért járó címek
+        { key: 'title_recruiter', kind: 'title', name: 'Toborzó',          rarity: 'rare',      price: null, event: true, color: '#8fc06a', desc: 'Az első barátod, akit meghívtál, elérte az 5. szintet.' },
+        { key: 'title_squad',     kind: 'title', name: 'Csapatvezér',      rarity: 'epic',      price: null, event: true, color: '#e0b04a', desc: 'Öt meghívott barátod érte el az 5. szintet.' },
         { key: 'title_rust_s',   kind: 'title', name: 'Rozsdás Túlélő',       rarity: 'rare',      price: null, event: true, season: true, color: '#a4592f', desc: 'Szezonjutalom: a havi ranglista 11–50. helyezettje kapja.' }
     ];
 

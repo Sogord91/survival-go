@@ -35,6 +35,12 @@
                      title: (q) => `Kutass át egy ${(LANDMARKS[q.group] || LANDMARKS.church).name}`, hint: 'Ha nincs ilyen a környékeden, cseréld le a küldetést (naponta egyszer lehet).' },
         spread:    { scope: 'daily', move: true, icon: '🔍', targets: [3, 4, 5], xp: 60, money: 40,
                      title: (q) => `Kutass át ${q.target} épületet, egymástól legalább ${SPREAD_METERS} m-re`, hint: 'Ne ugyanabban az utcában: minden épület legyen messze az előzőktől.' },
+        night:     { scope: 'daily', move: true, icon: '🌙', targets: [800, 1200, 2000], xp: 70, money: 50,
+                     title: (q) => `Éjszakai őrjárat: sétálj ${km(q.target)} km-t sötétben`, hint: 'Napnyugta után. Vigyázz magadra: kivilágított utcán, ismerős helyen sétálj!' },
+        d_loot:    { scope: 'daily', move: true, icon: '🏚️', targets: [5, 8, 12], xp: 60, money: 40,
+                     title: (q) => `Kutass át ${q.target} épületet`, hint: 'Bármilyen épület számít, ahol még nem kutattál a zárolási időn belül.' },
+        d_types:   { scope: 'daily', move: true, icon: '🧩', targets: [3, 4, 5], xp: 60, money: 40,
+                     title: (q) => `Kutass át ${q.target} különböző fajta épületet`, hint: 'Például ház, bolt, garázs, iskola – mindegyik fajta egyszer számít.' },
         // --- FAGYOS CSEND (decemberi) küldetések: need = melyik esemény kell hozzá ---
         tree_far:  { scope: 'daily', move: true, icon: '🎄', targets: [1, 1, 1], need: 'trees', xp: 70, money: 50,
                      title: () => 'Akassz díszt egy másik település fájára', hint: `A fa legalább ${km(TREE_FAR_METERS)} km-re legyen az otthonodtól.` },
@@ -51,6 +57,14 @@
                      title: (q) => `Barkácsolj ${q.target} tárgyat`, hint: 'Bármelyik recept számít.' },
         use:       { scope: 'daily', move: false, icon: '🥫', targets: [3, 4, 5], xp: 40, money: 25,
                      title: (q) => `Használj el ${q.target} ételt, italt vagy kötszert`, hint: 'Készlet → koppints a tárgyra → Használ.' },
+        d_fgift:   { scope: 'daily', move: false, icon: '🎁', targets: [1, 1, 2], xp: 40, money: 25,
+                     title: (q) => `Küldj ajándékot ${q.target > 1 ? q.target + ' barátodnak' : 'egy barátodnak'}`, hint: 'Barátok gomb → a barátod mellett az AJÁNDÉK gomb. Ha még nincs barátod, hívj meg valakit!' },
+        repair:    { scope: 'daily', move: false, icon: '🔧', targets: [1, 1, 2], xp: 40, money: 25,
+                     title: (q) => `Javíts meg ${q.target > 1 ? q.target + ' tárgyat' : 'egy tárgyat'}`, hint: 'Koppints egy kopott tárgyra → Javítás (szerszám és ragasztószalag kell hozzá).' },
+        stash:     { scope: 'daily', move: false, icon: '📦', targets: [3, 5, 8], xp: 40, money: 25,
+                     title: (q) => `Tegyél ${q.target} tárgyat a menedéked raktárába`, hint: 'Ha még nincs menedéked: nyomd hosszan egy épületet a térképen.' },
+        d_share:   { scope: 'daily', move: false, icon: '📸', targets: [1, 1, 1], xp: 40, money: 25,
+                     title: () => 'Ossz meg egy képet a játékból', hint: 'Barátok gomb → Megosztás: Facebookra, Instagramra, TikTokra, Discordra vagy bárhova.' },
         win:       { scope: 'daily', move: false, icon: '⚔️', targets: [1, 2, 3], xp: 40, money: 25,
                      title: (q) => `Győzz le ${q.target} ellenséget`, hint: 'Az épületekben néha ellenség vár.' },
         // --- heti, mozgásos ---
@@ -62,11 +76,21 @@
                      title: (q) => `Járj ${q.target} különböző településen vagy városrészben`, hint: 'A legközelebbi település vagy városrész számít, ahol éppen sétálsz.' },
         w_far:     { scope: 'weekly', move: true, icon: '🚩', targets: [4, 5, 6], dist: [1500, 1500, 2000], xp: 250, money: 150,
                      title: (q) => `Kutass át ${q.target} épületet legalább ${km(q.dist)} km-re otthonról`, hint: 'Otthon: a menedéked, vagy ahol a legtöbbet kutatsz.' },
+        w_loot:    { scope: 'weekly', move: true, icon: '🏚️', targets: [25, 40, 60], xp: 250, money: 150,
+                     title: (q) => `Kutass át ${q.target} épületet a héten`, hint: 'Bármilyen épület számít.' },
+        w_night:   { scope: 'weekly', move: true, icon: '🌙', targets: [4000, 6000, 9000], xp: 250, money: 150,
+                     title: (q) => `Sétálj ${km(q.target)} km-t sötétben a héten`, hint: 'Napnyugta után, kivilágított, ismerős helyen.' },
+        w_marks:   { scope: 'weekly', move: true, icon: '🏛️', targets: [3, 4, 5], xp: 250, money: 150,
+                     title: (q) => `Kutass át ${q.target} különböző fajta nevezetes helyet a héten`, hint: 'Templom, iskola, sportpálya, könyvtár/múzeum, gyógyszertár, állomás, városháza – fajtánként egy számít.' },
         w_hang:    { scope: 'weekly', move: true, icon: '🎄', targets: [5, 8, 12], need: 'trees', xp: 250, money: 150,
                      title: (q) => `Akassz fel ${q.target} díszt a héten`, hint: 'Bármelyik település fájára; a messzebbi fák is számítanak.' },
         w_gift:    { scope: 'weekly', move: true, icon: '🎁', targets: [4, 6, 8], need: 'giftWeek', xp: 250, money: 150,
                      title: (q) => `Nyiss ki ${q.target} ajándékcsomagot a héten`, hint: 'Szombaton és vasárnap 9 és 19 óra között az utcákon.' },
         // --- heti, otthon is megy ---
+        w_dsets:   { scope: 'weekly', move: false, icon: '📅', targets: [4, 5, 6], xp: 200, money: 120,
+                     title: (q) => `Teljesítsd mind a 3 napi küldetést ${q.target} napon a héten`, hint: 'Minden nap, amikor mindhárom napi küldetés kész, egynek számít.' },
+        w_fgift:   { scope: 'weekly', move: false, icon: '🎁', targets: [5, 7, 10], xp: 150, money: 100,
+                     title: (q) => `Küldj ${q.target} ajándékot a barátaidnak a héten`, hint: 'Barátok gomb → AJÁNDÉK.' },
         w_craft:   { scope: 'weekly', move: false, icon: '🛠️', targets: [10, 15, 20], xp: 150, money: 100,
                      title: (q) => `Barkácsolj ${q.target} tárgyat a héten`, hint: 'Bármelyik recept számít.' },
         w_win:     { scope: 'weekly', move: false, icon: '🗡️', targets: [6, 8, 10], xp: 150, money: 100,
@@ -147,13 +171,13 @@
         q = q && typeof q === 'object' ? q : {};
         const out = {
             day: q.day || null, daily: Array.isArray(q.daily) ? q.daily : [], rerolled: !!q.rerolled, dailyBonus: !!q.dailyBonus,
-            spread: Array.isArray(q.spread) ? q.spread : [], exploreXp: q.exploreXp || 0,
+            spread: Array.isArray(q.spread) ? q.spread : [], exploreXp: q.exploreXp || 0, types: Array.isArray(q.types) ? q.types : [], marks: Array.isArray(q.marks) ? q.marks : [],
             week: q.week || null, weekly: Array.isArray(q.weekly) ? q.weekly : [], weeklyBonus: !!q.weeklyBonus, towns: Array.isArray(q.towns) ? q.towns : [],
             cells: Array.isArray(q.cells) ? q.cells : [], lootCells: q.lootCells && typeof q.lootCells === 'object' ? q.lootCells : {}
         };
         const day = dayKey(now), week = weekKey(now);
-        if (out.day !== day) Object.assign(out, { day, daily: generateDaily(username, level, day, opts), rerolled: false, dailyBonus: false, spread: [], exploreXp: 0 });
-        if (out.week !== week) Object.assign(out, { week, weekly: generateWeekly(username, level, week, opts), weeklyBonus: false, towns: [] });
+        if (out.day !== day) Object.assign(out, { day, daily: generateDaily(username, level, day, opts), rerolled: false, dailyBonus: false, spread: [], exploreXp: 0, types: [] });
+        if (out.week !== week) Object.assign(out, { week, weekly: generateWeekly(username, level, week, opts), weeklyBonus: false, towns: [], marks: [] });
         return out;
     }
 
@@ -211,6 +235,7 @@
         if (kind === 'move') {
             const m = Math.max(0, Number(data.meters) || 0);
             of('walk', 'w_walk').forEach(x => bump(x, m));
+            if (data.night) of('night', 'w_night').forEach(x => bump(x, m));
             if (typeof data.lat === 'number') {
                 const cell = cellOf(data.lat, data.lng);
                 if (!q.cells.includes(cell)) {
@@ -226,6 +251,10 @@
             const away = data.home ? dist(data.home, here) : 0;
             of('far_loot', 'w_far').forEach(x => { if (data.home && away >= x.dist) bump(x, 1); });
             of('landmark').forEach(x => { if ((LANDMARKS[x.group] || { types: [] }).types.includes(data.type)) bump(x, 1); });
+            of('d_loot', 'w_loot').forEach(x => bump(x, 1));
+            if (data.type && !q.types.includes(data.type)) { q.types.push(data.type); if (q.types.length > 40) q.types.shift(); of('d_types').forEach(x => bump(x, 1)); }
+            const grp = Object.keys(LANDMARKS).find(g => LANDMARKS[g].types.includes(data.type));
+            if (grp && !q.marks.includes(grp)) { q.marks.push(grp); of('w_marks').forEach(x => bump(x, 1)); }
             if (!q.spread.some(p => dist({ lat: p[0], lng: p[1] }, here) < SPREAD_METERS)) {
                 q.spread.push([here.lat, here.lng]);
                 if (q.spread.length > 20) q.spread.shift();
@@ -242,6 +271,14 @@
         } else if (kind === 'craft') {
             of('craft', 'w_craft').forEach(x => bump(x, Math.max(1, Number(data.count) || 1)));
             if (data.ornament) of('d_orn').forEach(x => bump(x, Math.max(1, Number(data.count) || 1)));
+        } else if (kind === 'fgift') {
+            of('d_fgift', 'w_fgift').forEach(x => bump(x, 1));
+        } else if (kind === 'repair') {
+            of('repair').forEach(x => bump(x, 1));
+        } else if (kind === 'stash') {
+            of('stash').forEach(x => bump(x, Math.max(1, Number(data.count) || 1)));
+        } else if (kind === 'share') {
+            of('d_share').forEach(x => bump(x, 1));
         } else if (kind === 'advent') {
             of('d_advent').forEach(x => bump(x, 1));
         } else if (kind === 'gift') {
@@ -257,7 +294,10 @@
         }
 
         if (res.completed.length) {
-            if (!q.dailyBonus && q.daily.length && q.daily.every(x => x.done)) { q.dailyBonus = true; res.bonus.push({ scope: 'daily', ...DAILY_BONUS }); }
+            if (!q.dailyBonus && q.daily.length && q.daily.every(x => x.done)) {
+                q.dailyBonus = true; res.bonus.push({ scope: 'daily', ...DAILY_BONUS });
+                of('w_dsets').forEach(x => { if (!x.done) { x.progress = Math.min(x.target, x.progress + 1); if (x.progress >= x.target) { x.done = true; res.completed.push(x); } } });
+            }
             if (!q.weeklyBonus && q.weekly.length && q.weekly.every(x => x.done)) { q.weeklyBonus = true; res.bonus.push({ scope: 'weekly', ...WEEKLY_BONUS }); }
         }
         return res;

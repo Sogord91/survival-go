@@ -10,7 +10,8 @@
         { key: 'meters', name: 'Megtett út', icon: '🥾', unit: 'km', desc: 'A hónapban gyalog megtett út.' },
         { key: 'cells', name: 'Felfedezés', icon: '🗺️', unit: 'terület', desc: 'A hónapban felfedezett új (kb. 500 m-es) területek.' },
         { key: 'quests', name: 'Küldetések', icon: '📜', unit: 'db', desc: 'A hónapban teljesített napi és heti küldetések.' },
-        { key: 'level', name: 'Szint', icon: '⭐', unit: 'szint', desc: 'A jelenlegi túlélő szintje (halálkor elölről kezdődik).' }
+        { key: 'level', name: 'Szint', icon: '⭐', unit: 'szint', desc: 'A jelenlegi túlélő szintje (halálkor elölről kezdődik).' },
+        { key: 'teams', name: 'Csapatok', icon: '🏕️', unit: 'pont', desc: 'A csapatok tagjainak összesített szezonpontja ebben a hónapban.' }
     ];
     // A Rozsdás szett: helyezés szerint
     const REWARDS = [

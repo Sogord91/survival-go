@@ -125,6 +125,7 @@ function useCombatMedicine(index) {
 
 // Egy esemény szövege a harcnaplóba
 function describeCombatEvent(ev, enemyName) {
+    if (ev.actor === 'enemy' && ev.type === 'dodge') return [`💨 Kitértél ${enemyName} ütése elől!`, 'text-sky-300'];
     if (ev.actor === 'enemy') return [`${enemyName} megsebzett: ${ev.amount} sebzés.`, 'text-red-400'];
     if (ev.type === 'notice') return [ev.text || '', 'text-orange-300 font-bold']; // kopás, tönkremenés
     switch (ev.type) {
@@ -246,6 +247,7 @@ function arenaIsGun(weaponName) {
 function arenaStep(ev) {
     const me = document.getElementById('ar-me'), en = document.getElementById('ar-enemy');
     if (!me || !en) return;
+    if (ev.actor === 'enemy' && ev.type === 'dodge') { arenaRestart(en, 'lunge'); setTimeout(() => arenaFloat('me', 'KITÉRÉS!', 'miss'), 230); return; }
     if (ev.actor === 'enemy') {
         arenaRestart(en, 'lunge');
         setTimeout(() => { arenaRestart(me, 'hurt'); arenaSlash('me', '💥'); arenaFloat('me', `-${ev.amount}`); playSound('hit'); if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} } }, 230);

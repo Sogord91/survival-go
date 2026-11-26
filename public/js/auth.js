@@ -1,3 +1,19 @@
+// "Hozd a barátod" (v0.1.21): a meghívó link kódját megjegyezzük a regisztrációig
+(function () {
+    try {
+        const m = /[?&]ref=([A-Za-z0-9]{4,10})/.exec(location.search);
+        if (m) {
+            localStorage.setItem('sg-ref', m[1].toUpperCase()); history.replaceState(null, '', location.pathname);
+            // a belépő képernyőn rögtön a regisztráció jön, egy kis üdvözléssel
+            window.addEventListener('load', () => setTimeout(() => {
+                const scr = document.getElementById('auth-modal');
+                if (scr && scr.classList.contains('hidden')) return;
+                if (typeof isRegisterMode !== 'undefined' && !isRegisterMode && typeof toggleAuthMode === 'function') toggleAuthMode();
+                if (typeof setAuthMessage === 'function') setAuthMessage('🤝 Meghívóval érkeztél! Regisztrálj, és ha eléred az 5. szintet, te is és a barátod is jutalmat kaptok.', true);
+            }, 600));
+        }
+    } catch (e) { /* */ }
+})();
 let isRegisterMode = false;
 let selectedAvatar = 'avatar1.png'; // Alapértelmezett
 
@@ -161,7 +177,7 @@ async function handleAuthSubmit() {
 
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     const payload = isRegisterMode
-        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed, privacyAccepted }
+        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed, privacyAccepted, ref: (() => { try { return localStorage.getItem('sg-ref') || undefined; } catch (e) { return undefined; } })() }
         : { username, password };
 
     try {

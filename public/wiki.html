@@ -330,13 +330,14 @@ const GUIDES = [
     const S = window.SurvivalSkills;
     return `<h1>⭐ Képességek</h1>
     <p class="lead">Szintlépéskor képességpontot kapsz: <b>szintenként 1, minden 10. szinten +1</b> (100. szinten összesen ${S.pointsForLevel(100)}). A Képesség gombbal osztod el őket négy ágban.</p>
-    <ul><li>Minden ágban 9 képesség van, 5 sorban. Egy sor akkor nyílik meg, ha az ágban már elköltöttél <b>${S.TIERS.join(' / ')}</b> pontot.</li>
-      <li>A legtöbb képesség 5 rangú; a 15. és a 30. pontnál <b>csúcsképesség</b> vár.</li>
-      <li>Mindent nem tudsz kimaxolni (egy ág ${S.SKILLS.filter(x => x.branch === 'harcos').reduce((a, x) => a + x.max, 0)} pont), ezért érdemes választani.</li>
+    <ul><li>Minden ágban ${S.SKILLS.filter(x => x.branch === 'harcos').length} képesség van, <b>két ösvényen</b> (bal és jobb) és középen két csúcsképességgel. Egy sor akkor nyílik meg, ha az ágban már elköltöttél <b>${S.TIERS.join(' / ')}</b> pontot.</li>
+      <li><b>Elágazás:</b> egy képességet csak akkor tanulhatsz, ha az ösvényen alatta lévő legalább a <b>3. rangon</b> van. A csúcsképességhez az egyik ösvényen el kell jutnod alá.</li>
+      <li>A legtöbb képesség 5 rangú; a ${S.TIERS[3]}. és a ${S.TIERS[6]}. pontnál <b>csúcsképesség</b> vár.</li>
+      <li>Mindent nem tudsz kimaxolni (egy ág ${S.SKILLS.filter(x => x.branch === 'harcos').reduce((a, x) => a + x.max, 0)} pont, a 100. szinten összesen ${S.pointsForLevel(100)} pontod lesz), ezért érdemes választani.</li>
       <li>A szint önmagában csak +${S.LEVEL_HP} max életet ad, sebzést nem: az erőd a képességeidből jön.</li>
       <li><b>Újraosztás:</b> az első <b>ingyenes</b>, bármikor felhasználhatod. Utána pénzbe (szint × ${S.RESPEC_DEFAULTS.moneyPerLevel} $) vagy kristályba (${S.RESPEC_DEFAULTS.crystalBase} + szint × ${S.RESPEC_DEFAULTS.crystalPerLevel}) kerül. Az árat a stáb módosíthatja.</li>
       <li>Halálkor a képességeid is elvesznek.</li></ul>
-    ${S.BRANCHES.map(b => `<h2>${b.icon} ${b.name}</h2><p class="muted">${esc(b.desc)}</p><div class="tbl"><table><tr><th>Sor</th><th>Képesség</th><th>Hatás (rangonként / csúcs)</th></tr>${S.SKILLS.filter(x => x.branch === b.key).map(x => `<tr><td class="n">${S.TIERS[x.tier]}</td><td>${x.icon} <b>${esc(x.name)}</b>${x.cap ? ' ★' : ''}</td><td>${esc(x.desc(x.per))}${x.max > 1 ? ` · max. ${esc(x.desc(x.per * x.max))}` : ''}</td></tr>`).join('')}</table></div>`).join('')}`;
+    ${S.BRANCHES.map(b => `<h2>${b.icon} ${b.name}</h2><p class="muted">${esc(b.desc)}</p><div class="tbl"><table><tr><th>Pont</th><th>Képesség</th><th>Hatás (rangonként / csúcs)</th></tr>${S.SKILLS.filter(x => x.branch === b.key).map(x => `<tr><td class="n">${S.TIERS[x.tier]}</td><td>${x.icon} <b>${esc(x.name)}</b>${x.cap ? ' ★' : ''}<br><small class="muted">${x.col === 'a' ? 'bal ösvény' : x.col === 'b' ? 'jobb ösvény' : 'csúcs'}${x.req ? ' · előtte: ' + x.req.map(q => esc(S.BY_KEY[q.key].name) + ' ' + q.rank + '.') .join(', ') : ''}${x.reqAny ? ' · előtte: ' + x.reqAny.map(k => esc(S.BY_KEY[k].name)).join(' vagy ') : ''}</small></td><td>${esc(x.desc(x.per))}${x.max > 1 ? ` · max. ${esc(x.desc(x.per * x.max))}` : ''}</td></tr>`).join('')}</table></div>`).join('')}`;
   } },
   { slug: 'ranglista', title: 'Ranglista és szezon', group: 'Útmutatók', render: () => {
     const E = window.SurvivalSeason;
@@ -358,6 +359,29 @@ const GUIDES = [
     <div class="tbl"><table><tr><th>Helyezés</th><th>Jutalom</th></tr>${E.REWARDS.map(r => `<tr><td class="n">${r.from}–${r.to}.</td><td>${esc(r.label)}</td></tr>`).join('')}</table></div>
     <p class="muted">A szett darabjai csak szezonjutalomként szerezhetők meg, ládából nem jönnek. A Gyűjteményedbe kerülnek, és halálkor sem vesznek el.</p>`;
   } },
+  { slug: 'kozosseg', title: 'Barátok, csapatok, meghívás', group: 'Útmutatók', render: () => `
+    <h1>👥 Barátok, csapatok, meghívás</h1>
+    <p class="lead">Lent a menüsorban a <b>Barátok</b> gomb alatt négy fül vár: Barátok, Csapat, Meghívás és Megosztás.</p>
+    <h2>👥 Barátok</h2>
+    <ul><li>Barátot a nevével jelölhetsz, vagy koppints rá egy játékosra a térképen → <b>Barátnak jelölöm</b>. Ha elfogadja, a barátod lesz.</li>
+      <li>Látod, ki van online, hányadik szinten jár, és hány km-t gyalogolt, hány szezonpontot gyűjtött a hónapban.</li>
+      <li><b>Napi ajándék:</b> minden barátodnak naponta 1 ajándékot küldhetsz (kötszer, konzerv, víz, elem vagy rongy), összesen naponta 5-öt. Ha nincs nála hely, a menedéke raktárába kerül.</li>
+      <li>A barátaid jelölője a térképen <b>arany keretet</b> kap, ha a közeledben járnak. A pontos helyüket továbbra sem látod, csak ha a közeledben vannak.</li></ul>
+    <h2>🏕️ Csapat</h2>
+    <ul><li>Csapatot a 3. szinttől alapíthatsz: név és 2–4 betűs rövidítés (pl. <b>[ÉRD]</b>). Legfeljebb 15 tag lehet benne.</li>
+      <li>Belépni meghívóval lehet: bármelyik tag meghívhat valakit a nevével vagy a barátlistáról.</li>
+      <li><b>Heti közös cél:</b> tagonként 15 km közös séta (legfeljebb 150 km). Ha a csapat együtt megcsinálja, <b>mindenki +250 XP-t és 150 $-t</b> kap. Hétfőn új cél indul.</li>
+      <li>A csapatok a <a href="#/oldal/ranglista">ranglistán</a> is versenyeznek: a tagok havi szezonpontjai összeadódnak.</li></ul>
+    <h2>🤝 Hozd a barátod</h2>
+    <ul><li>A Meghívás fülön megtalálod a saját linkedet. Küldd el Messengeren, WhatsAppon, Viberen vagy bárhol.</li>
+      <li>Aki a linkeddel regisztrál, automatikusan a barátod lesz. Ha eléri az <b>5. szintet</b>: te <b>+300 XP-t és 300 $-t</b>, ő <b>+150 XP-t és 200 $-t</b> kap.</li>
+      <li>Az első sikeres meghívásért a <b>„Toborzó”</b>, az ötödikért a <b>„Csapatvezér”</b> címet kapod (Menü → Gyűjteményem).</li></ul>
+    <h2>📸 Megosztás és közösségi oldalak</h2>
+    <ul><li>A Megosztás fülön a játék elkészíti a <b>túlélőkártyádat</b> (szint, megtett km, felfedezett területek, legyőzött ellenségek, szezonpont), rajta a meghívó linkeddel. A telefonod megosztás menüjével Facebookra, Instagramra, TikTokra, Discordra vagy bárhová elküldheted.</li>
+      <li>Decemberben a karácsonyfák ablakában a fát is megoszthatod: hívd oda a többieket díszíteni!</li>
+      <li>Naponta az első megosztásért <b>+50 XP és 30 $</b> jár, és van napi küldetés is: „Ossz meg egy képet a játékból”.</li>
+      <li>Ha benézel a közösségi oldalainkra (Discord, Facebook, Instagram, TikTok…), platformonként egyszer <b>+100 XP és 100 $</b> jár.</li>
+      <li>A legszebb fák listája bejelentkezés nélkül is megnézhető és megosztható: <a href="/fak">survivalgo.hu/fak</a>.</li></ul>` },
   { slug: 'telefon', title: 'Telepítés és értesítések', group: 'Útmutatók', render: () => `
     <h1>📲 Telepítés és értesítések</h1>
     <h2>Tedd ki a kezdőképernyőre</h2>

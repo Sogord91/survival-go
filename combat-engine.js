@@ -182,6 +182,9 @@ function useAmmo(p, ammoKey) {
 
 // Az ellenség köre: a sebzést a játékos védelme csökkenti
 function enemyTurn(p, combat, itemDatabase, random) {
+    // Kitérés (Harcos): eséllyel elkerülöd az ütést
+    const dodge = Skills.effects(p.skills).dodge || 0;
+    if (dodge && random() < Math.min(0.5, dodge)) return { actor: 'enemy', type: 'dodge', amount: 0, hpAfter: Math.round(p.hp) };
     const stats = SurvivalStats.computeStats(p, itemDatabase);
     const mitigation = 1 - Math.min(RULES.DEFENSE_CAP, stats.defense * RULES.DEFENSE_PER_POINT);
     const roll = 1 + (random() * 2 - 1) * RULES.ENEMY_VARIANCE;
