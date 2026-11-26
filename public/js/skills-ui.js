@@ -11,10 +11,20 @@ function openSkills() {
     document.getElementById('skills-modal').classList.remove('hidden');
     socket.emit('skills_info');
     renderSkills();
+    // a fa alulról nő: nyitáskor az ALAP sor (a gyökér) látszik
+    const b = document.getElementById('skills-body'); if (b) requestAnimationFrame(() => { b.scrollTop = b.scrollHeight; });
 }
-function closeSkills() { document.getElementById('skills-modal').classList.add('hidden'); }
-function skillTab(key) { skillBranch = key; skillSelected = null; renderSkills(); }
-function skillPick(key) { skillSelected = skillSelected === key ? null : key; renderSkills(); }
+function closeSkills() { document.getElementById('skills-modal').classList.add('hidden'); skillSelected = null; const pop = document.getElementById('skills-pop'); if (pop) pop.classList.add('hidden'); }
+function skillTab(key) { skillBranch = key; skillSelected = null; renderSkills(); const b = document.getElementById('skills-body'); if (b) requestAnimationFrame(() => { b.scrollTop = b.scrollHeight; }); }
+function skillPick(key) {
+    skillSelected = key;
+    const pop = document.getElementById('skills-pop');
+    if (!pop || !player) return;
+    pop.innerHTML = `<div class="sg-sk-popin">${skillDetailHtml(skillsState(), player.level || 1)}<button class="sg-sk-rb" style="width:100%;margin-top:8px" onclick="skillPopHide()">VISSZA A FÁHOZ</button></div>`;
+    pop.classList.remove('hidden');
+    renderSkills();
+}
+function skillPopHide() { skillSelected = null; const pop = document.getElementById('skills-pop'); if (pop) pop.classList.add('hidden'); renderSkills(); }
 function skillLearn(key) { socket.emit('skill_learn', { key }); }
 
 function skillNodeHtml(s, st, lvl) {
@@ -22,11 +32,14 @@ function skillNodeHtml(s, st, lvl) {
     const rank = (st.ranks || {})[s.key] || 0;
     const open = SK.spent(st, s.branch) >= SK.TIERS[s.tier];
     const can = open && rank < s.max && SK.available(st, lvl) > 0;
-    const pips = s.max > 1 ? `<span class="sg-sk-pips">${Array.from({ length: s.max }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('')}</span>` : '';
     const cls = ['sg-sk-node', s.cap ? 'cap' : '', rank > 0 ? 'has' : '', rank >= s.max ? 'max' : '', open ? '' : 'locked', can ? 'can' : '', skillSelected === s.key ? 'sel' : ''].filter(Boolean).join(' ');
+    // kerek "érem": a gyűrű annyira telik, ahány rangod van belőle
+    const p = Math.round(rank / s.max * 100);
+    const fx = s.desc(s.per * Math.max(1, rank));
     return `<button class="${cls}" onclick="skillPick('${s.key}')">
-        <span class="sg-sk-ic">${open ? s.icon : '🔒'}</span>
-        <span class="sg-sk-nm">${escapeAttr(s.name)}</span>${pips}</button>`;
+        <span class="sg-sk-orb" style="--p:${p}%"><span class="sg-sk-ic">${open ? s.icon : '🔒'}</span>${s.max > 1 ? `<b class="sg-sk-rk">${rank}/${s.max}</b>` : ''}</span>
+        <span class="sg-sk-nm">${escapeAttr(s.name)}</span>
+        <span class="sg-sk-fx">${escapeAttr(fx)}</span></button>`;
 }
 
 function skillDetailHtml(st, lvl) {
@@ -76,17 +89,20 @@ function renderSkills() {
     const br = SK.BRANCHES.find(b => b.key === skillBranch) || SK.BRANCHES[0];
     let html = `<div class="sg-sk-top"><span>${lvl}. SZINT</span><span class="sg-sk-free${free > 0 ? ' on' : ''}">${free} SZABAD PONT</span></div>`;
     html += `<div class="sg-sk-tabs">${SK.BRANCHES.map(b => `<button class="${b.key === br.key ? 'on' : ''}" style="--c:${b.color}" onclick="skillTab('${b.key}')">${b.icon}<span>${b.name}</span><b>${SK.spent(st, b.key)}</b></button>`).join('')}</div>`;
-    html += `<div class="sg-sk-desc">${escapeAttr(br.desc)}</div>`;
+    html += `<div class="sg-sk-desc">${escapeAttr(br.desc)} <b>Koppints egy képességre, és megnézheted, mit ad.</b></div>`;
     const inBranch = SK.spent(st, br.key);
-    html += `<div class="sg-sk-tree" style="--c:${br.color}"><div class="sg-sk-trunk"><i style="height:${Math.min(100, inBranch / 30 * 100)}%"></i></div>`;
-    SK.TIERS.forEach((need, tier) => {
+    // Igazi fa: lent a gyökér és az ALAP sor, felfelé nő a törzs; minden képesség egy ágon ül, a csúcson a korona
+    html += `<div class="sg-sk-tree" style="--c:${br.color}">`;
+    SK.TIERS.map((need, tier) => ({ need, tier })).reverse().forEach(({ need, tier }) => {
         const list = SK.SKILLS.filter(s => s.branch === br.key && s.tier === tier);
         const open = inBranch >= need;
-        html += `<div class="sg-sk-sep${open ? ' open' : ''}"><span>${need === 0 ? 'ALAP' : `${need} PONT ${open ? '✓' : `· még ${need - inBranch}`}`}</span></div>`;
-        html += `<div class="sg-sk-row">${list.map(s => skillNodeHtml(s, st, lvl)).join('')}</div>`;
+        // ág: finom, íves vonal a törzstől a képességig (nyitott sorban az ág színében világít)
+        const branchSvg = (side) => `<svg class="sg-sk-br" viewBox="0 0 100 40" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="${side === 'l' ? 'M0 10 C 45 10, 75 14, 100 36' : 'M100 10 C 55 10, 25 14, 0 36'}"/></svg>`;
+        html += `<div class="sg-sk-row${list.length === 1 ? ' top' : ''}${open ? ' open' : ''}">${list.map((s, i) => { const side = list.length === 1 ? 'mid' : i === 0 ? 'l' : 'r'; return `<div class="sg-sk-limb ${side}${open ? ' open' : ''}">${side === 'mid' ? '' : branchSvg(side)}${skillNodeHtml(s, st, lvl)}</div>`; }).join('')}</div>`;
+        html += `<div class="sg-sk-sep${open ? ' open' : ''}"><span>${need === 0 ? 'ALAP · ITT KEZDŐDIK' : `${need} PONT ${open ? '✓' : `· még ${need - inBranch}`}`}</span></div>`;
     });
     html += `</div>`;
-    html += skillDetailHtml(st, lvl) + skillRespecHtml(st);
+    html += skillRespecHtml(st);
     html += `<div class="sg-q-h" style="margin:10px 2px 4px">Szintenként 1 pont, minden 10. szinten +1. Halálkor a képességek is elvesznek: az új túlélő elölről kezdi.</div>`;
     body.innerHTML = html;
 }
@@ -100,7 +116,7 @@ socket.on('skill_result', (d) => {
 socket.on('player_state', () => {
     setTimeout(() => {
         const m = document.getElementById('skills-modal');
-        if (m && !m.classList.contains('hidden')) renderSkills();
+        if (m && !m.classList.contains('hidden')) { renderSkills(); const pop = document.getElementById('skills-pop'); if (skillSelected && pop && !pop.classList.contains('hidden')) skillPick(skillSelected); }
         const badge = document.getElementById('nav-skill-badge');
         if (badge && player && typeof SurvivalSkills !== 'undefined') {
             const n = SurvivalSkills.available(skillsState(), player.level || 1);

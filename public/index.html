@@ -387,27 +387,48 @@
         .sg-sk-tabs button b { position: absolute; top: 2px; right: 4px; font: 700 10px var(--sg-mono); color: var(--sg-gold); }
         .sg-sk-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--c); color: var(--sg-thread); }
         .sg-sk-desc { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; margin: 6px 2px 4px; }
-        .sg-sk-tree { position: relative; padding: 2px 0 6px; }
-        .sg-sk-trunk { position: absolute; left: 50%; top: 10px; bottom: 10px; width: 6px; margin-left: -3px; background: rgba(0,0,0,.45); border-left: 1px dashed rgba(233,227,207,.18); border-right: 1px dashed rgba(233,227,207,.18); }
-        .sg-sk-trunk i { display: block; width: 100%; background: var(--c); opacity: .85; }
-        .sg-sk-sep { position: relative; text-align: center; margin: 10px 0 6px; }
-        .sg-sk-sep::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed rgba(233,227,207,.25); }
+        .sg-sk-tree { position: relative; padding: 14px 0 6px; margin-top: 6px; }
+        /* törzs: vékony fényvonal soronként; a nyitott sorokban az ág színében világít */
+        .sg-sk-row::before, .sg-sk-sep::before { content: ''; position: absolute; left: 50%; width: 4px; margin-left: -2px; border-radius: 2px; background: rgba(233,227,207,.13); z-index: -1; }
+        .sg-sk-row::before { top: -8px; bottom: -8px; }
+        .sg-sk-row.top::before { top: 70px; }
+        .sg-sk-sep::before { top: 0; bottom: 0; }
+        .sg-sk-row.open::before, .sg-sk-sep.open::before { background: var(--c); box-shadow: 0 0 8px var(--c); }
+        .sg-sk-sep { position: relative; text-align: center; margin: 6px 0 8px; z-index: 1; }
         .sg-sk-sep span { position: relative; padding: 2px 8px; background: #2a2e20; border: 1px solid rgba(21,23,15,.9); font: 800 10px var(--sg-font); letter-spacing: .16em; color: #8f8a7a; }
         .sg-sk-sep.open span { color: var(--sg-gold); }
-        .sg-sk-row { position: relative; display: flex; justify-content: center; gap: 34px; }
-        .sg-sk-node { position: relative; width: 132px; min-height: 74px; padding: 7px 6px 6px; background: #4a4f38; border: 2px solid #15170f; box-shadow: 0 3px 0 rgba(0,0,0,.45), inset 0 0 0 3px #4a4f38, inset 0 0 0 4px rgba(233,227,207,.35);
-            display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--sg-thread); transform: rotate(-.6deg); }
-        .sg-sk-row .sg-sk-node:nth-child(2) { transform: rotate(.7deg); }
-        .sg-sk-node.cap { width: 150px; background: #5a4a2a; box-shadow: 0 3px 0 rgba(0,0,0,.45), inset 0 0 0 3px #5a4a2a, inset 0 0 0 4px rgba(217,197,138,.6); }
-        .sg-sk-node.has { background: color-mix(in srgb, var(--c) 45%, #3a3f2c); box-shadow: 0 3px 0 rgba(0,0,0,.45), inset 0 0 0 3px color-mix(in srgb, var(--c) 45%, #3a3f2c), inset 0 0 0 4px rgba(233,227,207,.5); }
-        .sg-sk-node.locked { filter: grayscale(1) brightness(.6); }
-        .sg-sk-node.can::after { content: '+'; position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; background: var(--sg-gold); color: #15170f; font: 900 14px/18px var(--sg-font); border: 1px solid #15170f; }
-        .sg-sk-node.sel { outline: 2px solid var(--sg-gold); outline-offset: 2px; }
-        .sg-sk-ic { font-size: 22px; line-height: 1; }
-        .sg-sk-nm { font: 800 11px/1.15 var(--sg-font); letter-spacing: .04em; text-align: center; text-transform: uppercase; }
-        .sg-sk-pips { display: flex; gap: 3px; }
-        .sg-sk-pips i { width: 9px; height: 9px; background: rgba(0,0,0,.45); border: 1px solid rgba(233,227,207,.35); }
-        .sg-sk-pips i.on { background: var(--sg-gold); border-color: #15170f; }
+        .sg-sk-row { position: relative; display: flex; justify-content: space-between; gap: 0; z-index: 1; }
+        .sg-sk-row.top { justify-content: center; }
+        /* ág: a csomópontot a törzshöz köti (rövid, felfelé ívelő kar, nincs keresztbe futó vonal) */
+        .sg-sk-limb { position: relative; width: 50%; display: flex; box-sizing: border-box; }
+        .sg-sk-limb.l { justify-content: center; padding-right: 30px; }
+        .sg-sk-limb.r { justify-content: center; padding-left: 30px; }
+        .sg-sk-limb.mid { width: auto; justify-content: center; }
+        .sg-sk-br { position: absolute; top: 22px; height: 40px; z-index: -1; overflow: visible; }
+        .sg-sk-limb.l .sg-sk-br { left: calc(50% + 15px); width: calc(50% - 15px); }
+        .sg-sk-limb.r .sg-sk-br { left: 0; width: calc(50% - 15px); }
+        .sg-sk-br path { fill: none; stroke: rgba(233,227,207,.2); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; }
+        .sg-sk-limb.open .sg-sk-br path { stroke: var(--c); stroke-width: 3; stroke-dasharray: none; filter: drop-shadow(0 0 3px var(--c)); }
+        /* csomópont: kerek érem gyűrűvel (rang), alatta név és hatás – nincs kockás doboz */
+        .sg-sk-node { position: relative; width: 100%; max-width: 150px; padding: 0 2px; background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--sg-thread); }
+        .sg-sk-orb { position: relative; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center;
+            background: conic-gradient(var(--c) var(--p), rgba(0,0,0,.55) 0); box-shadow: 0 4px 10px rgba(0,0,0,.5); }
+        .sg-sk-orb::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #5d6448, #2c3022 75%); box-shadow: inset 0 0 0 2px rgba(233,227,207,.25); }
+        .sg-sk-ic { position: relative; font-size: 28px; line-height: 1; }
+        .sg-sk-rk { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); padding: 0 6px; border-radius: 9px; background: #15170f; border: 1px solid rgba(233,227,207,.35); font: 700 10px/16px var(--sg-mono); color: var(--sg-gold); }
+        .sg-sk-node.cap .sg-sk-orb { width: 84px; height: 84px; background: conic-gradient(var(--sg-gold) var(--p), rgba(0,0,0,.55) 0); box-shadow: 0 0 0 3px rgba(217,197,138,.35), 0 4px 14px rgba(0,0,0,.6); }
+        .sg-sk-node.cap .sg-sk-orb::before { background: radial-gradient(circle at 35% 30%, #7a6331, #3a2e16 75%); }
+        .sg-sk-node.cap .sg-sk-ic { font-size: 34px; }
+        .sg-sk-node.has .sg-sk-orb::before { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff 10%), color-mix(in srgb, var(--c) 35%, #1d2016) 75%); }
+        .sg-sk-node.locked .sg-sk-orb, .sg-sk-node.locked .sg-sk-nm { filter: grayscale(1) brightness(.6); }
+        .sg-sk-node.locked .sg-sk-fx { opacity: .45; }
+        .sg-sk-node.can .sg-sk-orb::after { content: '+'; position: absolute; top: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%; background: var(--sg-gold); color: #15170f; font: 900 16px/22px var(--sg-font); text-align: center; box-shadow: 0 0 0 2px #15170f; animation: sgSkPulse 1.6s ease-in-out infinite; }
+        .sg-sk-node.sel .sg-sk-orb { box-shadow: 0 0 0 3px var(--sg-gold), 0 4px 14px rgba(0,0,0,.6); }
+        .sg-sk-nm { font: 800 11px/1.15 var(--sg-font); letter-spacing: .04em; text-align: center; text-transform: uppercase; margin-top: 4px; }
+        .sg-sk-fx { font: 600 10px/1.25 var(--sg-font); color: #d8d2bf; text-align: center; opacity: .9; }
+        #skills-pop { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 5; }
+        .sg-sk-popin { background: #1d2016; border: 2px solid var(--sg-gold); padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.7); }
+        .sg-sk-popin .sg-sk-detail { margin-top: 0; }
         .sg-sk-detail { margin-top: 10px; padding: 10px; background: rgba(21,23,15,.55); border: 1px solid rgba(21,23,15,.9); }
         .sg-sk-hint { font: 500 12px var(--sg-font); color: #8f8a7a; text-align: center; }
         .sg-sk-dh { display: flex; justify-content: space-between; font: 800 13px var(--sg-font); letter-spacing: .06em; color: var(--sg-thread); margin-bottom: 4px; }
@@ -1446,7 +1467,7 @@
                 <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🏆 RANGLISTA</h2>
                 <button onclick="closeLeaderboard()" class="text-emerald-500 text-lg font-bold">✕</button>
             </div>
-            <div id="lb-body" class="overflow-y-auto pr-1 flex-1"></div>
+            <div id="lb-body" class="overflow-y-auto pr-1 flex-1" style="min-height:0"></div>
         </div>
     </div>
     <!-- KÉPESSÉGFA (v0.1.20, js/skills-ui.js) -->
@@ -1456,7 +1477,8 @@
                 <h2 class="text-sm font-bold text-emerald-400 tracking-wider">⭐ KÉPESSÉGEK</h2>
                 <button onclick="closeSkills()" class="text-emerald-500 text-lg font-bold">✕</button>
             </div>
-            <div id="skills-body" class="overflow-y-auto pr-1 flex-1"></div>
+            <div id="skills-body" class="overflow-y-auto pr-1 flex-1" style="min-height:0"></div>
+            <div id="skills-pop" class="hidden"></div>
             <div id="skills-confirm" class="hidden"></div>
         </div>
     </div>
