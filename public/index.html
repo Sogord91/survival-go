@@ -493,6 +493,10 @@
         .sg-so-dot { width: 9px; height: 9px; border-radius: 50%; background: #444; flex: none; }
         .sg-so-dot.on { background: #8fd16a; box-shadow: 0 0 6px #8fd16a; }
         .sg-so-add, .sg-so-link { display: flex; gap: 6px; margin: 4px 0; }
+        .sg-so-msg { min-height: 0; font: 700 12px/1.35 var(--sg-font); color: #8fd18a; margin: 2px 0 4px; }
+        .sg-so-msg:empty { display: none; }
+        .sg-so-msg.bad { color: #e8a060; }
+        .sg-so-hit { background: rgba(217,197,138,.08); }
         .sg-so-add input, .sg-so-link input, .sg-so-card input { flex: 1; min-width: 0; padding: 7px; background: #ece6d6; color: #2a2620; border: 2px solid #15170f; font: 600 13px var(--sg-font); }
         .sg-so-card { padding: 10px; margin: 6px 0; background: rgba(21,23,15,.55); border: 1px solid rgba(217,197,138,.35); font: 500 13px/1.45 var(--sg-font); color: #d8d2bf; display: flex; flex-direction: column; gap: 6px; }
         .sg-so-card > b { font: 800 14px var(--sg-font); color: var(--sg-thread); }

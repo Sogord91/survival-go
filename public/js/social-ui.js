@@ -34,25 +34,42 @@ function renderSocial() {
     else if (socialTab === 'team') html += teamHtml(st);
     else if (socialTab === 'invite') html += inviteHtml(st);
     else html += shareHtml(st);
+    const typing = document.activeElement && document.activeElement.id === 'so-friend-name';
     body.innerHTML = html;
+    if (typing) { const i = document.getElementById('so-friend-name'); if (i) { i.focus(); const L = i.value.length; try { i.setSelectionRange(L, L); } catch (e) { /* */ } } }
 }
 
 // ---------- Barátok ----------
 function friendsHtml(st) {
     const fr = st.friends || [];
     const req = fr.filter(f => f.incoming), ok = fr.filter(f => f.status === 'ok'), out = fr.filter(f => f.outgoing);
-    let h = `<div class="sg-so-add"><input id="so-friend-name" maxlength="24" placeholder="Játékos neve…"><button onclick="socialAddFriend()">+ BARÁT</button></div>`;
+    let h = `<div class="sg-so-add"><input id="so-friend-name" maxlength="24" placeholder="Kezdd el írni a nevét…" autocomplete="off" oninput="socialSearchInput(this.value)" onkeydown="if(event.key==='Enter')socialAddFriend()" value="${sEsc(socialSearchQ)}"><button onclick="socialAddFriend()">+ BARÁT</button></div>
+        <div id="so-search">${socialSearchHtml()}</div><div id="so-msg" class="sg-so-msg ${socialMsg && !socialMsg.ok ? 'bad' : ''}">${socialMsg ? sEsc(socialMsg.text) : ''}</div>`;
+    if (out.length) h += `<div class="sg-so-h">ELKÜLDÖTT KÉRÉSEK</div>` + out.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><small class="sg-so-muted">várja, hogy elfogadja</small><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
     if (req.length) h += `<div class="sg-so-h">BARÁTKÉRÉSEK</div>` + req.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><button class="ok" onclick="socket.emit('friend_accept',{name:'${sJs(f.name)}'})">ELFOGADOM</button><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
     h += `<div class="sg-so-h">BARÁTAIM (${ok.length}) <small>· ma még ${st.giftsLeft} ajándékot küldhetsz</small></div>`;
     h += ok.length ? ok.map(f => `<div class="sg-so-row"><span class="sg-so-dot ${f.online ? 'on' : ''}"></span><div class="sg-so-who"><b>${sEsc(f.name)}</b><small>${f.level}. szint · ${String(f.km).replace('.', ',')} km és ${f.points} pont a hónapban${f.online ? ' · online' : ''}</small></div>
         <button class="gift" ${f.canGift && st.giftsLeft > 0 ? '' : 'disabled'} onclick="socket.emit('friend_gift',{name:'${sJs(f.name)}'})">${f.canGift ? '🎁 AJÁNDÉK' : '✓ MA KÜLDTÉL'}</button>
         <button class="x" onclick="socialRemoveFriend('${sJs(f.name)}')">✕</button></div>`).join('')
         : `<p class="sg-so-muted">Még nincs barátod. Írd be egy játékos nevét, koppints rá a térképen, vagy hívd meg a barátaidat a Meghívás fülön – aki a linkeddel regisztrál, automatikusan a barátod lesz.</p>`;
-    if (out.length) h += `<div class="sg-so-h">ELKÜLDÖTT KÉRÉSEK</div>` + out.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><small class="sg-so-muted">várakozik</small><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
     h += `<p class="sg-so-muted" style="margin-top:10px">A barátaid jelölője a térképen arany keretet kap, ha a közeledben járnak. Az ajándék egy véletlen apróság (kötszer, konzerv, víz, elem, rongy), naponta barátonként egy.</p>`;
     return h;
 }
-function socialAddFriend() { const i = document.getElementById('so-friend-name'); const n = i && i.value.trim(); if (n) socket.emit('friend_request', { name: n }); }
+// névkereső: gépelés közben listázza a hasonló nevű játékosokat, koppintásra mehet a kérés
+let socialSearchQ = '', socialSearchNames = [], socialSearchT = null, socialMsg = null;
+function socialSearchHtml() {
+    if (socialSearchQ.trim().length < 2) return '';
+    if (!socialSearchNames.length) return `<p class="sg-so-muted">Nincs ilyen nevű játékos.</p>`;
+    const fr = new Set(((socialState && socialState.friends) || []).map(f => f.name));
+    return socialSearchNames.map(n => `<div class="sg-so-row sg-so-hit"><b>${sEsc(n)}</b><span class="sg-so-sp"></span>${fr.has(n) ? '<small class="sg-so-muted">már a listádon</small>' : `<button class="ok" onclick="socialSendReq('${sJs(n)}')">+ JELÖLÖM</button>`}</div>`).join('');
+}
+function socialSearchInput(v) {
+    socialSearchQ = v; clearTimeout(socialSearchT);
+    if (v.trim().length < 2) { socialSearchNames = []; const el = document.getElementById('so-search'); if (el) el.innerHTML = ''; return; }
+    socialSearchT = setTimeout(() => socket.emit('friend_search', { q: v.trim() }), 250);
+}
+function socialSendReq(n) { socialMsg = { ok: true, text: 'Küldés…' }; socket.emit('friend_request', { name: n }); }
+function socialAddFriend() { const i = document.getElementById('so-friend-name'); const n = i && i.value.trim(); if (n) socialSendReq(n); }
 function socialRemoveFriend(n) { if (confirm(`Eltávolítod a barátaid közül: ${n}?`)) socket.emit('friend_remove', { name: n }); }
 
 // ---------- Csapat ----------
@@ -209,8 +226,19 @@ socket.on('social_state', (d) => {
     socialBadge();
     const m = document.getElementById('social-modal'); if (m && !m.classList.contains('hidden')) renderSocial();
 });
+socket.on('friend_search_result', (d) => {
+    if (!d || d.q !== socialSearchQ.trim()) return;
+    socialSearchNames = d.names || [];
+    const el = document.getElementById('so-search'); if (el) el.innerHTML = socialSearchHtml();
+});
 socket.on('social_result', (d) => {
     if (d && d.message) logMessage((d.success ? '' : '⚠️ ') + d.message);
+    if (d && d.message) {
+        socialMsg = { ok: !!d.success, text: d.message };
+        if (d.success && /Barátkérés elküldve|mostantól a barátod/.test(d.message)) { socialSearchQ = ''; socialSearchNames = []; }
+        const el = document.getElementById('so-msg'); if (el) { el.textContent = d.message; el.classList.toggle('bad', !d.success); }
+        clearTimeout(window.__soMsgT); window.__soMsgT = setTimeout(() => { socialMsg = null; const e = document.getElementById('so-msg'); if (e) e.textContent = ''; }, 7000);
+    }
     if (d && !d.success && typeof showToast === 'function') showToast(d.message);
 });
 socket.on('social_ping', () => socket.emit('social_state'));

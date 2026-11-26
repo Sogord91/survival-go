@@ -86,7 +86,7 @@ function setup(ctx) {
         const inviter = await PlayerModel.findOne({ refCode: code }, { username: 1 }).lean();
         if (!inviter || inviter.username === username) return null;
         await PlayerModel.updateOne({ username }, { refBy: inviter.username });
-        await FriendModel.updateOne({ _id: pairId(username, inviter.username) }, { _id: pairId(username, inviter.username), a: [username, inviter.username].sort()[0], b: [username, inviter.username].sort()[1], from: inviter.username, status: 'ok', t: Date.now() }, { upsert: true });
+        await FriendModel.updateOne({ _id: pairId(username, inviter.username) }, { a: [username, inviter.username].sort()[0], b: [username, inviter.username].sort()[1], from: inviter.username, status: 'ok', t: Date.now() }, { upsert: true });
         Admin.logEvent('referral_join', inviter.username, { invited: username });
         emitTo(inviter.username, 'player_notice', { message: `🤝 ${username} a meghívódra regisztrált! Ha eléri az ${REF_LEVEL}. szintet, mindketten jutalmat kaptok.` });
         return inviter.username;
@@ -112,6 +112,26 @@ function setup(ctx) {
     }
 
     // ---------- BARÁTOK ----------
+    // névkeresés: kis- és nagybetű, valamint ékezet nélkül is megtalálja (pl. "peti" → "Peti", "arpad" → "Árpád")
+    const fold = (x) => String(x || '').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    async function findPlayer(name) {
+        const exact = await PlayerModel.findOne({ username: name }, { username: 1 }).lean();
+        if (exact) return exact;
+        const f = fold(name);
+        const all = await PlayerModel.find({}, { username: 1 }).lean();
+        const ci = all.filter(u => u.username && u.username.toLocaleLowerCase('hu') === name.toLocaleLowerCase('hu'));
+        if (ci.length === 1) return ci[0];
+        const hit = all.filter(u => fold(u.username) === f);
+        return hit.length === 1 ? hit[0] : null;
+    }
+    async function searchNames(q, me) {
+        const f = fold(q); if (f.length < 2) return [];
+        const all = await PlayerModel.find({}, { username: 1, 'playerData.level': 1 }).lean();
+        const meF = fold(me);
+        return all.filter(u => u.username && fold(u.username) !== meF && fold(u.username).includes(f))
+            .sort((x, y) => (fold(x.username).startsWith(f) ? 0 : 1) - (fold(y.username).startsWith(f) ? 0 : 1) || x.username.length - y.username.length)
+            .slice(0, 8).map(u => u.username);
+    }
     async function friendsOf(username) {
         const [x, y] = await Promise.all([FriendModel.find({ a: username }).lean(), FriendModel.find({ b: username }).lean()]);
         return x.concat(y).map(f => ({ ...f, other: f.a === username ? f.b : f.a }));
@@ -223,9 +243,11 @@ function setup(ctx) {
         socket.on('friend_request', guard(async (d) => {
             const name = String(d.name || '').trim();
             if (!name || name === username) return bad('social_result', 'Adj meg egy másik játékosnevet.');
-            const target = await PlayerModel.findOne({ username: name }, { username: 1 }).lean()
-                || await PlayerModel.findOne({ usernameLower: name.toLocaleLowerCase('hu') }, { username: 1 }).lean();
-            if (!target) return bad('social_result', 'Nincs ilyen nevű túlélő.');
+            const target = await findPlayer(name);
+            if (!target) {
+                const sug = await searchNames(name, username);
+                return bad('social_result', sug.length ? `Nincs pontosan ilyen nevű túlélő. Erre gondoltál: ${sug.slice(0, 3).join(', ')}?` : 'Nincs ilyen nevű túlélő. Figyelj a pontos írásra!');
+            }
             const other = target.username, id = pairId(username, other);
             const ex = await FriendModel.findById(id).lean();
             if (ex && ex.status === 'ok') return bad('social_result', `${other} már a barátod.`);
@@ -238,11 +260,15 @@ function setup(ctx) {
             }
             if (ex) return bad('social_result', 'A kérésed már elment, várd meg, amíg elfogadja.');
             const [a, b] = [username, other].sort();
-            await FriendModel.updateOne({ _id: id }, { _id: id, a, b, from: username, status: 'pending', t: Date.now() }, { upsert: true });
+            await FriendModel.updateOne({ _id: id }, { $set: { a, b, from: username, status: 'pending', t: Date.now() } }, { upsert: true });
             emitTo(other, 'player_notice', { message: `👥 ${username} barátnak jelölt! Fogadd el a Barátok gombon.` });
             emitTo(other, 'social_ping', {});
             notify(other, '👥 Barátkérés', `${username} barátnak jelölt a Survival GO-ban.`);
             ok('social_result', `Barátkérés elküldve neki: ${other}.`); return sendAll();
+        }));
+        socket.on('friend_search', guard(async (d) => {
+            const q = String(d.q || '').trim().slice(0, 24);
+            socket.emit('friend_search_result', { q, names: await searchNames(q, username) });
         }));
         socket.on('friend_accept', guard(async (d) => {
             const other = String(d.name || ''); const id = pairId(username, other);
