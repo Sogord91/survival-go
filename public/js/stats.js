@@ -142,9 +142,12 @@
     // A lemerült lámpát a játékos tölti fel kézzel (elem / olaj / powerbank) – lásd refuel_light.
     function findUsableLight(inventory, itemDatabase) {
         const slots = (Array.isArray(inventory) ? inventory : []).filter(s => itemDatabase[s.key] && itemDatabase[s.key].light);
+        // fajta szerint (LIGHT_ORDER), azon belül a legjobban lemerült / elhasznált darab előbb (v0.1.19.1),
+        // így a félig lemerült lámpa ég, nem a teli – bárhol van a hátizsákban
+        const left = (sl) => { const max = num(itemDatabase[sl.key].durability, 1) || 1; return sl.dur === undefined ? 1 : num(sl.dur, 0) / max; };
         slots.sort((a, b) => {
             const ia = LIGHT_ORDER.indexOf(a.key), ib = LIGHT_ORDER.indexOf(b.key);
-            return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+            return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || (left(a) - left(b));
         });
         // Csak a működő (fel van töltve / még ég) fény számít. Az elemet / olajat a játékos teszi be kézzel (v0.1.19).
         for (const slot of slots) {

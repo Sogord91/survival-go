@@ -808,12 +808,29 @@ function countItem(p, key) {
     return p.inventory.reduce((sum, s) => sum + (s.key === key ? s.count : 0), 0);
 }
 
+// A kopó tárgyakból mindig a legjobban elhasznált darab megy előbb, bárhol van a hátizsákban (v0.1.19.1).
+// A teljes (még nem kopott, dur nélküli) darab számít a legépebbnek.
+function wornness(s) {
+    const item = itemDatabase[s.key];
+    const max = item && Number(item.durability);
+    if (!max) return 1;
+    return s.dur === undefined || s.dur === null ? 1 : Number(s.dur) / max;
+}
+function mostWorn(p, key, extra) {
+    const list = p.inventory.filter(s => s.key === key && s.count > 0 && (!extra || extra(s)));
+    list.sort((a, b) => wornness(a) - wornness(b));
+    return list[0] || null;
+}
+
 function removeItem(p, key, count) {
     if (countItem(p, key) < count) return false;
     let left = count;
-    for (let i = p.inventory.length - 1; i >= 0 && left > 0; i--) {
+    // a legkopottabb darabok fogynak el előbb (egyforma kopásnál a hátizsák végéről, mint eddig)
+    const order = p.inventory.map((s, i) => i).filter(i => p.inventory[i].key === key)
+        .sort((a, b) => (wornness(p.inventory[a]) - wornness(p.inventory[b])) || (b - a));
+    for (const i of order) {
+        if (left <= 0) break;
         const slot = p.inventory[i];
-        if (slot.key !== key) continue;
         const take = Math.min(slot.count, left);
         slot.count -= take;
         left -= take;
@@ -995,7 +1012,7 @@ function refuelLight(p, index, how) {
     if (cur >= full - 0.5) return { error: `${item.name}: tele van.` };
     if (how === 'power_bank') {
         if (item.light.fuel !== 'aa_batteries') return { error: 'A powerbank csak elemes lámpát tud tölteni.' };
-        const bank = p.inventory.find(s => s.key === 'power_bank' && (s.dur === undefined || s.dur > 0));
+        const bank = mostWorn(p, 'power_bank', s => s.dur === undefined || s.dur > 0); // a legjobban lemerült powerbank előbb
         if (!bank) return { error: 'Nincs nálad feltöltött powerbank.' };
         lamp.dur = full;
         bank.dur = (bank.dur === undefined ? itemDatabase.power_bank.durability : bank.dur) - 1;
@@ -1515,7 +1532,7 @@ function hasItem(p, key) {
 
 // Álkulcs: ha nálad van, ritkábban üres az épület; minden kutatás 1-et koptat rajta. { factor, broke }
 function useLockpick(p) {
-    const slot = p.inventory.find(s => s.key === 'lockpick' && s.count > 0);
+    const slot = mostWorn(p, 'lockpick'); // a legkopottabb álkulcs előbb
     if (!slot) return { factor: 1, broke: false };
     slot.dur = (slot.dur === undefined ? itemDatabase.lockpick.durability : slot.dur) - 1;
     const broke = slot.dur <= 0;
@@ -1976,7 +1993,7 @@ io.on('connection', (socket) => {
                 const [match, rod] = RecipeTools.FIRE_STARTERS;
                 if (countItem(p, match) >= 1 + (recipe.req[match] || 0)) fireMatch = true;
                 else {
-                    const rodSlot = p.inventory.find(s => s.key === rod && s.count > 0 && !usedTools.includes(s));
+                    const rodSlot = mostWorn(p, rod, s => !usedTools.includes(s));
                     if (!rodSlot) return { save: false, error: `Tüzet kell gyújtani: ${itemName(match)} vagy ${itemName(rod)} kell hozzá.` };
                     usedTools.push(rodSlot);
                 }
