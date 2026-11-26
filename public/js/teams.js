@@ -18,12 +18,12 @@
     // Heti csapatküldetések: mindig van közös séta + 2 a többi közül (csapatonként és hetente más).
     // A cél a tagok számával nő (legalább 2 főre számolva, legfeljebb 10 főig).
     const QUESTS = {
-        walk: { icon: '🚶', title: 'Közös séta', unit: 'km', per: 15000, div: 1000, reward: { money: 150, xp: 250 }, desc: 'Gyalogoljatok együtt' },
-        loot: { icon: '🏚️', title: 'Közös kutatás', unit: 'épület', per: 30, reward: { money: 100, xp: 150 }, desc: 'Kutassatok át épületeket' },
-        win: { icon: '⚔️', title: 'Közös harc', unit: 'győzelem', per: 10, reward: { money: 100, xp: 150 }, desc: 'Győzzetek le ellenségeket' },
-        cells: { icon: '🗺️', title: 'Közös felfedezés', unit: 'új terület', per: 20, reward: { money: 100, xp: 150 }, desc: 'Fedezzetek fel új területeket' },
-        craft: { icon: '🔨', title: 'Közös műhely', unit: 'barkácsolás', per: 8, reward: { money: 100, xp: 150 }, desc: 'Barkácsoljatok tárgyakat' },
-        quests: { icon: '📜', title: 'Szorgos csapat', unit: 'küldetés', per: 10, reward: { money: 100, xp: 150 }, desc: 'Teljesítsetek egyéni küldetéseket' }
+        walk: { icon: '🚶', title: 'Közös séta', unit: 'km', per: 25000, div: 1000, reward: { money: 150, xp: 250 }, desc: 'Gyalogoljatok együtt' },
+        loot: { icon: '🏚️', title: 'Közös kutatás', unit: 'épület', per: 50, reward: { money: 100, xp: 150 }, desc: 'Kutassatok át épületeket' },
+        win: { icon: '⚔️', title: 'Közös harc', unit: 'győzelem', per: 15, reward: { money: 100, xp: 150 }, desc: 'Győzzetek le ellenségeket' },
+        cells: { icon: '🗺️', title: 'Közös felfedezés', unit: 'új terület', per: 30, reward: { money: 100, xp: 150 }, desc: 'Fedezzetek fel új területeket' },
+        craft: { icon: '🔨', title: 'Közös műhely', unit: 'barkácsolás', per: 15, reward: { money: 100, xp: 150 }, desc: 'Barkácsoljatok tárgyakat' },
+        quests: { icon: '📜', title: 'Szorgos csapat', unit: 'küldetés', per: 15, reward: { money: 100, xp: 150 }, desc: 'Teljesítsetek egyéni küldetéseket' }
     };
     const POOL = ['loot', 'win', 'cells', 'craft', 'quests'];
     const ALL_BONUS = { money: 200, xp: 300 };
@@ -35,7 +35,12 @@
         for (let i = 0; i < 2; i++) { const j = h % pool.length; out.push(pool.splice(j, 1)[0]); h = Math.floor(h / 7) + 13; }
         return out;
     }
-    function target(kind, members) { const d = QUESTS[kind]; return d.per * Math.min(10, Math.max(2, members || 1)); }
+    // a cél legalább 3 főre számol (egyedül nem fér bele egy hétbe), és minden taggal nő (15 főig)
+    const MIN_SIZE = 3, MAX_SIZE = MAX;
+    function target(kind, members) { const d = QUESTS[kind]; return d.per * Math.min(MAX_SIZE, Math.max(MIN_SIZE, members || 1)); }
+    // csapatmunka: egy küldetés csak akkor teljesül, ha legalább ennyi különböző tag segített benne
+    // 2 fő: mindkettő · 3–9 fő: 3 · 10–12 fő: 4 · 13–15 fő: 5 (a tagok harmada, legalább 3)
+    function helpersNeeded(members) { return members <= 2 ? 2 : Math.max(3, Math.ceil(members / 3)); }
 
     function normEmblem(e) {
         const x = e && typeof e === 'object' ? e : {};
@@ -46,7 +51,7 @@
         };
     }
 
-    const api = { MAX, MIN_LEVEL, ICONS, COLORS, SHAPES, MODES, ROLES, QUESTS, POOL, ALL_BONUS, questKinds, target, normEmblem, hash };
+    const api = { MAX, MIN_LEVEL, ICONS, COLORS, SHAPES, MODES, ROLES, QUESTS, POOL, ALL_BONUS, MIN_SIZE, MAX_SIZE, questKinds, target, helpersNeeded, normEmblem, hash };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.SurvivalTeams = api;
 })(typeof window !== 'undefined' ? window : globalThis);

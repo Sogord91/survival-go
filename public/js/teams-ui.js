@@ -144,9 +144,10 @@ function teamHomeHtml(st) {
         const pct = Math.min(100, Math.round(q.progress / q.target * 100));
         const fmt = (v) => (q.div > 1 ? (v / q.div).toFixed(1).replace('.', ',').replace(',0', '') : String(v));
         return `<div class="sg-tm-q${q.done ? ' done' : ''}"><div class="sg-tm-qh"><span>${q.icon}</span><b>${tE(q.title)}</b><small>${q.done ? '✓ KÉSZ' : `+${q.reward.xp} XP · ${q.reward.money} $`}</small></div>
-            <div class="sg-qs-bar"><i style="width:${pct}%"></i><span>${fmt(q.progress)} / ${fmt(q.target)} ${tE(q.unit)}</span></div><small class="sg-so-muted">${tE(q.desc)}!</small></div>`;
+            <div class="sg-qs-bar"><i style="width:${pct}%"></i><span>${fmt(q.progress)} / ${fmt(q.target)} ${tE(q.unit)}</span></div>
+            <small class="sg-so-muted">${tE(q.desc)}! · <b class="${(q.helpers || 0) >= (q.need || 2) ? 'ok' : ''}">👥 ${Math.min(q.helpers || 0, q.need || 2)} / ${q.need || 2} segítő</b>${!q.done && q.progress >= q.target && (q.helpers || 0) < (q.need || 2) ? ' – még kell segítő!' : ''}</small></div>`;
     }).join('');
-    h += `<div class="sg-tm-note">${t.allDone ? '🏆 Mind a 3 kész ezen a héten! Hétfőn újak jönnek.' : `🏆 Mind a háromért: még +${r.allBonus ? r.allBonus.xp : 300} XP és ${r.allBonus ? r.allBonus.money : 200} $.`}<br>A jutalmat az kapja, aki a héten bármivel hozzájárult. Hétfőn új küldetések jönnek.</div>`;
+    h += `<div class="sg-tm-note">${t.allDone ? '🏆 Mind a 3 kész ezen a héten! Hétfőn újak jönnek.' : `🏆 Mind a háromért: még +${r.allBonus ? r.allBonus.xp : 300} XP és ${r.allBonus ? r.allBonus.money : 200} $.`}<br>Egy küldetés csak akkor teljesül, ha legalább ${(t.quests[0] && t.quests[0].need) || 3} különböző tag segít benne. A jutalmat az kapja, aki a héten bármivel hozzájárult. Hétfőn új küldetések jönnek.</div>`;
     const s = t.stats || {};
     h += `<div class="sg-tm-stats"><div><b>${String(Math.round(s.km || 0))}</b><small>km közösen</small></div><div><b>${s.quests || 0}</b><small>csapatküldetés</small></div><div><b>${(s.weeks || 0) + 1}</b><small>hét együtt</small></div></div>`;
     if ((t.log || []).length) h += `<div class="sg-so-h">CSAPATNAPLÓ</div><div class="sg-tm-log">${t.log.slice(0, 10).map(l => `<div><small>${teamAgo(l.t)}</small> ${tE(l.text)}</div>`).join('')}</div>`;

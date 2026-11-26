@@ -143,7 +143,8 @@ function setup(ctx) {
                     t.prog[k] = (t.prog[k] || 0) + v;
                     if (k === 'walk') t.stats.km = Math.round(((t.stats.km || 0) + v / 1000) * 10) / 10;
                 }
-                kinds.forEach(k => { if (!t.qdone[k] && (t.prog[k] || 0) >= T.target(k, n)) { t.qdone[k] = true; t.stats.quests = (t.stats.quests || 0) + 1; done.push(k); addLog(t, `✅ Kész a csapatküldetés: ${T.QUESTS[k].icon} ${T.QUESTS[k].title}`); } });
+                const need = T.helpersNeeded(n), helpers = (k) => t.members.filter(m => t.contrib[m] && t.contrib[m][k] > 0).length;
+                kinds.forEach(k => { if (!t.qdone[k] && (t.prog[k] || 0) >= T.target(k, n) && helpers(k) >= need) { t.qdone[k] = true; t.stats.quests = (t.stats.quests || 0) + 1; done.push(k); addLog(t, `✅ Kész a csapatküldetés: ${T.QUESTS[k].icon} ${T.QUESTS[k].title}`); } });
                 let all = false;
                 if (!t.allDone && kinds.every(k => t.qdone[k])) { t.allDone = true; all = true; addLog(t, '🏆 Mind a 3 heti csapatküldetés kész!'); }
                 if (!done.length && !all) return {};
@@ -170,7 +171,9 @@ function setup(ctx) {
     // ---------- adatok a kliensnek ----------
     function questView(t) {
         const n = t.members.length;
-        return kindsOf(t).map(k => { const q = T.QUESTS[k]; return { kind: k, icon: q.icon, title: q.title, unit: q.unit, desc: q.desc, div: q.div || 1, progress: Math.round(t.prog[k] || 0), target: T.target(k, n), done: !!t.qdone[k], reward: q.reward }; });
+        const need = T.helpersNeeded(n);
+        return kindsOf(t).map(k => { const q = T.QUESTS[k]; return { kind: k, icon: q.icon, title: q.title, unit: q.unit, desc: q.desc, div: q.div || 1, progress: Math.round(t.prog[k] || 0), target: T.target(k, n), done: !!t.qdone[k], reward: q.reward,
+            helpers: t.members.filter(m => t.contrib[m] && t.contrib[m][k] > 0).length, need }; });
     }
     function brief(t, extra) {
         return { id: t._id, name: t.name, tag: t.tag, emblem: t.emblem, members: t.members.length, max: T.MAX, mode: t.mode, minLevel: t.minLevel, desc: t.desc, owner: t.owner, ...(extra || {}) };
