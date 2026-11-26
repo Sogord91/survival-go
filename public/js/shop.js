@@ -41,7 +41,12 @@
         { key: 'frame_blizzard26', kind: 'frame', name: 'Hóvihar keret',      rarity: 'rare',      price: null, event: true, color: '#7fc4f0', glow: true, desc: 'Csak a 2026-os téli szerencsekerékről.' },
         { key: 'title_elf26',      kind: 'title', name: 'Télapó segédje',     rarity: 'epic',      price: null, event: true, color: '#e8645a', desc: 'Csak a 2026-os téli szerencsekerékről.' },
         { key: 'frame_iceheart26', kind: 'frame', name: 'Jégszív keret',      rarity: 'legendary', price: null, event: true, color: '#dff4ff', glow: true, pulse: true, desc: 'Csak a 2026-os téli szerencsekerékről.' },
-        { key: 'frame_frost26',  kind: 'frame', name: 'Fagyos Csend 2026',   rarity: 'legendary', price: null, event: true, color: '#bfe8ff', glow: true, pulse: true, desc: 'Csak a 2026-os adventi naptár 24. ablakából. Soha többé nem szerezhető meg.' }
+        { key: 'frame_frost26',  kind: 'frame', name: 'Fagyos Csend 2026',   rarity: 'legendary', price: null, event: true, color: '#bfe8ff', glow: true, pulse: true, desc: 'Csak a 2026-os adventi naptár 24. ablakából. Soha többé nem szerezhető meg.' },
+        // Rozsdás szett (v0.1.20): a havi ranglista-szezon jutalma, 2027 januárjától. Nem kerül ládába.
+        { key: 'frame_rust_s1',  kind: 'frame', name: 'Rozsdás Bajnok keret', rarity: 'legendary', price: null, event: true, season: true, color: '#c0622a', glow: true, desc: 'Szezonjutalom: a havi ranglista első 10 helyezettje kapja.' },
+        { key: 'title_rust_s1',  kind: 'title', name: 'Rozsdás Bajnok',       rarity: 'legendary', price: null, event: true, season: true, color: '#d9733a', desc: 'Szezonjutalom: a havi ranglista első 3 helyezettje kapja.' },
+        { key: 'title_rust_vet', kind: 'title', name: 'Rozsdás Veterán',      rarity: 'epic',      price: null, event: true, season: true, color: '#b86a3c', desc: 'Szezonjutalom: a havi ranglista 4–10. helyezettje kapja.' },
+        { key: 'title_rust_s',   kind: 'title', name: 'Rozsdás Túlélő',       rarity: 'rare',      price: null, event: true, season: true, color: '#a4592f', desc: 'Szezonjutalom: a havi ranglista 11–50. helyezettje kapja.' }
     ];
 
     // Kényelem: nem ad harci előnyt
@@ -71,6 +76,7 @@
     ];
     // Festékek (Fagyos Csend, v0.1.19): a fiókhoz tartoznak (halálkor nem vesznek el), a skinrendszerrel egy tárgyra festhetők
     const PAINTS = [
+        { key: 'paint_rust_weapon', name: 'Rozsdás festék – fegyver', paint: true, slotKind: 'weapon', rarity: 'legendary', img: 'key', desc: 'Szezonjutalom (a havi ranglista első 3 helyezettje): rozsdás, kopott vas festés egy fegyveredre.' },
         { key: 'paint_frost_weapon', name: 'Fagyos festék – fegyver', paint: true, slotKind: 'weapon', rarity: 'legendary', img: 'key', desc: 'Jégkék, deres festés egy fegyveredre. A skinrendszerrel festheted rá (december közepétől).' },
         { key: 'paint_frost_jacket', name: 'Fagyos festék – kabát',   paint: true, slotKind: 'torso',  rarity: 'legendary', img: 'key', desc: 'Jégkék, deres festés egy kabátodra. A skinrendszerrel festheted rá (december közepétől).' }
     ];

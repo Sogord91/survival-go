@@ -116,6 +116,7 @@ body.embed header h1 { font-size: 15px; }
   <button data-t="rep">HIBAJELENTÉSEK <span id="rep-badge" class="badge hidden"></span></button>
   <button data-t="evt" data-perm="events">EVENTEK</button>
   <button data-t="win" data-perm="events">❄ FAGYOS CSEND</button>
+  <button data-t="prog" data-perm="events">⭐ FEJLŐDÉS</button>
   <button data-t="eco">GAZDASÁG</button>
   <button data-t="log">NAPLÓ</button>
   <button data-t="srv" data-perm="server">SZERVER</button>
@@ -261,6 +262,32 @@ body.embed header h1 { font-size: 15px; }
     </div>
   </section>
 
+  <!-- FEJLŐDÉS (v0.1.20): képességek, újraosztás, küldetések -->
+  <section class="tab" id="t-prog">
+    <div class="row" style="margin-bottom:8px"><button class="btn ghost" onclick="loadProgress(); loadSeasonAdmin()">↻ FRISSÍTÉS</button><span class="muted" id="prog-asof"></span></div>
+    <div class="grid cards" id="prog-kpis"></div>
+    <div class="grid two" style="margin-top:10px">
+      <div class="card"><h3>Képesség-újraosztás ára</h3>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:end">
+          <label>$ / szint<br><input id="sp-money" type="number" min="0" style="width:90px" oninput="spExample()"></label>
+          <label>Kristály alap<br><input id="sp-cb" type="number" min="0" style="width:90px" oninput="spExample()"></label>
+          <label>Kristály / szint<br><input id="sp-cl" type="number" min="0" style="width:90px" oninput="spExample()"></label>
+          <button class="btn" onclick="saveSkillPrices()">MENTÉS</button>
+        </div>
+        <p class="muted" id="sp-example" style="margin-top:6px"></p>
+        <p class="muted">Az első újraosztás mindenkinek ingyenes (karakterenként).</p></div>
+      <div class="card"><h3>Ágak (elköltött pontok, a stáb nélkül)</h3><div id="prog-branch"></div></div>
+      <div class="card"><h3>Képességek népszerűsége (rangok összesen · játékosok)</h3><div id="prog-skills"></div></div>
+      <div class="card"><h3>Küldetések típus szerint (30 nap) · 🚶 = mozgásos</h3><div id="prog-quests"></div></div>
+      <div class="card"><h3>Ranglista-szezon (első 10, a stáb nélkül)</h3><div id="prog-season"></div></div>
+      <div class="card"><h3>Lezárt szezonok · Rozsdás szett nyertesei</h3><div id="prog-closed"></div>
+        <button class="btn ghost" style="margin-top:8px" onclick="seasonClose()">Előző hónap lezárása most</button>
+        <p class="muted">Automatikusan is lezárul (óránként ellenőrzi). Csak az első 2027. januári szezontól jár jutalom.</p></div>
+      <div class="card"><h3>Legutóbbi újraosztások</h3><div id="prog-respec"></div></div>
+      <div class="card"><h3>Legutóbbi képességválasztások</h3><div id="prog-learn"></div></div>
+    </div>
+  </section>
+
   <!-- GAZDASÁG -->
   <section class="tab" id="t-eco">
     <div class="grid two">
@@ -297,6 +324,7 @@ body.embed header h1 { font-size: 15px; }
 <script src="/js/roles.js"></script>
 <script src="/js/shop.js"></script>
 <script src="/js/wheel.js"></script>
+<script src="/js/skills.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const TOKEN_KEY = 'survival_go_token';
@@ -353,6 +381,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   if (curTab === 'staff') renderStaff();
   if (curTab === 'prem') { loadPrem(); loadLedger(); }
   if (curTab === 'win') loadWinter();
+  if (curTab === 'prog') { loadProgress(); loadSeasonAdmin(); }
 });
 function showTab(t) { const b = document.querySelector(`#tabs button[data-t="${t}"]`); if (b && !b.classList.contains('hidden')) b.click(); }
 
@@ -767,6 +796,52 @@ const hbar = (label, n, max, extra, color) => `<div style="display:grid;grid-tem
   <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
   <span style="background:rgba(255,255,255,.06);height:12px"><i style="display:block;height:100%;width:${max ? Math.round(n / max * 100) : 0}%;background:${color || 'var(--green)'}"></i></span>
   <span style="text-align:right">${extra}</span></div>`;
+async function loadProgress() {
+  const d = await api('/api/admin/progress', { quiet: true });
+  if (!d || !d.success) return;
+  $('prog-asof').textContent = ' Frissítve: ' + new Date().toLocaleTimeString('hu-HU');
+  const k = (label, v, sub) => `<div class="card kpi"><h3>${label}</h3><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+  $('prog-kpis').innerHTML = [
+    k('Küldetés ma', fmt(d.quests.today), `30 nap: ${fmt(d.quests.done)} · ${fmt(d.quests.users)} játékos`),
+    k('Mozgásos arány', d.quests.movePct + '%', 'a teljesített küldetésekből (cél: 70%)'),
+    k('Napi / heti bónusz', `${fmt(d.quests.dailyBonus)} / ${fmt(d.quests.weeklyBonus)}`, `${fmt(d.quests.rerolls)} csere`),
+    k('Képességet használ', fmt(d.skills.withSkills), `${fmt(d.skills.players)} játékosból · 30 nap: ${fmt(d.skills.learns)} pont`),
+    k('Újraosztás', fmt(d.respec.total), `ingyen ${fmt(d.respec.free || 0)} · $ ${fmt(d.respec.money || 0)} · 💎 ${fmt(d.respec.crystal || 0)}`),
+    k('Újraosztásból', fmt(d.respec.moneySum) + ' $', `💎 ${fmt(d.respec.crystalSum)} kristály`)
+  ].join('');
+  $('sp-money').value = d.prices.moneyPerLevel; $('sp-cb').value = d.prices.crystalBase; $('sp-cl').value = d.prices.crystalPerLevel;
+  spExample();
+  const S = window.SurvivalSkills;
+  const bmax = Math.max(1, ...Object.values(d.skills.byBranch));
+  $('prog-branch').innerHTML = (S ? S.BRANCHES : []).map(b => hbar(`${b.icon} ${b.name}`, d.skills.byBranch[b.key] || 0, bmax, fmt(d.skills.byBranch[b.key] || 0), b.color)).join('');
+  const smax = Math.max(1, ...d.skills.bySkill.map(x => x.ranks));
+  $('prog-skills').innerHTML = d.skills.bySkill.filter(x => x.ranks).map(x => hbar(esc(x.name), x.ranks, smax, `${fmt(x.ranks)} · ${x.players}👤`, S && (S.BRANCHES.find(b => b.key === x.branch) || {}).color)).join('') || '<p class="muted">Még senki nem tanult képességet.</p>';
+  const qmax = Math.max(1, ...d.quests.kinds.map(x => x.n));
+  $('prog-quests').innerHTML = d.quests.kinds.map(x => hbar(`${x.move ? '🚶 ' : ''}${esc(x.title)}`, x.n, qmax, fmt(x.n), x.move ? 'var(--green)' : null)).join('') || '<p class="muted">Még nincs teljesített küldetés.</p>';
+  const payName = { free: 'ingyen', money: '$', crystal: '💎' };
+  $('prog-respec').innerHTML = d.respec.recent.length ? '<table>' + d.respec.recent.map(r => `<tr><td>${new Date(r.t).toLocaleString('hu-HU')}</td><td><b>${esc(r.user)}</b></td><td>${r.level}. szint · ${r.points} pont</td><td>${payName[r.pay] || r.pay}${r.price ? ' ' + fmt(r.price) : ''}</td></tr>`).join('') + '</table>' : '<p class="muted">Még nem volt újraosztás.</p>';
+  $('prog-learn').innerHTML = d.recentLearns.length ? '<table>' + d.recentLearns.map(r => `<tr><td>${new Date(r.t).toLocaleString('hu-HU')}</td><td><b>${esc(r.user)}</b></td><td>${esc(r.name || r.key)} ${r.rank}.</td><td>${r.level}. szint</td></tr>`).join('') + '</table>' : '<p class="muted">Még senki nem választott képességet.</p>';
+}
+async function loadSeasonAdmin() {
+  const d = await api('/api/admin/season', { quiet: true });
+  if (!d || !d.success) return;
+  $('prog-season').innerHTML = `<p class="muted">${esc(d.monthName)} · ${d.rewarded ? 'jutalmazott szezon' : 'próbaszezon'}</p>` + (d.top.length ? '<table>' + d.top.map(r => `<tr><td>${r.rank}.</td><td><b>${esc(r.name)}</b></td><td>${fmt(r.xp)} pont</td><td>${String(r.km).replace('.', ',')} km · ${fmt(r.cells)} ter. · ${fmt(r.quests)} kül.</td></tr>`).join('') + '</table>' : '<p class="muted">Még üres.</p>');
+  $('prog-closed').innerHTML = d.closed.length ? d.closed.map(c => `<h3 style="margin-top:6px">${esc(c._id)} · ${new Date(c.at).toLocaleString('hu-HU')}</h3><table>` + (c.winners || []).slice(0, 10).map(w => `<tr><td>${w.rank}.</td><td><b>${esc(w.name)}</b></td><td>${fmt(w.xp)}</td><td>${w.items.length} tárgy</td></tr>`).join('') + `</table><p class="muted">${(c.winners || []).length} jutalmazott összesen</p>`).join('') : '<p class="muted">Még nincs lezárt szezon.</p>';
+}
+async function seasonClose() {
+  if (!confirm('Lezárod az előző hónap szezonját és kiosztod a jutalmakat? (Csak egyszer fut le hónaponként.)')) return;
+  const d = await api('/api/admin/season-close', { method: 'POST', body: {} });
+  toast(d.message); loadSeasonAdmin();
+}
+function spExample() {
+  const m = +$('sp-money').value || 0, cb = +$('sp-cb').value || 0, cl = +$('sp-cl').value || 0;
+  $('sp-example').textContent = `Példa: 20. szinten ${fmt(20 * m)} $ vagy ${fmt(cb + 20 * cl)} kristály · 50. szinten ${fmt(50 * m)} $ vagy ${fmt(cb + 50 * cl)} kristály`;
+}
+async function saveSkillPrices() {
+  const d = await api('/api/admin/skill-prices', { method: 'POST', body: { moneyPerLevel: +$('sp-money').value, crystalBase: +$('sp-cb').value, crystalPerLevel: +$('sp-cl').value } });
+  toast(d.message); loadProgress();
+}
+
 async function loadWinter() {
   const d = await api('/api/admin/winter', { quiet: true });
   if (!d || !d.success) return;

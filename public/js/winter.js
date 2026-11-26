@@ -37,12 +37,12 @@
         for (const o of LOOT_ORNAMENTS) { if (r < o.w) return o.key; r -= o.w; }
         return LOOT_ORNAMENTS[0].key;
     }
-    // Pörgetések: naponta 1 ingyen + a díszekért kapottak ("bank"), naponta legfeljebb DAILY_MAX
+    // Pörgetések: csak a felakasztott díszekért ("bank"; v0.1.20 óta nincs ingyenes napi), naponta legfeljebb DAILY_MAX
     function spinStatus(w, now, dailyMax) {
         const today = dayKey(now);
         const st = w && typeof w === 'object' ? w : {};
         const usedToday = st.day === today ? (st.used || 0) : 0;
-        const free = st.freeDay === today ? 0 : 1;
+        const free = 0; // nincs ingyenes napi pörgetés: minden pörgetés egy felakasztott díszért jár
         const bank = Math.max(0, st.bank || 0);
         const left = Math.max(0, (dailyMax || 10) - usedToday);
         return { today, usedToday, free, bank, available: Math.min(left, free + bank), capReached: left === 0 };

@@ -9,9 +9,15 @@
     // weapon = elsődleges fegyver, secondary = másodlagos (pisztoly), melee = közelharci
     const EQUIPMENT_SLOTS = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon', 'secondary', 'melee'];
 
-    const HP_PER_LEVEL = 10;        // szintenként +10 max HP
+    const HP_PER_LEVEL = 5;         // szintenként +5 max HP (v0.1.20: a többit a képességek adják)
     const OVERWEIGHT_FACTOR = 2;    // túlsúly fáradási szorzója: 10% túlsúly -> 1.2x, 50% -> 2x
     const OVERWEIGHT_HARD_CAP = 1.5; // a teherbírás 150%-a fölé már semmit nem lehet felvenni
+
+    function skillsApi() {
+        if (root && root.SurvivalSkills) return root.SurvivalSkills;
+        if (typeof window !== 'undefined' && window.SurvivalSkills) return window.SurvivalSkills;
+        try { return require('./skills'); } catch (e) { return null; }
+    }
 
     function num(value, fallback) {
         const n = Number(value);
@@ -46,7 +52,15 @@
             });
         });
 
-        // Ide jönnek majd a képességek (perk-ek), pl.: bonuses.push({ source: 'perk:packmule', maxWeight: 10 });
+        // Képességek (v0.1.20)
+        const SK = skillsApi();
+        if (SK && player && player.skills) {
+            const fx = SK.effects(player.skills);
+            if (fx.maxHp || fx.defense || fx.slots || fx.maxWeight || fx.fatigueSave) {
+                bonuses.push({ source: 'skills', maxHp: fx.maxHp || 0, defense: fx.defense || 0, slots: fx.slots || 0, maxWeight: fx.maxWeight || 0,
+                    fatigueRate: 1 - Math.min(0.5, fx.fatigueSave || 0) });
+            }
+        }
         return bonuses;
     }
 

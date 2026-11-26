@@ -92,6 +92,8 @@ socket.on('tree_result', (d) => {
         const hero = document.querySelector('#tree-body .sg-tr-hero');
         if (hero) { hero.classList.remove('hung'); void hero.offsetWidth; hero.classList.add('hung'); }
         if (typeof playSound === 'function') playSound('win');
+        // a díszért járó ajándék: rögtön kipörög a kerék (v0.1.20)
+        setTimeout(() => { openWheel(); setTimeout(() => { if (!wheelSpinning && !wheelPendingResult && SurvivalWinter.spinStatus(player.winter, Date.now(), SurvivalWheel.DAILY_MAX).available > 0) wheelGo(); }, 500); }, 1100);
     }
     setTimeout(renderTree, 0);
 });
@@ -119,7 +121,7 @@ function closeWheel() { if (wheelSpinning) return; document.getElementById('whee
 function renderWheelInfo() {
     const st = SurvivalWinter.spinStatus(player.winter, Date.now(), SurvivalWheel.DAILY_MAX);
     const info = document.getElementById('wheel-info');
-    if (info) info.innerHTML = `<b>${st.available}</b> pörgetésed van · ma ${st.usedToday} / ${SurvivalWheel.DAILY_MAX}<small>${st.free ? 'A mai ingyenes pörgetés megvan! ' : ''}Minden felakasztott dísz +1 pörgetés.</small>`;
+    if (info) info.innerHTML = `<b>${st.available}</b> pörgetésed van · ma ${st.usedToday} / ${SurvivalWheel.DAILY_MAX}<small>Minden felakasztott dísz +1 pörgetés: akassz díszt egy karácsonyfára!</small>`;
     const btn = document.getElementById('wheel-btn');
     if (btn) { btn.disabled = wheelSpinning || st.available <= 0; btn.textContent = st.capReached ? 'MÁRA ENNYI VOLT' : st.available ? 'PÖRGETÉS!' : 'NINCS PÖRGETÉSED'; }
     const odds = document.getElementById('wheel-odds'); if (odds && !odds.innerHTML) odds.innerHTML = wheelOddsHtml();

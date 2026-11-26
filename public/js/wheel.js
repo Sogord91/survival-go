@@ -1,6 +1,6 @@
 // wheel.js
 // SZERENCSEKERÉK – Fagyos Csend (v0.1.19). Közös a kliensnek és a szervernek.
-// - Pörgetés csak játékkal szerezhető (naponta 1 ingyen + minden felakasztott dísz után 1), credittel soha.
+// - Pörgetés csak játékkal szerezhető (minden felakasztott dísz után 1), credittel soha.
 // - Naponta legfeljebb DAILY_MAX pörgetés. A kerék cikkei egyformák; a valódi esélyek a kerék alatt mindig ki vannak írva.
 // - Ha egy kinézet már megvan, helyette DUP_MONEY pénz jár.
 (function (root) {

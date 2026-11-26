@@ -3,6 +3,7 @@
 // Minden lépés egy eseménylistát ad vissza ([{ actor, type, amount, ... }]), amiből a kliens most szöveges
 // naplót ír, később pedig animációt (pl. Shakes & Fidget-stílusban) lehet építeni rá. A PvP ugyanerre épülhet.
 const SurvivalStats = require('./public/js/stats');
+const Skills = require('./public/js/skills'); // képességek (v0.1.20)
 
 // Ellenségek (lvl: veszélyességi szint, hp/dmg: alapérték 1. szintű játékoshoz)
 // drops: a legyőzött ellenségnél talált tárgyak lehetséges listája
@@ -92,7 +93,7 @@ function enemyPoolFor(buildingInfo, opts) {
 const RULES = {
     UNARMED_DMG: 5,          // fegyver nélkül
     NO_AMMO_DMG: 6,          // lőfegyver lőszer nélkül (puskatussal ütsz)
-    LEVEL_DMG_BONUS: 2,      // szintenként +2 sebzés
+    LEVEL_DMG_BONUS: 0,      // v0.1.20 óta a szint nem ad sebzést (a Harcos ág képességei igen)
     DMG_RANDOM: 4,           // +0..4 véletlen sebzés
     CRIT_CHANCE: 0.10,
     CRIT_MULT: 1.5,
@@ -160,7 +161,7 @@ function weaponInfo(p, itemDatabase, slot) {
     if (weapon.reqAmmo) {
         const hasAmmo = p.inventory.some(s => s.key === weapon.reqAmmo && s.count > 0);
         if (!hasAmmo) return { name: weapon.name, dmg: RULES.NO_AMMO_DMG, ammoKey: null, noAmmo: true };
-        return { name: weapon.name, dmg: weapon.dmg || RULES.UNARMED_DMG, ammoKey: weapon.reqAmmo, noAmmo: false };
+        return { name: weapon.name, dmg: weapon.dmg || RULES.UNARMED_DMG, ammoKey: weapon.reqAmmo, noAmmo: false, ranged: true };
     }
     return { name: weapon.name, dmg: weapon.dmg || RULES.UNARMED_DMG, ammoKey: null, noAmmo: false };
 }
@@ -186,6 +187,8 @@ function enemyTurn(p, combat, itemDatabase, random) {
     const roll = 1 + (random() * 2 - 1) * RULES.ENEMY_VARIANCE;
     const amount = Math.max(1, Math.round(combat.enemy.dmg * roll * mitigation));
     p.hp = Math.max(0, p.hp - amount);
+    // Utolsó lehelet (Túlélő): harconként egyszer 1 élettel túléled a halálos ütést
+    if (p.hp <= 0 && !combat.lastStand && Skills.effects(p.skills).lastStand) { p.hp = 1; combat.lastStand = true; return { actor: 'enemy', type: 'hit', amount, hpAfter: 1, lastStand: true }; }
     return { actor: 'enemy', type: 'hit', amount, hpAfter: Math.round(p.hp) };
 }
 
@@ -197,16 +200,21 @@ function attack(p, combat, itemDatabase, random, slot) {
     const events = [];
     const weapon = weaponInfo(p, itemDatabase, slot);
     let recovered = null;
+    const fx = Skills.effects(p.skills);
     if (weapon.ammoKey) {
         useAmmo(p, weapon.ammoKey);
         const back = ammoRecovery(itemDatabase[weapon.ammoKey]);
-        if (back && random() < back.chance) recovered = back.key;
+        if (back && random() < Math.min(0.95, back.chance + (fx.casing || 0))) recovered = back.key;
     }
 
     const penalty = fatiguePenalty(p.fatigue || 0);
     let amount = weapon.dmg + Math.floor(random() * (RULES.DMG_RANDOM + 1)) + ((p.level || 1) - 1) * RULES.LEVEL_DMG_BONUS;
-    const crit = random() < RULES.CRIT_CHANCE;
-    if (crit) amount *= RULES.CRIT_MULT;
+    // Képességek: közelharc / lőfegyver sebzés, rajtaütés, kritikus esély és sebzés
+    amount *= 1 + ((weapon.ranged ? fx.dmgRanged : fx.dmgMelee) || 0);
+    if (fx.firstStrike && !combat.struck) amount *= 1.5;
+    combat.struck = true;
+    const crit = random() < RULES.CRIT_CHANCE + (fx.critChance || 0);
+    if (crit) amount *= RULES.CRIT_MULT + (fx.critDmg || 0);
     amount = Math.max(1, Math.round(amount * penalty.dmg));
 
     combat.enemy.hp = Math.max(0, combat.enemy.hp - amount);
@@ -227,7 +235,9 @@ function heal(p, combat, itemDatabase, itemKey, random) {
     if (!slot) return { error: 'Nincs ilyen tárgy a leltáradban!' };
 
     const maxHp = SurvivalStats.computeStats(p, itemDatabase).maxHp;
-    const changes = SurvivalStats.applyEffects(p, item.effects, maxHp);
+    const healPct = Skills.effects(p.skills).healPct || 0;
+    const effects = healPct ? { ...item.effects, hp: Math.round(item.effects.hp * (1 + healPct)) } : item.effects;
+    const changes = SurvivalStats.applyEffects(p, effects, maxHp);
     slot.count -= 1;
     if (slot.count <= 0) p.inventory = p.inventory.filter(s => s !== slot);
 
@@ -238,8 +248,9 @@ function heal(p, combat, itemDatabase, itemKey, random) {
 function flee(p, combat, itemDatabase, random) {
     random = random || Math.random;
     // Mentősíp a leltárban: a sípszóra a támadó megtorpan, a menekülés mindig sikerül
-    const whistle = Array.isArray(p.inventory) && p.inventory.some(s => s.key === 'rescue_whistle' && s.count > 0);
-    const chance = whistle ? 1 : RULES.FLEE_CHANCE + fatiguePenalty(p.fatigue || 0).flee;
+    const fx = Skills.effects(p.skills);
+    const whistle = (Array.isArray(p.inventory) && p.inventory.some(s => s.key === 'rescue_whistle' && s.count > 0)) || !!fx.fleeAlways;
+    const chance = whistle ? 1 : Math.min(1, RULES.FLEE_CHANCE + fatiguePenalty(p.fatigue || 0).flee + (fx.flee || 0));
     if (whistle || random() < chance) return { events: [{ actor: 'player', type: 'flee', chance, whistle }], outcome: 'fled' };
     const events = [{ actor: 'player', type: 'flee_fail', chance }];
     events.push(enemyTurn(p, combat, itemDatabase, random));

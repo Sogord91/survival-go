@@ -368,6 +368,86 @@
         .sg-q-step.done .sg-q-t { text-decoration: line-through; }
         .sg-q-h { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; margin-top: 3px; }
         .sg-q-xp { flex: none; margin-left: auto; font: 800 11px var(--sg-mono); color: #e9d9a0; }
+        .sg-qs-bar { position: relative; height: 14px; background: rgba(0,0,0,.45); margin-top: 6px; }
+        .sg-qs-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #6f8f3a, #a7c35a); }
+        .sg-qs.done .sg-qs-bar i { background: var(--sg-gold); }
+        .sg-qs-bar span { position: relative; display: block; text-align: center; font: 700 10px/14px var(--sg-mono); color: #f1ecd8; }
+        .sg-qs.move .sg-q-check { border-color: #6f8f3a; }
+        .sg-qs-swap { margin-top: 6px; padding: 3px 8px; font: 800 10px var(--sg-font); letter-spacing: .1em; color: var(--sg-thread); background: rgba(0,0,0,.35); border: 1px solid rgba(217,197,138,.5); }
+        .sg-qs-bonus { margin-top: 6px; padding: 6px 8px; font: 700 11px var(--sg-font); color: #e9d9a0; border: 1px dashed rgba(217,197,138,.5); text-align: center; }
+        .sg-qs-bonus.got { opacity: .6; }
+        /* KÉPESSÉGFA (v0.1.20): foltvarrás-csomópontok, középső törzs, sorelválasztók (nincs összekötő vonal) */
+        .sg-sk-top { display: flex; justify-content: space-between; font: 800 12px var(--sg-font); letter-spacing: .15em; color: var(--sg-muted); margin: 4px 0 8px; }
+        .sg-sk-free { padding: 2px 8px; border: 1px solid rgba(217,197,138,.4); }
+        .sg-sk-free.on { color: #15170f; background: var(--sg-gold); animation: sgSkPulse 1.6s ease-in-out infinite; }
+        @keyframes sgSkPulse { 50% { box-shadow: 0 0 0 4px rgba(217,197,138,.25); } }
+        .sg-sk-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+        .sg-sk-tabs button { position: relative; padding: 6px 2px 5px; background: rgba(0,0,0,.3); border: 1px solid rgba(21,23,15,.9); border-bottom: 3px solid transparent; color: var(--sg-muted); font-size: 16px; line-height: 1.1; }
+        .sg-sk-tabs button span { display: block; font: 800 10px var(--sg-font); letter-spacing: .08em; text-transform: uppercase; margin-top: 2px; }
+        .sg-sk-tabs button b { position: absolute; top: 2px; right: 4px; font: 700 10px var(--sg-mono); color: var(--sg-gold); }
+        .sg-sk-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--c); color: var(--sg-thread); }
+        .sg-sk-desc { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; margin: 6px 2px 4px; }
+        .sg-sk-tree { position: relative; padding: 2px 0 6px; }
+        .sg-sk-trunk { position: absolute; left: 50%; top: 10px; bottom: 10px; width: 6px; margin-left: -3px; background: rgba(0,0,0,.45); border-left: 1px dashed rgba(233,227,207,.18); border-right: 1px dashed rgba(233,227,207,.18); }
+        .sg-sk-trunk i { display: block; width: 100%; background: var(--c); opacity: .85; }
+        .sg-sk-sep { position: relative; text-align: center; margin: 10px 0 6px; }
+        .sg-sk-sep::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed rgba(233,227,207,.25); }
+        .sg-sk-sep span { position: relative; padding: 2px 8px; background: #2a2e20; border: 1px solid rgba(21,23,15,.9); font: 800 10px var(--sg-font); letter-spacing: .16em; color: #8f8a7a; }
+        .sg-sk-sep.open span { color: var(--sg-gold); }
+        .sg-sk-row { position: relative; display: flex; justify-content: center; gap: 34px; }
+        .sg-sk-node { position: relative; width: 132px; min-height: 74px; padding: 7px 6px 6px; background: #4a4f38; border: 2px solid #15170f; box-shadow: 0 3px 0 rgba(0,0,0,.45), inset 0 0 0 3px #4a4f38, inset 0 0 0 4px rgba(233,227,207,.35);
+            display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--sg-thread); transform: rotate(-.6deg); }
+        .sg-sk-row .sg-sk-node:nth-child(2) { transform: rotate(.7deg); }
+        .sg-sk-node.cap { width: 150px; background: #5a4a2a; box-shadow: 0 3px 0 rgba(0,0,0,.45), inset 0 0 0 3px #5a4a2a, inset 0 0 0 4px rgba(217,197,138,.6); }
+        .sg-sk-node.has { background: color-mix(in srgb, var(--c) 45%, #3a3f2c); box-shadow: 0 3px 0 rgba(0,0,0,.45), inset 0 0 0 3px color-mix(in srgb, var(--c) 45%, #3a3f2c), inset 0 0 0 4px rgba(233,227,207,.5); }
+        .sg-sk-node.locked { filter: grayscale(1) brightness(.6); }
+        .sg-sk-node.can::after { content: '+'; position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; background: var(--sg-gold); color: #15170f; font: 900 14px/18px var(--sg-font); border: 1px solid #15170f; }
+        .sg-sk-node.sel { outline: 2px solid var(--sg-gold); outline-offset: 2px; }
+        .sg-sk-ic { font-size: 22px; line-height: 1; }
+        .sg-sk-nm { font: 800 11px/1.15 var(--sg-font); letter-spacing: .04em; text-align: center; text-transform: uppercase; }
+        .sg-sk-pips { display: flex; gap: 3px; }
+        .sg-sk-pips i { width: 9px; height: 9px; background: rgba(0,0,0,.45); border: 1px solid rgba(233,227,207,.35); }
+        .sg-sk-pips i.on { background: var(--sg-gold); border-color: #15170f; }
+        .sg-sk-detail { margin-top: 10px; padding: 10px; background: rgba(21,23,15,.55); border: 1px solid rgba(21,23,15,.9); }
+        .sg-sk-hint { font: 500 12px var(--sg-font); color: #8f8a7a; text-align: center; }
+        .sg-sk-dh { display: flex; justify-content: space-between; font: 800 13px var(--sg-font); letter-spacing: .06em; color: var(--sg-thread); margin-bottom: 4px; }
+        .sg-sk-dh span:last-child { font: 700 11px var(--sg-mono); color: var(--sg-gold); }
+        .sg-sk-dl { font: 500 12px/1.45 var(--sg-font); color: #bdb8a8; }
+        .sg-sk-dl b { color: var(--sg-thread); }
+        .sg-sk-detail .sg-tu-big { margin-top: 8px; }
+        .sg-sk-why { margin-top: 6px; font: 600 12px var(--sg-font); color: #e3a27a; }
+        .sg-sk-respec { margin-top: 10px; padding: 8px; border: 1px dashed rgba(217,197,138,.5); font: 500 12px var(--sg-font); color: #bdb8a8; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .sg-sk-respec > div { width: 100%; }
+        .sg-sk-rb { padding: 6px 10px; font: 800 11px var(--sg-font); letter-spacing: .08em; color: var(--sg-thread); background: rgba(0,0,0,.35); border: 1px solid rgba(217,197,138,.5); }
+        .sg-sk-yes { background: #7a3326; }
+        #skills-confirm { position: absolute; left: 16px; right: 16px; bottom: 16px; }
+        .sg-sk-conf { padding: 12px; background: #1d2016; border: 2px solid var(--sg-gold); font: 600 13px/1.4 var(--sg-font); color: var(--sg-thread); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+        /* RANGLISTA (v0.1.20) */
+        .sg-lb-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+        .sg-lb-tabs button { padding: 5px 1px 4px; background: rgba(0,0,0,.3); border: 1px solid rgba(21,23,15,.9); border-bottom: 3px solid transparent; color: var(--sg-muted); font-size: 15px; line-height: 1.1; }
+        .sg-lb-tabs button span { display: block; font: 800 9px var(--sg-font); letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
+        .sg-lb-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--sg-gold); color: var(--sg-thread); }
+        .sg-lb-season { display: flex; justify-content: space-between; margin: 8px 0 4px; font: 800 11px var(--sg-font); letter-spacing: .12em; color: var(--sg-gold); }
+        .sg-lb-season { gap: 8px; }
+        .sg-lb-season div:last-child { color: var(--sg-muted); letter-spacing: .04em; font-weight: 600; white-space: nowrap; }
+        .sg-lb-reward { padding: 8px 10px; margin: 4px 0 6px; background: linear-gradient(135deg, rgba(120,58,24,.55), rgba(60,40,24,.55)); border: 1px solid #a4592f; font: 500 12px/1.45 var(--sg-font); color: #e8d6c0; }
+        .sg-lb-reward .sg-lb-rh { font: 800 11px var(--sg-font); letter-spacing: .14em; color: #e39a62; margin-bottom: 3px; }
+        .sg-lb-reward small { color: #a89480; }
+        .sg-lb-desc { font: 500 12px/1.4 var(--sg-font); color: #8f8a7a; margin: 2px 2px 6px; }
+        .sg-lb-row { display: grid; grid-template-columns: 30px 32px 1fr auto; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 3px; background: rgba(0,0,0,.28); border: 1px solid rgba(21,23,15,.8); }
+        .sg-lb-row.top { background: rgba(217,197,138,.1); }
+        .sg-lb-row.rw { border-left: 3px solid #a4592f; }
+        .sg-lb-row.me { outline: 2px solid var(--sg-gold); outline-offset: -2px; background: rgba(217,197,138,.16); }
+        .sg-lb-rank { font: 800 14px var(--sg-mono); color: var(--sg-thread); text-align: center; }
+        .sg-lb-av { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(233,227,207,.3); background: #3a3f2c; display: flex; align-items: center; justify-content: center; font: 800 13px var(--sg-font); color: var(--sg-thread); }
+        .sg-lb-nm { min-width: 0; font: 600 13px var(--sg-font); color: var(--sg-thread); overflow: hidden; }
+        .sg-lb-nm b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sg-lb-nm i { color: var(--sg-gold); font-style: normal; }
+        .sg-lb-nm small { display: block; font: 500 10px var(--sg-font); color: #8f8a7a; }
+        .sg-lb-nm em { font-style: normal; font-weight: 700; }
+        .sg-lb-v { font: 800 14px var(--sg-mono); color: var(--sg-gold); text-align: right; white-space: nowrap; }
+        .sg-lb-v small { font: 600 10px var(--sg-font); color: #8f8a7a; }
+        .sg-lb-empty, .sg-lb-foot, .sg-lb-gap { text-align: center; font: 500 12px var(--sg-font); color: #8f8a7a; margin: 10px 0; }
         /* telepítés + értesítés ajánló (v0.1.19) */
         .sg-app { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
         .sg-app-help { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; padding: 0 2px; }
@@ -1140,8 +1220,8 @@
         <nav id="nav-bar" class="nav-bar sg-canvas">
             <button id="btn-open-equipment" class="nav-btn"><img src="/images/ui/nav-backpack.svg" alt=""><span>Készlet</span></button>
             <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Barkács</span></button>
-            <button id="btn-open-skills" class="nav-btn soon"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span></button>
-            <button id="btn-open-leaderboard" class="nav-btn soon"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
+            <button id="btn-open-skills" class="nav-btn"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span><b id="nav-skill-badge" class="nav-badge hidden">0</b></button>
+            <button id="btn-open-leaderboard" class="nav-btn"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
             <button id="btn-open-chat" class="nav-btn soon"><img src="/images/ui/nav-radio.svg" alt=""><span>Rádió</span><b id="nav-chat-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span><b id="nav-menu-badge" class="nav-badge hidden">0</b></button>
@@ -1349,7 +1429,7 @@
                 <button id="wheel-btn" class="sg-tu-big sg-wh-go" onclick="wheelGo()">PÖRGETÉS!</button>
                 <div class="sg-tr-h">ESÉLYEK (a nyereményt a szerver sorsolja ezekkel az esélyekkel)</div>
                 <div id="wheel-odds"></div>
-                <p class="sg-tr-empty">Pörgetést csak játékkal szerezhetsz: naponta 1 ingyen, és minden felakasztott dísz után +1. Pénzért nem vásárolható. Ha egy kinézet már megvan, helyette 200 $ jár.</p>
+                <p class="sg-tr-empty">Pörgetést csak díszakasztással szerezhetsz: minden felakasztott dísz után +1, és a kerék rögtön ki is pörög. Pénzért nem vásárolható. Ha egy kinézet már megvan, helyette 200 $ jár.</p>
             </div>
         </div>
     </div>
@@ -1359,6 +1439,27 @@
     </div>
     <canvas id="snow-canvas" class="hidden" aria-hidden="true"></canvas>
     <button id="gift-chip" class="hidden" onclick="logMessage('🎁 Hétvégi ajándékvadászat: a csomagok a térképen, a közeledben vannak. Sétálj oda, és koppints rájuk! Csak közterületen – vigyázz magadra!')">🎁 AJÁNDÉKVADÁSZAT · <b id="gift-chip-n">0</b></button>
+    <!-- RANGLISTA (v0.1.20, js/leaderboard-ui.js) -->
+    <div id="lb-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 flex flex-col max-h-[90vh] clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">🏆 RANGLISTA</h2>
+                <button onclick="closeLeaderboard()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="lb-body" class="overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
+    <!-- KÉPESSÉGFA (v0.1.20, js/skills-ui.js) -->
+    <div id="skills-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 flex flex-col max-h-[90vh] clipped-panel shadow-2xl relative">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">⭐ KÉPESSÉGEK</h2>
+                <button onclick="closeSkills()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="skills-body" class="overflow-y-auto pr-1 flex-1"></div>
+            <div id="skills-confirm" class="hidden"></div>
+        </div>
+    </div>
     <!-- "Legyen kéznél a Zóna": telepítés + értesítés ajánló (v0.1.19, js/pwa.js) -->
     <div id="app-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
         <div class="hud-panel w-full max-w-sm rounded-2xl p-4 clipped-panel shadow-2xl">
@@ -1455,11 +1556,14 @@
     <script src="js/items.js"></script>
     <script src="js/roles.js"></script>
     <script src="js/recipes.js"></script>
+    <script src="js/skills.js"></script>
     <script src="js/stats.js"></script>
     <script src="js/buildings.js"></script>
     <script src="js/sun.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/daily.js"></script>
+    <script src="js/quests.js"></script>
+    <script src="js/season.js"></script>
     <script src="js/advent.js"></script>
     <script src="js/wheel.js"></script>
     <script src="js/winter.js"></script>
@@ -1469,6 +1573,9 @@
     <script src="js/map.js"></script>
     <script src="js/drag.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/quests-ui.js"></script>
+    <script src="js/skills-ui.js"></script>
+    <script src="js/leaderboard-ui.js"></script>
     <script src="js/tutorial-ui.js"></script>
     <script src="js/advent-ui.js"></script>
     <script src="js/wheel-ui.js"></script>

@@ -1197,8 +1197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.classList.remove('hidden');
     });
     // Ezek a következő nagy frissítésben jönnek, addig csak jelzik
-    safeAddEvent('btn-open-skills', 'click', () => showToast('⭐ A képességek hamarosan érkeznek! Szintlépéskor választhatsz majd.'));
-    safeAddEvent('btn-open-leaderboard', 'click', () => showToast('🏆 A ranglista hamarosan érkezik!'));
+    safeAddEvent('btn-open-skills', 'click', () => openSkills());
+    safeAddEvent('btn-open-leaderboard', 'click', () => openLeaderboard());
     safeAddEvent('btn-open-chat', 'click', () => showToast('📻 A csevegés hamarosan érkezik!'));
     safeAddEvent('btn-open-quests', 'click', () => openQuestModal());
 

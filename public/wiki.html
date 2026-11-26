@@ -98,6 +98,9 @@ ol li, ul li { margin: 4px 0; }
 <script src="/js/wheel.js"></script>
 <script src="/js/winter.js"></script>
 <script src="/js/gifts.js"></script>
+<script src="/js/quests.js"></script>
+<script src="/js/skills.js"></script>
+<script src="/js/season.js"></script>
 <script>
 // =====================================================================================
 // A wiki a játék saját adatfájljaiból áll össze (tárgyak, receptek, épületek, napi bónusz, rangok),
@@ -233,7 +236,7 @@ const GUIDES = [
       <li><b>Menekülés</b>: alapesetben ${pct(W.combat.FLEE_CHANCE)} eséllyel sikerül (fáradtan kevesebb). Sikeres menekülésnél nincs zsákmány, és az épület ${R().fleeLockMinutes} percig neked zárva.</li></ul>
     <h2>Sebzés</h2>
     <ul><li>Fegyver nélkül ${W.combat.UNARMED_DMG}, lőfegyverrel lőszer nélkül ${W.combat.NO_AMMO_DMG} a sebzés (puskatussal ütsz).</li>
-      <li>Szintenként +${W.combat.LEVEL_DMG_BONUS} sebzés, minden ütéshez +0–${W.combat.DMG_RANDOM} véletlen.</li>
+      <li>${W.combat.LEVEL_DMG_BONUS ? `Szintenként +${W.combat.LEVEL_DMG_BONUS} sebzés, minden` : 'A szint nem ad sebzést (a <a href="#/oldal/kepessegek">Harcos ág képességei</a> igen). Minden'} ütéshez +0–${W.combat.DMG_RANDOM} véletlen.</li>
       <li>${pct(W.combat.CRIT_CHANCE)} esély kritikus találatra (${W.combat.CRIT_MULT}× sebzés).</li>
       <li>A lőfegyver lövésenként 1 lőszert visz el; ${pct(W.combat.CASING_CHANCE)} eséllyel visszakapod az üres hüvelyt (abból <a href="#/receptek/loszer">lőszert tölthetsz</a>).</li>
       <li><b>Védelem:</b> pontonként ${num(W.combat.DEFENSE_PER_POINT * 100)}% kevesebb sebzést kapsz, legfeljebb ${pct(W.combat.DEFENSE_CAP)}.</li></ul>
@@ -279,11 +282,12 @@ const GUIDES = [
     <div class="paper">Ha az életed 0-ra csökken – harcban, éhezéstől vagy szomjúságtól –, a karaktered meghal.</div>
     <ul><li>Új túlélőként kezdesz: 1. szint, a kezdőcsomaggal (${R().starterKit.map(s => itemLink(s.key, s.count)).join('')}).</li>
       <li>A tárgyaid, a felszerelésed és a pénzed <b>elveszik</b>.</li>
-      <li><b>Megmarad:</b> az életre szóló statisztikád, az Első lépések, a napi bónusz sorozatod és a Korai túlélő jelvény.</li></ul>
+      <li>A <b>képességeid is elvesznek</b>: az új túlélő elölről kezdi, és az ingyenes újraosztás is újra jár.</li>
+      <li><b>Megmarad:</b> az életre szóló statisztikád, az Első lépések, a napi bónusz sorozatod, a napi és heti küldetéseid, a havi szezonpontod és a Korai túlélő jelvény.</li></ul>
     <div class="box tip">💡 Mindig legyen nálad víz, étel és kötszer, és ne menj sérülten veszélyes épületbe!</div>` },
   { slug: 'szintek-es-rangok', title: 'Szintek és rangok', group: 'Útmutatók', render: () => `
     <h1>Szintek és rangok</h1>
-    <p>XP-t kapsz gyaloglásért, átkutatásért, harcért, barkácsolásért és küldetésekért. A következő szinthez <b>szint × 100 XP</b> kell (pl. 3. szintről 4.-re 300 XP). Szintlépéskor teljesen meggyógyulsz, és +${R().hpPerLevel} max életet kapsz.</p>
+    <p>XP-t kapsz gyaloglásért, átkutatásért, harcért, barkácsolásért és küldetésekért. A következő szinthez <b>szint × 100 XP</b> kell (pl. 3. szintről 4.-re 300 XP). Szintlépéskor teljesen meggyógyulsz, +${R().hpPerLevel} max életet és <b>képességpontot</b> kapsz (szintenként 1, minden 10. szinten +1). Lásd: <a href="#/oldal/kepessegek">Képességek</a>.</p>
     <h2>Rangok</h2><p>Öt szintenként új rangot és új felvarrót kapsz, amit a többi játékos is lát a térképen.</p>
     <div class="tbl"><table><tr><th>Rang</th><th>Szinttől</th></tr>${RANKS.map(([n, l]) => `<tr><td>${n}</td><td class="n">${l}.</td></tr>`).join('')}</table></div>` },
   { slug: 'elso-lepesek', title: 'Első lépések (küldetés)', group: 'Útmutatók', render: () => `
@@ -298,6 +302,53 @@ const GUIDES = [
     <h1>🎖️ Korai túlélő</h1><p>Az első ${R().earlyLimit} regisztráló végleges jelvényt kap, amit a többiek is látnak a térképen, és bővebb első csomaggal indul:</p>
     <p>${R().earlyKit.map(s => itemLink(s.key, s.count)).join('')} + felszerelt ${itemLink(R().earlyBackpack)}</p>
     <p class="muted">A bővebb csomag csak az első indulásnál jár, halál után a sima kezdőcsomag. A jelvény örökre megmarad.</p>` },
+  { slug: 'kuldetesek', title: 'Napi és heti küldetések', group: 'Útmutatók', render: () => {
+    const Q = window.SurvivalQuests, D = Q.DEFS;
+    const row = (k) => { const d = D[k]; const q = { kind: k, target: d.targets[0], dist: d.dist ? d.dist[0] : 0, group: 'church' }; return `<tr><td>${d.icon} ${esc(d.title(q).replace(/\d[\d,]*/, 'N'))}${d.need ? ' <small class="muted">(Fagyos Csend)</small>' : ''}</td><td>${d.targets.map(t => k.includes('walk') ? Q.km(t) + ' km' : t).join(' / ')}</td><td class="n">+${d.xp} XP · ${d.money} $</td></tr>`; };
+    const list = (scope, move) => Object.keys(D).filter(k => D[k].scope === scope && D[k].move === move).map(row).join('');
+    return `<h1>📜 Napi és heti küldetések</h1>
+    <p class="lead">A Küldetés gomb alatt minden nap <b>3 napi</b> és minden héten <b>4 heti</b> küldetést találsz. A legtöbb arra ösztönöz, hogy <b>mozogj, fedezz fel új helyeket</b>, ne csak a lakásod körül kutass.</p>
+    <ul><li>Naponta 2 mozgásos + 1 otthon is teljesíthető, hetente 3 mozgásos + 1 otthoni küldetés jár.</li>
+      <li>A jutalom (XP és pénz) azonnal jár, amint teljesíted. Ha mind a 3 napi kész: <b>+${Q.DAILY_BONUS.xp} XP, +${Q.DAILY_BONUS.money} $</b> (decemberben +1 pörgetés is). Ha mind a 4 heti: <b>+${Q.WEEKLY_BONUS.xp} XP, +${Q.WEEKLY_BONUS.money} $</b>.</li>
+      <li>Az új napi küldetések éjfélkor, a hetiek hétfőn jönnek (magyar idő szerint).</li>
+      <li><b>Csere:</b> naponta egy napi küldetést lecserélhetsz (pl. ha nincs vasútállomás a környékeden).</li>
+      <li>A nehézség a szinteddel nő: 1–9. / 10–24. / 25+. szint.</li>
+      <li>❄️ <b>A Fagyos Csend alatt</b> (dec. 1. – jan. 6.) a mozgásos küldetések egyike mindig téli: díszt akasztani egy karácsonyfára, hétvégén ajándékcsomagot keresni. Néha az otthoni is: adventi ablak vagy díszbarkácsolás.</li></ul>
+    <h2>🧭 Felfedező bónusz</h2>
+    <p>A térkép kb. 500 méteres területekre oszlik. Minden olyan terület, ahol a játékkal még sosem jártál, <b>+${Q.EXPLORE_XP} XP</b>-t ér (naponta legfeljebb ${Q.EXPLORE_XP_DAILY_MAX} területig).</p>
+    <h2>🏠 Mi számít „otthonnak”?</h2>
+    <p>A <a href="#/oldal/menedek">menedéked</a>, vagy ha még nincs, az a terület, ahol a legtöbbet kutatsz. A „messze otthonról” küldetéseknél ettől mérjük a távolságot.</p>
+    <div class="box tip"><b>Csak gyalog!</b> Járműből (${'15 km/h'} fölött) a megtett út nem számít, és a GPS-ugrások sem.</div>
+    <h2>Napi küldetések</h2>
+    <div class="tbl"><table><tr><th>Mozgásos</th><th>Cél (szint szerint)</th><th>Jutalom</th></tr>${list('daily', true)}</table></div>
+    <div class="tbl"><table><tr><th>Otthon is megy</th><th>Cél</th><th>Jutalom</th></tr>${list('daily', false)}</table></div>
+    <h2>Heti küldetések</h2>
+    <div class="tbl"><table><tr><th>Mozgásos</th><th>Cél (szint szerint)</th><th>Jutalom</th></tr>${list('weekly', true)}</table></div>
+    <div class="tbl"><table><tr><th>Otthon is megy</th><th>Cél</th><th>Jutalom</th></tr>${list('weekly', false)}</table></div>`;
+  } },
+  { slug: 'kepessegek', title: 'Képességek', group: 'Útmutatók', render: () => {
+    const S = window.SurvivalSkills;
+    return `<h1>⭐ Képességek</h1>
+    <p class="lead">Szintlépéskor képességpontot kapsz: <b>szintenként 1, minden 10. szinten +1</b> (100. szinten összesen ${S.pointsForLevel(100)}). A Képesség gombbal osztod el őket négy ágban.</p>
+    <ul><li>Minden ágban 9 képesség van, 5 sorban. Egy sor akkor nyílik meg, ha az ágban már elköltöttél <b>${S.TIERS.join(' / ')}</b> pontot.</li>
+      <li>A legtöbb képesség 5 rangú; a 15. és a 30. pontnál <b>csúcsképesség</b> vár.</li>
+      <li>Mindent nem tudsz kimaxolni (egy ág ${S.SKILLS.filter(x => x.branch === 'harcos').reduce((a, x) => a + x.max, 0)} pont), ezért érdemes választani.</li>
+      <li>A szint önmagában csak +${S.LEVEL_HP} max életet ad, sebzést nem: az erőd a képességeidből jön.</li>
+      <li><b>Újraosztás:</b> az első <b>ingyenes</b>, bármikor felhasználhatod. Utána pénzbe (szint × ${S.RESPEC_DEFAULTS.moneyPerLevel} $) vagy kristályba (${S.RESPEC_DEFAULTS.crystalBase} + szint × ${S.RESPEC_DEFAULTS.crystalPerLevel}) kerül. Az árat a stáb módosíthatja.</li>
+      <li>Halálkor a képességeid is elvesznek.</li></ul>
+    ${S.BRANCHES.map(b => `<h2>${b.icon} ${b.name}</h2><p class="muted">${esc(b.desc)}</p><div class="tbl"><table><tr><th>Sor</th><th>Képesség</th><th>Hatás (rangonként / csúcs)</th></tr>${S.SKILLS.filter(x => x.branch === b.key).map(x => `<tr><td class="n">${S.TIERS[x.tier]}</td><td>${x.icon} <b>${esc(x.name)}</b>${x.cap ? ' ★' : ''}</td><td>${esc(x.desc(x.per))}${x.max > 1 ? ` · max. ${esc(x.desc(x.per * x.max))}` : ''}</td></tr>`).join('')}</table></div>`).join('')}`;
+  } },
+  { slug: 'ranglista', title: 'Ranglista és szezon', group: 'Útmutatók', render: () => {
+    const E = window.SurvivalSeason;
+    return `<h1>🏆 Ranglista és havi szezon</h1>
+    <p class="lead">A ranglista minden hónapban tiszta lappal indul. A <b>szezonpont</b> a hónapban szerzett XP-d: séta, kutatás, harc, küldetések. A halál nem nullázza.</p>
+    <ul>${E.BOARDS.map(b => `<li>${b.icon} <b>${b.name}</b>: ${esc(b.desc)}</li>`).join('')}</ul>
+    <p>A stáb tagjai nem szerepelnek a ranglistán.</p>
+    <h2>🟫 Rozsdás szett – a szezon jutalma</h2>
+    <p><b>2026 decembere próbaszezon</b> (jutalom nélkül). <b>2027 januárjától</b> minden hónap végén a szezonpont-lista legjobbjai kapják, ha legalább ${E.MIN_XP_FOR_REWARD} pontot gyűjtöttek:</p>
+    <div class="tbl"><table><tr><th>Helyezés</th><th>Jutalom</th></tr>${E.REWARDS.map(r => `<tr><td class="n">${r.from}–${r.to}.</td><td>${esc(r.label)}</td></tr>`).join('')}</table></div>
+    <p class="muted">A szett darabjai csak szezonjutalomként szerezhetők meg, ládából nem jönnek. A Gyűjteményedbe kerülnek, és halálkor sem vesznek el.</p>`;
+  } },
   { slug: 'fagyos-csend', title: 'Fagyos Csend (téli esemény)', group: 'Útmutatók', render: () => {
     const A = window.SurvivalAdvent, Wh = window.SurvivalWheel, Wi = window.SurvivalWinter, Sh = window.SurvivalShop;
     const orn = Object.entries(ITEMS).filter(([k, it]) => it.ornament);
@@ -312,7 +363,7 @@ const GUIDES = [
     <div class="tbl"><table><tr><th>Dísz</th><th>Ritkaság</th><th>Pont</th></tr>${orn.map(([k, it]) => `<tr><td>${itemLink(k)}</td><td>${rar[it.ornament.rarity]}</td><td class="n">${it.ornament.points}</td></tr>`).join('')}</table></div>
     <p><b>Honnan szerzel díszt?</b> Az esemény alatt átkutatáskor kb. ${Math.round(Wi.LOOT_CHANCE * 100)}% eséllyel akad egy; barkácsolhatod (Barkács → Karácsony, fogóval); az adventi naptárban és a szerencsekeréken is jár.</p>
     <h2>🎡 Szerencsekerék</h2>
-    <p>Naponta <b>1 ingyenes</b> pörgetés jár, és minden felakasztott dísz után +1. Naponta legfeljebb <b>${Wh.DAILY_MAX}</b>-szer pörgethetsz. <b>Pörgetést pénzért nem lehet venni.</b> Ha egy kinézet már megvan, helyette ${Wh.DUP_MONEY} $ jár. A kerék cikkei egyformák, a valódi esélyek ezek:</p>
+    <p><b>Minden felakasztott dísz után jár egy pörgetés</b>, és a kerék rögtön ki is pörög: ez a díszért járó ajándék. Naponta legfeljebb <b>${Wh.DAILY_MAX}</b>-szer pörgethetsz. <b>Pörgetést pénzért nem lehet venni.</b> Ha egy kinézet már megvan, helyette ${Wh.DUP_MONEY} $ jár. A kerék cikkei egyformák, a valódi esélyek ezek:</p>
     <div class="tbl"><table><tr><th>Nyeremény</th><th>Esély</th></tr>${Wh.PRIZES.map(p => `<tr><td>${p.icon} ${esc(p.label)}</td><td class="n">${(p.chance * 100).toLocaleString('hu-HU', { maximumFractionDigits: 1 })}%</td></tr>`).join('')}</table></div>
     <p class="muted">A Fagyos festéket a skinrendszer elkészülte után (december közepétől) festheted rá egy fegyveredre vagy kabátodra. Addig a Gyűjteményedben vár, és halálkor sem vész el.</p>
     <h2>🎁 Hétvégi ajándékláda-keresés</h2>

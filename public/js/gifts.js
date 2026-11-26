@@ -58,6 +58,15 @@
         const { weekday, hour } = localParts(now);
         return (weekday === 'Sat' || weekday === 'Sun') && hour >= HOURS[0] && hour < HOURS[1];
     }
+    // A vadászat napja-e ma (óra nélkül), és az időszakon belül vagyunk-e (a küldetésekhez, v0.1.20)
+    function huntDay(now, test) {
+        if (test) return true;
+        const k = dayKey(now);
+        if (k < START || k > END) return false;
+        const { weekday } = localParts(now);
+        return weekday === 'Sat' || weekday === 'Sun';
+    }
+    function inSeason(now, test) { if (test) return true; const k = dayKey(now); return k >= START && k <= END; }
     function roll(list, random) {
         const total = list.reduce((a, o) => a + o.w, 0);
         let r = (random || Math.random)() * total;
@@ -69,7 +78,7 @@
         return [roll(SMALL, random)];
     }
 
-    const api = { TIME_ZONE, START, END, HOURS, GIFT_RANGE, NEAR_METERS, MIN_SPAWN_METERS, PER_PLAYER, LIFETIME_MIN, GOLD_CHANCE, DAILY_MAX, STREET_TYPES, SMALL, GOLD, dayKey, active, rollContents };
+    const api = { TIME_ZONE, START, END, HOURS, GIFT_RANGE, NEAR_METERS, MIN_SPAWN_METERS, PER_PLAYER, LIFETIME_MIN, GOLD_CHANCE, DAILY_MAX, STREET_TYPES, SMALL, GOLD, dayKey, active, huntDay, inSeason, rollContents };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (typeof window !== 'undefined') window.SurvivalGifts = api;
 })(this);

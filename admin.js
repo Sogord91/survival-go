@@ -53,6 +53,16 @@ function activeSettings() {
     if (settings.eventUntil && Date.now() > settings.eventUntil) return { ...DEFAULT_SETTINGS };
     return settings;
 }
+// Képesség-újraosztás ára (v0.1.20): nem jár le, mint az eventek
+const Skills = require('./public/js/skills');
+const Quests = require('./public/js/quests');
+let skillPricesValue = { ...Skills.RESPEC_DEFAULTS };
+function normalizeSkillPrices(v) {
+    v = v || {};
+    const clampN = (x, d, lo, hi) => Math.min(hi, Math.max(lo, Math.round(num(x, d))));
+    return { moneyPerLevel: clampN(v.moneyPerLevel, 100, 0, 100000), crystalBase: clampN(v.crystalBase, 50, 0, 100000), crystalPerLevel: clampN(v.crystalPerLevel, 2, 0, 10000) };
+}
+function skillPrices() { return skillPricesValue; }
 function xpMultiplier() { return activeSettings().xpMultiplier; }
 function lootMultiplier() { return activeSettings().lootMultiplier; }
 function publicEvent() {
@@ -149,6 +159,7 @@ function setup(c) {
     const { app, io, PlayerModel, config, authToken, activePlayers } = c;
 
     SettingModel.findById('game').lean().then(d => { if (d) settings = normalizeSettings(d.value); }).catch(() => { });
+    SettingModel.findById('skills').lean().then(d => { if (d) skillPricesValue = normalizeSkillPrices(d.value); }).catch(() => { });
 
     // 10 percenként rögzítjük, hányan vannak online (napszak-grafikonhoz, csúcsokhoz)
     const snap = () => {
@@ -625,6 +636,54 @@ function setup(c) {
         });
     }, 'events');
 
+    // ---- FEJLŐDÉS (v0.1.20): képességek, újraosztás, küldetések ----
+    route('get', '/api/admin/progress', async (req, res) => {
+        const now = Date.now(), since = now - 30 * 86400000;
+        const ev = async (type) => EventModel.find({ type, t: { $gte: since } }).sort({ t: -1 }).limit(50000).lean();
+        const dayKey = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
+        const days = []; for (let i = 13; i >= 0; i--) days.push(dayKey(now - i * 86400000));
+        const perDay = (list) => days.map(k => ({ day: k, n: list.filter(e => dayKey(e.t) === k).length }));
+        const [learns, respecs, qdone, qbonus, rerolls] = await Promise.all([ev('skill_learn'), ev('skill_respec'), ev('quest_done'), ev('quest_bonus'), ev('quest_reroll')]);
+        // a mostani karakterek képességei (a stáb nélkül)
+        const users = (await allUsers()).filter(u => !isStaffName(u.username));
+        const bySkill = {}, byBranch = {}; let withSkills = 0;
+        Skills.SKILLS.forEach(sk => { bySkill[sk.key] = { key: sk.key, name: sk.name, branch: sk.branch, players: 0, ranks: 0 }; });
+        users.forEach(u => {
+            const sk = Skills.normalize(u.playerData && u.playerData.skills);
+            const keys = Object.keys(sk.ranks);
+            if (keys.length) withSkills++;
+            keys.forEach(k => { bySkill[k].players++; bySkill[k].ranks += sk.ranks[k]; byBranch[Skills.BY_KEY[k].branch] = (byBranch[Skills.BY_KEY[k].branch] || 0) + sk.ranks[k]; });
+        });
+        const pay = { free: 0, money: 0, crystal: 0, moneySum: 0, crystalSum: 0 };
+        respecs.forEach(e => { const d = e.data || {}; pay[d.pay] = (pay[d.pay] || 0) + 1; if (d.pay === 'money') pay.moneySum += num(d.price); if (d.pay === 'crystal') pay.crystalSum += num(d.price); });
+        const kinds = {};
+        qdone.forEach(e => { const k = e.data && e.data.kind; if (!kinds[k]) kinds[k] = { kind: k, title: (Quests.DEFS[k] ? Quests.DEFS[k].icon + ' ' + k : k), move: !!(e.data && e.data.move), n: 0 }; kinds[k].n++; });
+        const moveDone = qdone.filter(e => e.data && e.data.move).length;
+        res.json({ success: true, prices: skillPricesValue, defaults: Skills.RESPEC_DEFAULTS,
+            skills: { players: users.length, withSkills, byBranch, bySkill: Object.values(bySkill).sort((a, b) => b.ranks - a.ranks), learns: learns.length, perDay: perDay(learns) },
+            respec: { total: respecs.length, ...pay, recent: respecs.slice(0, 30).map(e => ({ t: e.t, user: e.user, ...(e.data || {}) })) },
+            quests: { done: qdone.length, today: qdone.filter(e => dayKey(e.t) === dayKey(now)).length, users: new Set(qdone.map(e => e.user)).size,
+                movePct: qdone.length ? Math.round(moveDone / qdone.length * 100) : 0, dailyBonus: qbonus.filter(e => e.data && e.data.scope === 'daily').length,
+                weeklyBonus: qbonus.filter(e => e.data && e.data.scope === 'weekly').length, rerolls: rerolls.length, kinds: Object.values(kinds).sort((a, b) => b.n - a.n), perDay: perDay(qdone) },
+            recentLearns: learns.slice(0, 40).map(e => ({ t: e.t, user: e.user, ...(e.data || {}) }))
+        });
+    }, 'events');
+    // Szezon: a mostani állás (első 10) és a lezárt hónapok nyertesei; kézi lezárás (ha az automatikus valamiért elmaradt)
+    route('get', '/api/admin/season', async (req, res) => {
+        res.json({ success: true, ...(await ctx.season.status()) });
+    }, 'events');
+    route('post', '/api/admin/season-close', async (req, res) => {
+        const r = await ctx.season.close();
+        audit(req, 'season_close', null, r ? { month: r.month, winners: r.winners.length } : null);
+        res.json({ success: true, message: r ? `${r.month} lezárva: ${r.winners.length} jutalmazott.` : 'Nincs lezárandó szezon (vagy már lezárult).', result: r });
+    }, 'server');
+    route('post', '/api/admin/skill-prices', async (req, res) => {
+        skillPricesValue = normalizeSkillPrices(req.body || {});
+        await SettingModel.updateOne({ _id: 'skills' }, { value: skillPricesValue }, { upsert: true });
+        audit(req, 'skill_prices', null, skillPricesValue);
+        res.json({ success: true, message: 'Az újraosztás ára mentve.', prices: skillPricesValue });
+    }, 'events');
+
     // ---- mentés most ----
     route('post', '/api/admin/backup', async (req, res) => {
         execFile(process.execPath, [path.join(__dirname, 'scripts', 'mentes.js')], { env: process.env, timeout: 120000 }, (err, stdout, stderr) => {
@@ -719,7 +778,7 @@ function setup(c) {
 
 module.exports = {
     isStaffName, refreshStaff,
-    setup, logEvent, onPlayerSaved, snapshotBefore, banInfo, isAdminName, roleOf, xpMultiplier, lootMultiplier, publicEvent,
+    setup, logEvent, onPlayerSaved, skillPrices, snapshotBefore, banInfo, isAdminName, roleOf, xpMultiplier, lootMultiplier, publicEvent,
     models: { EventModel, MetricModel, SettingModel, AnnouncementModel, ReportModel, SupportModel },
     _setSettings: (s) => { settings = normalizeSettings(s); }
 };

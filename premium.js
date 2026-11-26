@@ -354,6 +354,16 @@ function setup(ctx) {
             return { message: `+${amount} kristály` };
         });
     }
+    // Kristály költése játékbeli szolgáltatásra (pl. képesség-újraosztás, v0.1.20)
+    function spendCredits(username, amount, note) {
+        amount = Math.max(0, Math.floor(num(amount)));
+        return withPremium(username, (pr, u, txs) => {
+            if (pr.credits < amount) return { error: `Ehhez ${amount} kristály kell, neked ${pr.credits} van.` };
+            pr.credits -= amount;
+            txs.push({ reason: 'spend', delta: -amount, note: note || 'Költés' });
+            return { message: `-${amount} kristály` };
+        });
+    }
     // Festék vagy kulcs a fiókba (nem vész el halálkor)
     function grantKey(username, key, note) {
         if (!Shop.BY_KEY[key]) return Promise.resolve({ error: 'Ismeretlen.' });
@@ -364,7 +374,7 @@ function setup(ctx) {
         });
     }
 
-    return { onConnect, onPlayerSaved, onRename, enabledFor, grantCosmetic, grantCredits, grantKey };
+    return { onConnect, onPlayerSaved, onRename, enabledFor, grantCosmetic, grantCredits, grantKey, spendCredits };
 }
 
 module.exports = { setup, normalizePremium, mode, enabledFor, models: { TxModel, OrderModel } };

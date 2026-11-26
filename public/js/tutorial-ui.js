@@ -206,7 +206,7 @@ function renderQuestModal() {
     const n = SurvivalTutorial.doneCount(t);
     const nextKey = (steps.find(s => !t.done[s.key]) || {}).key;
     let html = (typeof adventCardHtml === 'function' ? adventCardHtml() : '') + (typeof winterCardHtml === 'function' ? winterCardHtml() : '') + `<div class="sg-q-head"><span>NAPI BÓNUSZ</span><span>${dailyStatus().available ? 'MA MÉG ÁTVEHETŐ' : '✓ MA MEGVOLT'}</span></div>
-        <div class="sg-d-grid sg-d-small">${dailyStripHtml()}</div>${dailyButtonHtml()}<div style="height:12px"></div>`;
+        <div class="sg-d-grid sg-d-small">${dailyStripHtml()}</div>${dailyButtonHtml()}<div style="height:12px"></div>` + (typeof questsCardHtml === 'function' ? questsCardHtml() : '');
     if (!t.finalClaimed) {
         html += `<div class="sg-q-head"><span>ELSŐ LÉPÉSEK</span><span>${n} / ${steps.length}</span></div>
             <div class="sg-q-prog"><i style="width:${Math.round(n / steps.length * 100)}%"></i></div>`;
