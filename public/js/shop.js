@@ -69,10 +69,15 @@
     const KEYS = [
         { key: 'key_basic', name: 'Láda kulcs', img: 'key', price: 100, desc: 'A talált Kis láda kinyitásához.' }
     ];
+    // Festékek (Fagyos Csend, v0.1.19): a fiókhoz tartoznak (halálkor nem vesznek el), a skinrendszerrel egy tárgyra festhetők
+    const PAINTS = [
+        { key: 'paint_frost_weapon', name: 'Fagyos festék – fegyver', paint: true, slotKind: 'weapon', rarity: 'legendary', img: 'key', desc: 'Jégkék, deres festés egy fegyveredre. A skinrendszerrel festheted rá (december közepétől).' },
+        { key: 'paint_frost_jacket', name: 'Fagyos festék – kabát',   paint: true, slotKind: 'torso',  rarity: 'legendary', img: 'key', desc: 'Jégkék, deres festés egy kabátodra. A skinrendszerrel festheted rá (december közepétől).' }
+    ];
     const CRATE_ALIASES = { crate_basic: 'crate_small' }; // régi név
 
     const BY_KEY = {};
-    [...COSMETICS, ...COMFORT, ...CRATES, ...KEYS].forEach(x => { BY_KEY[x.key] = x; });
+    [...COSMETICS, ...COMFORT, ...CRATES, ...KEYS, ...PAINTS].forEach(x => { BY_KEY[x.key] = x; });
 
     const huf = (credits) => Math.round(credits * CREDIT_HUF);
     const fmtHuf = (n) => n.toLocaleString('hu-HU') + ' Ft';
@@ -102,7 +107,7 @@
         return odds[odds.length - 1].key;
     }
 
-    const api = { CREDIT_HUF, PACKAGES, RARITY, COSMETICS, COMFORT, CRATES, KEYS, CRATE_ALIASES, BY_KEY, huf, fmtHuf, crateOdds, rarityChances, rollCrate };
+    const api = { CREDIT_HUF, PACKAGES, RARITY, COSMETICS, COMFORT, CRATES, KEYS, PAINTS, CRATE_ALIASES, BY_KEY, huf, fmtHuf, crateOdds, rarityChances, rollCrate };
     root.SurvivalShop = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

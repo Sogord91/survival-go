@@ -104,6 +104,7 @@ function dropItem(index) {
     if (typeof socket !== 'undefined' && socket) {
         socket.emit('drop_item', {
             itemKey: slot.key,
+            index,          // pontosan ezt a darabot (pl. a kopott lámpát, nem az újat)
             count: 1
         });
     }

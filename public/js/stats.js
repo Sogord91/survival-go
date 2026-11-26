@@ -138,20 +138,17 @@
     // Melyik fény ég: előbb az elemes / olajos lámpák, a fáklyát (ami elfogy) a végére hagyjuk
     const LIGHT_ORDER = ['led_lantern', 'headlamp', 'flashlight', 'rescue_strobe', 'kerosene_lantern', 'torch', 'candle', 'flare'];
 
-    // Használható fényforrás a leltárban: { slot, item, needsRefill } vagy null.
-    // needsRefill: lemerült, de van hozzá üzemanyag (elem, lámpaolaj), így újratölthető.
+    // Használható (működő) fényforrás a leltárban: { slot, item, needsRefill: false } vagy null.
+    // A lemerült lámpát a játékos tölti fel kézzel (elem / olaj / powerbank) – lásd refuel_light.
     function findUsableLight(inventory, itemDatabase) {
         const slots = (Array.isArray(inventory) ? inventory : []).filter(s => itemDatabase[s.key] && itemDatabase[s.key].light);
         slots.sort((a, b) => {
             const ia = LIGHT_ORDER.indexOf(a.key), ib = LIGHT_ORDER.indexOf(b.key);
             return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
         });
+        // Csak a működő (fel van töltve / még ég) fény számít. Az elemet / olajat a játékos teszi be kézzel (v0.1.19).
         for (const slot of slots) {
             if (slot.dur === undefined || num(slot.dur, 0) > 0) return { slot, item: itemDatabase[slot.key], needsRefill: false };
-        }
-        for (const slot of slots) {
-            const fuel = itemDatabase[slot.key].light.fuel;
-            if (fuel && inventory.some(s => s.key === fuel && s.count > 0)) return { slot, item: itemDatabase[slot.key], needsRefill: true };
         }
         return null;
     }

@@ -8,12 +8,25 @@ async function checkRegistrationMode() {
         const res = await fetch('/api/registration');
         const data = await res.json();
         registrationCodeRequired = !!(data && data.codeRequired);
+        showEarlyBanner(data);
     } catch (e) {
         registrationCodeRequired = false; // ha nem sikerül lekérdezni, a szerver úgyis szól, ha kell a kód
     }
     const group = document.getElementById('invite-group');
     if (group) group.classList.toggle('hidden', !(isRegisterMode && registrationCodeRequired));
 }
+
+// "Korai túlélő" számláló a belépő képernyőn: hány hely maradt még
+function showEarlyBanner(data) {
+    const el = document.getElementById('early-banner');
+    if (!el) return;
+    const left = data && typeof data.earlyLeft === 'number' ? data.earlyLeft : null;
+    if (left === null || left <= 0) { el.classList.add('hidden'); return; }
+    el.innerHTML = `<b>🎖 KORAI TÚLÉLŐ</b><span>Még <b class="n">${left}</b> hely maradt!</span><small>Az első ${data.earlyLimit || 100} regisztráló végleges jelvényt és bővebb kezdőcsomagot kap.</small>`;
+    el.classList.toggle('urgent', left <= 20);
+    el.classList.remove('hidden');
+}
+document.addEventListener('DOMContentLoaded', () => { checkRegistrationMode(); });
 
 function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;

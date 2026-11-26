@@ -338,13 +338,32 @@ function setup(ctx) {
         const def = Shop.BY_KEY[key];
         if (!def || !def.kind) return Promise.resolve({ error: 'Ismeretlen kinézet.' });
         return withPremium(username, (pr, u, txs) => {
-            if (!pr.owned.includes(key)) pr.owned.push(key);
-            txs.push({ reason: 'event', delta: 0, note: `Esemény: ${def.name}` });
-            return { message: `Új kinézet: ${def.name}` };
+            const dup = pr.owned.includes(key);
+            if (!dup) pr.owned.push(key);
+            txs.push({ reason: 'event', delta: 0, note: `Esemény: ${def.name}${dup ? ' (már megvolt)' : ''}` });
+            return { message: `Új kinézet: ${def.name}`, dup };
+        });
+    }
+    // Játékban nyert kristály (pl. szerencsekerék jackpot): a naplóban "ajándék" okkal
+    function grantCredits(username, amount, note) {
+        amount = Math.max(0, Math.floor(num(amount)));
+        return withPremium(username, (pr, u, txs) => {
+            pr.credits += amount;
+            txs.push({ reason: 'gift', delta: amount, note: note || 'Ajándék' });
+            return { message: `+${amount} kristály` };
+        });
+    }
+    // Festék vagy kulcs a fiókba (nem vész el halálkor)
+    function grantKey(username, key, note) {
+        if (!Shop.BY_KEY[key]) return Promise.resolve({ error: 'Ismeretlen.' });
+        return withPremium(username, (pr, u, txs) => {
+            pr.keys[key] = (pr.keys[key] || 0) + 1;
+            txs.push({ reason: 'event', delta: 0, note: note || Shop.BY_KEY[key].name });
+            return { message: Shop.BY_KEY[key].name };
         });
     }
 
-    return { onConnect, onPlayerSaved, onRename, enabledFor, grantCosmetic };
+    return { onConnect, onPlayerSaved, onRename, enabledFor, grantCosmetic, grantCredits, grantKey };
 }
 
 module.exports = { setup, normalizePremium, mode, enabledFor, models: { TxModel, OrderModel } };

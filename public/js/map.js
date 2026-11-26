@@ -170,12 +170,14 @@ function recenterOnPlayer() {
     map.setView([pos.lat, pos.lng], zoom, { animate: true });
 }
 
+let lastGpsAccuracy = null; // a bevezető GPS-ellenőrzéséhez
 function startTracking() {
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(position => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
+            lastGpsAccuracy = accuracy;
 
             hideGpsProblem();
             if (playerMarker) {
@@ -444,7 +446,7 @@ function interactWithBuilding(b) {
     const distance = SurvivalBuildings.distanceToBuilding({ lat: pLatLng.lat, lng: pLatLng.lng }, b); // nagy létesítménynél a szélétől
 
     if (distance > 45) { // a szerver is 30 m + 15 m GPS-tűréssel számol
-        logMessage(`Túl messze vagy az épülettől! (${Math.round(distance)}m - Menj 30 méteren belülre)`);
+        logMessage(`Túl messze vagy az épülettől! (${Math.round(distance)}m) Sétálj oda 30 méteren belülre – a karaktered a valódi lépéseiddel mozog.`);
         return;
     }
 

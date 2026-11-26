@@ -97,6 +97,11 @@ function showShelterInfo(sh) {
 }
 
 // ---------- Elfoglalás ----------
+// A Menü gombja (a stílusszabályok a "hidden"/"close" szavas onclick-et bezáró gombnak nézik, ezért függvény)
+function openShelterFromMenu() {
+    document.getElementById('settings-modal').classList.add('hidden');
+    openShelterModal();
+}
 function startShelterClaim() {
     closeShelterModal();
     shelterClaimMode = true; // egy sima koppintás is jó (régi út), de a hosszú nyomás a fő mód

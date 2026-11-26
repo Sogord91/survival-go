@@ -84,6 +84,14 @@ const craftingRecipes = [
     { key: 'twist_wire', cat: 'Alapanyag', result: 'wire', name: 'Drótsodrás', desc: 'Két rézdrótból egy erős dróttekercs', req: { copper_wire: 2 }, tools: [['pliers', 'multitool']] },
     { key: 'purify_alcohol', cat: 'Alapanyag', result: 'alcohol', name: 'Alkohol Tisztítása', desc: 'Két üveg pálinkából tiszta alkohol', req: { moonshine: 2 }, tools: ['straw_filter'] },
 
+    // --- KARÁCSONY – Fagyos Csend (v0.1.19): díszek; csak az esemény alatt (dec. 6. – jan. 6.) barkácsolhatók ---
+    { key: 'orn_capstar', cat: 'Karácsony', event: 'winter', name: 'Kupakcsillag', desc: 'Kalapált bádogból csillag a település fájára', req: { empty_can: 1, wire: 1 }, tools: ['pliers'] },
+    { key: 'orn_canball', cat: 'Karácsony', event: 'winter', name: 'Konzervgolyó', desc: 'Két konzervdobozból festett gömb', req: { empty_can: 2 }, tools: ['pliers'] },
+    { key: 'orn_bell', cat: 'Karácsony', event: 'winter', name: 'Töltényhüvely-csengő', desc: 'Üres hüvelyekből csengő', req: { empty_casing: 2, wire: 1 }, tools: ['pliers'] },
+    { key: 'orn_angel', cat: 'Karácsony', event: 'winter', name: 'Drótangyal', desc: 'Rézdrótból hajlított angyal (ritka dísz)', req: { copper_wire: 3 }, tools: ['pliers'] },
+    { key: 'orn_icicle', cat: 'Karácsony', event: 'winter', name: 'Üvegszilánk-jégcsap', desc: 'Palackszilánkból jégcsap (ritka dísz)', req: { glass_shards: 3, wire: 1 }, tools: ['pliers'] },
+    { key: 'orn_bulb', cat: 'Karácsony', event: 'winter', name: 'Izzódísz', desc: 'Kiégett izzóból piros dísz (ritka dísz)', req: { broken_bulb: 2, wire: 1 }, tools: ['pliers'] },
+
     // --- MENEDÉK (v0.1.12): a falak, a barikád és a raktár elemei ---
     { key: 'shelter_kit', cat: 'Menedék', name: 'Menedékalapító Csomag', desc: 'Deszka, szög és zár: ezzel foglalhatsz el egy épületet', req: { wall_planks: 2, nails: 6, sliding_bolt: 1 }, tools: ['claw_hammer'] },
     { key: 'saw_planks', cat: 'Menedék', result: 'wall_planks', count: 2, name: 'Deszka Fűrészelése', desc: 'Hasított fából két deszkacsomag', req: { split_timber: 1 }, tools: ['bow_saw'] },

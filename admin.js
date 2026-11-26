@@ -133,8 +133,19 @@ function roleOf(user) {
     return Roles.isStaff(user.role) && user.role !== 'owner' ? user.role : '';
 }
 
+// A stáb nevei (a nyilvános toplistákból kimaradnak). 5 percenként frissül.
+let staffSet = new Set();
+async function refreshStaff() {
+    try {
+        const users = await ctx.PlayerModel.find({}).lean();
+        staffSet = new Set(users.filter(u => roleOf(u)).map(u => String(u.username)));
+    } catch (e) { /* marad a régi */ }
+}
+function isStaffName(name) { return !!name && (staffSet.has(String(name)) || isAdminName(name)); }
+
 function setup(c) {
     ctx = c;
+    refreshStaff(); setInterval(refreshStaff, 5 * 60000);
     const { app, io, PlayerModel, config, authToken, activePlayers } = c;
 
     SettingModel.findById('game').lean().then(d => { if (d) settings = normalizeSettings(d.value); }).catch(() => { });
@@ -362,6 +373,7 @@ function setup(c) {
         if (need && !Roles.can(req.role, need)) return deny(res, need === 'ban_perm' ? `Legfeljebb ${Roles.BAN_TEMP_MAX_HOURS / 24} napra tilthatsz.` : 'Ehhez a művelethez nincs jogod.');
         if (action === 'role') {
             const role = String(body.role || '');
+            setTimeout(refreshStaff, 500);
             if (role && (!Roles.isStaff(role) || role === 'owner')) return res.status(400).json({ success: false, message: 'Tulajdonost csak a szerver beállításában (ADMIN_USERS) lehet megadni.' });
             if (isAdminName(name)) return res.status(400).json({ success: false, message: 'A tulajdonos rangja nem változtatható itt.' });
             await PlayerModel.updateOne({ _id: u._id }, { role });
@@ -548,8 +560,24 @@ function setup(c) {
         const m = await SupportModel.create({ t: Date.now(), at: new Date(), user, from: 'staff', staff: req.admin, staffRole: req.role, text, readByStaff: true, readByPlayer: false });
         const a = activePlayers[user];
         if (a) io.to(a.socketId).emit('support_msg', { message: publicSupport(m) });
-        res.json({ success: true, message: a ? 'Elküldve (online, azonnal látja).' : 'Elküldve (a következő belépéskor látja).' });
+        // ha nincs bent, a telefonjára értesítés megy (ha bekapcsolta)
+        let pushed = 0;
+        if (!a && ctx.push) pushed = await ctx.push.notifyUser(user, { title: '📩 Üzenet a stábtól', body: text.slice(0, 140), url: '/?support=1', tag: 'support' }).catch(() => 0);
+        res.json({ success: true, message: a ? 'Elküldve (online, azonnal látja).' : pushed ? 'Elküldve, és értesítést kapott a telefonjára.' : 'Elküldve (a következő belépéskor látja; értesítést nem kapcsolt be).' });
     }, 'support');
+
+    // ---- telefonos értesítés (push) mindenkinek ----
+    route('get', '/api/admin/push', async (req, res) => {
+        res.json({ success: true, ...(await ctx.push.stats()) });
+    }, 'announce');
+    route('post', '/api/admin/push', async (req, res) => {
+        const title = String((req.body && req.body.title) || '').trim().slice(0, 60);
+        const body = String((req.body && req.body.body) || '').trim().slice(0, 200);
+        if (!title || !body) return res.status(400).json({ success: false, message: 'Cím és szöveg is kell.' });
+        const r = await ctx.push.notifyAll({ title, body, url: '/', tag: 'news' });
+        audit(req, 'push_all', null, { title, body, ok: r.ok, total: r.total });
+        res.json({ success: true, message: `Elküldve: ${r.ok} / ${r.total} eszközre megérkezett.`, ...r });
+    }, 'announce');
 
     // ---- napló ----
     route('get', '/api/admin/events', async (req, res) => {
@@ -577,12 +605,22 @@ function setup(c) {
         // szerencsekerék
         const prizes = {}; let credits = 0; const jackpots = [];
         spins.forEach(e => { const k = e.data && e.data.prize; prizes[k] = (prizes[k] || 0) + 1; if (k === 'jackpot') { credits += num(e.data.credits, 100); jackpots.push({ t: e.t, user: e.user }); } });
+        let trees = { total: 0, decorated: 0, top: [], hung: 0 };
+        try {
+            const TM = (mongoose.models && mongoose.models.SurvivalTree) || mongoose.model('SurvivalTree');
+            const all = (await TM.find({}).lean()).filter(t => num(t.points) > 0);
+            trees = { total: all.length, hung: all.reduce((a, t) => a + num(t.hung), 0), top: all.sort((a, b) => b.points - a.points).slice(0, 15).map(t => ({ name: t.name, place: t.place, points: t.points, hung: t.hung || 0, people: Object.keys(t.contributors || {}).length })) };
+        } catch (e) { /* még nincs fa */ }
+        const hangs = await ev('tree_hang');
+        const giftEv = await ev('gift_open');
         const users = await allUsers();
         const shelterCount = users.filter(u => u.playerData && u.playerData.shelter && u.playerData.shelter.buildingId).length;
         res.json({ success: true, today,
             daily: { today: daily.filter(e => dayKey(e.t) === today).length, users7: new Set(daily.filter(e => e.t > now - 7 * 86400000).map(e => e.user)).size, perDay: perDay(daily), streaks },
             advent: { total: advent.length, today: advent.filter(e => dayKey(e.t) === today).length, users: new Set(advent.map(e => e.user)).size, catchups: advent.filter(e => e.data && e.data.catchup).length, windows, perDay: perDay(advent) },
             wheel: { total: spins.length, today: spins.filter(e => dayKey(e.t) === today).length, users: new Set(spins.map(e => e.user)).size, prizes, credits, jackpots: jackpots.slice(0, 20), perDay: perDay(spins) },
+            gifts: { total: giftEv.length, today: giftEv.filter(e => dayKey(e.t) === today).length, gold: giftEv.filter(e => e.data && e.data.kind === 'gold').length, users: new Set(giftEv.map(e => e.user)).size, perDay: perDay(giftEv) },
+            trees: { ...trees, hangsToday: hangs.filter(e => dayKey(e.t) === today).reduce((a, e) => a + num(e.data && e.data.count), 0), perDay: perDay(hangs) },
             shelter: { count: shelterCount, claims: shelters.length, today: shelters.filter(e => dayKey(e.t) === today).length }
         });
     }, 'events');
@@ -680,6 +718,7 @@ function setup(c) {
 }
 
 module.exports = {
+    isStaffName, refreshStaff,
     setup, logEvent, onPlayerSaved, snapshotBefore, banInfo, isAdminName, roleOf, xpMultiplier, lootMultiplier, publicEvent,
     models: { EventModel, MetricModel, SettingModel, AnnouncementModel, ReportModel, SupportModel },
     _setSettings: (s) => { settings = normalizeSettings(s); }

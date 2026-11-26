@@ -766,6 +766,13 @@ function renderItemSheet() {
         }
         else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
         if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
+        // Lámpa: elem / olaj behelyezése vagy powerbankos töltés (kézzel, v0.1.19)
+        const lampSlot = player.inventory[ref.index];
+        if (item.light && item.light.fuel && lampSlot && lampSlot.dur !== undefined && lampSlot.dur < item.durability - 0.5) {
+            const fuelCount = invCountClient(item.light.fuel), fuelName = (itemDatabase[item.light.fuel] || {}).name || 'töltet';
+            actions += btn(`🔋 ${escapeAttr(fuelName)} be (${fuelCount})`, `bg-amber-700 hover:bg-amber-600${fuelCount ? '' : ' opacity-50'}`, `refuelLamp(${ref.index},'fuel')`);
+            if (item.light.fuel === 'aa_batteries' && invCountClient('power_bank')) actions += btn('🔌 Powerbankkal', 'bg-sky-800 hover:bg-sky-700', `refuelLamp(${ref.index},'power_bank')`);
+        }
         scrapRecipesFor(ref.key).forEach(r => {
             const st = scrapStatus(r);
             actions += btn('🔧 Szétszed', `bg-amber-900 hover:bg-amber-800${st.ok ? '' : ' opacity-50'}`, `scrapItem('${r.key}')`);
@@ -777,6 +784,12 @@ function renderItemSheet() {
     }
     document.getElementById('item-sheet-actions').innerHTML = actions;
 }
+
+function refuelLamp(index, how) { socket.emit('refuel_light', { index, with: how }); }
+socket.on('refuel_result', (d) => {
+    if (d && d.message) logMessage((d.success ? '' : '⚠️ ') + d.message);
+    if (d && d.success) { playSound('craft'); setTimeout(() => { if (itemSheetRef) openItemSheet(itemSheetRef.source, itemSheetRef.source === 'inv' ? itemSheetRef.index : itemSheetRef.slot); }, 0); }
+});
 
 function itemSheetAction(action) {
     const ref = itemSheetRef;
@@ -947,6 +960,12 @@ function inventoryDrop(tile, zone) {
             equipItem(slot.key, target, index);
         } else if (zone.dataset.index !== undefined) { // másik helyre a hátizsákban
             const to = Number(zone.dataset.index);
+            // elem / olaj / powerbank egy lemerült lámpára húzva: feltölti (v0.1.19)
+            const target = player.inventory[to], tItem = target && itemDatabase[target.key];
+            if (to !== index && tItem && tItem.light && tItem.light.fuel && (slot.key === tItem.light.fuel || (slot.key === 'power_bank' && tItem.light.fuel === 'aa_batteries'))) {
+                refuelLamp(to, slot.key === 'power_bank' ? 'power_bank' : 'fuel');
+                return;
+            }
             if (to !== index) socket.emit('move_item', { from: index, to });
         }
     } else if (tile.dataset.slot && zone.dataset.index !== undefined) { // felszerelésből vissza a hátizsákba
@@ -1062,7 +1081,7 @@ function renderCraftList() {
     const hasTools = (recipe) => hasFire(recipe) && (recipe.tools || []).every(entry => toolOptions(entry).some(k => have(k) > 0));
     const hasMaterials = (recipe) => Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty);
 
-    const recipes = craftingRecipes.filter(recipe => !recipe.station && recipe.cat !== SCRAP_CAT); // a szétszedés a tárgy lapján van
+    const recipes = craftingRecipes.filter(recipe => !recipe.station && recipe.cat !== SCRAP_CAT && (!recipe.event || (typeof winterActive !== 'undefined' && winterActive))); // a szétszedés a tárgy lapján van
     const categories = (window.CRAFT_CATEGORIES || []).slice();
     recipes.forEach(r => { const c = r.cat || 'Egyéb'; if (!categories.includes(c)) categories.push(c); });
 
@@ -1203,6 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     safeAddEvent('btn-install', 'click', installApp);
+    safeAddEvent('btn-push', 'click', togglePush);
     updateInstallButton();
     safeAddEvent('btn-logout', 'click', () => {
         if (typeof logout === 'function') logout();

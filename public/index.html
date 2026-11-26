@@ -368,6 +368,12 @@
         .sg-q-step.done .sg-q-t { text-decoration: line-through; }
         .sg-q-h { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; margin-top: 3px; }
         .sg-q-xp { flex: none; margin-left: auto; font: 800 11px var(--sg-mono); color: #e9d9a0; }
+        /* telepítés + értesítés ajánló (v0.1.19) */
+        .sg-app { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+        .sg-app-help { font: 500 12px/1.4 var(--sg-font); color: #bdb8a8; padding: 0 2px; }
+        .sg-app-done { font: 700 12px var(--sg-font); color: #a7c35a; padding: 6px 2px; }
+        .sg-app-lead { font: 500 13px/1.45 var(--sg-font); color: #d8d2bf; }
+        #btn-push.sg-push-on { background: rgba(40,70,30,.55); border-color: #6f8f3a; color: #cfe3a0; }
         .sg-q-reward { margin-top: 12px; padding: 10px; border: 2px dashed rgba(217,197,138,.6); text-align: center; }
         .sg-q-reward .sg-q-items { display: flex; justify-content: center; gap: 6px; margin: 8px 0; }
         .sg-q-reward .sg-q-items span { position: relative; width: 44px; height: 44px; border: 1.5px solid var(--sg-dark); background: var(--sg-pocket); display: flex; align-items: center; justify-content: center; }
@@ -629,6 +635,76 @@
         .sg-wh-pointer:after { content: ''; position: absolute; left: -5px; top: -36px; width: 10px; height: 10px; border-radius: 50%; background: #fff2a8; box-shadow: 0 0 6px #ffd77a; }
         .sg-wh-pointer.tick { animation: sg-wh-tick .12s ease-out; } @keyframes sg-wh-tick { 40% { transform: rotate(-14deg); } 100% { transform: none; } }
         .sg-wh-dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border: 1px solid #000; vertical-align: -1px; }
+        /* ===== KARÁCSONYFÁK (v0.1.19) ===== */
+        .sg-tree-icon { background: none; border: 0; }
+        .sg-tree-mk { position: relative; width: 64px; text-align: center; filter: drop-shadow(0 3px 4px rgba(0,0,0,.8)); }
+        .sg-tree-mk-img { display: block; width: 54px; height: 54px; margin: 0 auto; object-fit: contain; }
+        .sg-tree-mk span { display: inline-block; max-width: 90px; margin-top: -2px; padding: 0 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(20,40,60,.9); border: 1px solid #9fd8f0; color: #e6f6ff; font: 800 8.5px var(--sg-font); letter-spacing: .06em; }
+        .sg-tree-emoji { display: block; font-size: 40px; line-height: 54px; text-align: center; }
+        .sg-tree-emoji.st0 { filter: saturate(.4) brightness(.8); } .sg-tree-emoji.st1 { filter: drop-shadow(0 0 4px #ffd77a); } .sg-tree-emoji.st2 { filter: drop-shadow(0 0 9px #ffd77a) drop-shadow(0 0 3px #ff6a4a); animation: sg-blink 1.6s ease-in-out infinite; }
+        .sg-tree-mk.st2 .sg-tree-mk-img { filter: drop-shadow(0 0 8px rgba(255,215,120,.9)); }
+        .sg-tr-hero { position: relative; height: 170px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; background: radial-gradient(ellipse 50% 60% at 50% 90%, rgba(255,215,120,.18), transparent 70%); }
+        .sg-tr-hero.st2 { background: radial-gradient(ellipse 55% 70% at 50% 80%, rgba(255,200,90,.35), transparent 70%); }
+        .sg-tr-big { width: 150px; height: 150px; object-fit: contain; } span.sg-tr-big { font-size: 120px; line-height: 150px; text-align: center; }
+        .sg-tr-hero.hung .sg-tr-big { animation: sg-dc-pop2 .6s ease-out; } @keyframes sg-dc-pop2 { 40% { transform: scale(1.08); filter: brightness(1.5) drop-shadow(0 0 20px #ffd77a); } }
+        .sg-tr-name { text-align: center; color: #e6f6ff; font: 800 18px var(--sg-font); letter-spacing: .06em; } .sg-tr-name small { display: block; color: var(--sg-muted); font: 700 10px var(--sg-font); letter-spacing: .16em; text-transform: uppercase; }
+        .sg-tr-stage { margin-top: 6px; text-align: center; color: var(--sg-thread); font: 600 12px var(--sg-font); }
+        .sg-tr-bar { height: 8px; margin: 4px 10px 6px; background: rgba(0,0,0,.45); border: 1px solid #000; } .sg-tr-bar i { display: block; height: 100%; background: linear-gradient(90deg, #c9a14a, #ffd77a); box-shadow: 0 0 8px #ffd77a; }
+        .sg-tr-dist { padding: 6px 8px; background: rgba(0,0,0,.3); color: #e8c8b8; font: 700 11.5px/1.35 var(--sg-font); } .sg-tr-dist.ok { color: #b8f08a; }
+        .sg-tr-h { margin: 12px 0 5px; color: #cfeaff; font: 800 11px var(--sg-font); letter-spacing: .16em; }
+        .sg-tr-orn { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; padding: 5px 6px; background: rgba(0,0,0,.3); border-left: 3px solid #b9b29c; }
+        .sg-tr-orn.r-rare { border-color: #5aa0e0; } .sg-tr-orn.r-epic { border-color: #b06ad8; } .sg-tr-orn.r-legendary { border-color: #e8b84a; }
+        .sg-tr-ic { position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--sg-pocket); border: 1px solid var(--sg-dark); font-size: 20px; }
+        .sg-tr-ic img { width: 30px; height: 30px; object-fit: contain; } .sg-tr-ic b { position: absolute; right: 1px; bottom: -2px; font: 800 9px var(--sg-font); color: var(--sg-thread); text-shadow: 0 1px 1px #000; }
+        .sg-tr-on { flex: 1; min-width: 0; color: var(--sg-thread); font: 700 12px var(--sg-font); } .sg-tr-on small { display: block; color: var(--sg-muted); font-size: 10.5px; }
+        .sg-tr-orn button { padding: 5px 9px; background: #59652f; border: 1px solid #0b0c08; color: var(--sg-thread); font: 800 11px var(--sg-font); } .sg-tr-orn button:disabled { opacity: .4; }
+        .sg-tr-empty { color: var(--sg-muted); font: 500 12px/1.4 var(--sg-font); margin: 4px 0; }
+        .sg-tr-wheel { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 10px; padding: 10px 12px; background: linear-gradient(90deg, #6b1f18, #3a1410); border: 2px solid #e8c35a; color: #ffe9b8; font: 800 13px var(--sg-font); letter-spacing: .1em; box-shadow: 0 0 12px rgba(232,195,90,.3); }
+        .sg-tr-wheel span { padding: 1px 8px; background: rgba(0,0,0,.4); border-radius: 999px; font-size: 11px; }
+        .sg-tr-top { margin: 0; padding-left: 20px; color: var(--sg-thread); font: 600 12px var(--sg-font); } .sg-tr-top li { margin: 2px 0; } .sg-tr-top li span { float: right; color: var(--sg-muted); font-family: var(--sg-mono); }
+        .sg-tr-top.big li { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+        .sg-wh-info { text-align: center; color: var(--sg-thread); font: 600 13px var(--sg-font); } .sg-wh-info small { display: block; color: var(--sg-muted); font-size: 11px; }
+        .sg-wh-go { margin-top: 8px; background: linear-gradient(180deg, #b8322a, #7a1a14) !important; border-color: #e8c35a !important; color: #fff !important; font-size: 15px !important; }
+        .sg-wh-go:disabled { filter: grayscale(.8); opacity: .6; }
+        #wheel-box { position: relative; }
+        .sg-wr-art { width: 110px; height: 110px; margin: 30px auto 0; display: block; animation: sg-item-pop .6s cubic-bezier(.2,1.6,.4,1); }
+        .sg-wr-jack { position: relative; margin-top: 12px; font: 900 34px var(--sg-font); letter-spacing: .14em; color: #ffd24a; text-shadow: 0 3px 0 #000, 0 0 24px rgba(255,210,74,.9); animation: sg-jack 0.5s ease-in-out infinite alternate; }
+        @keyframes sg-jack { from { transform: scale(1) rotate(-2deg); } to { transform: scale(1.12) rotate(2deg); } }
+        #wheel-reveal.jackpot { background: radial-gradient(circle, rgba(80,60,0,.85), rgba(6,10,16,.92)); }
+        /* korai túlélő számláló a belépő képernyőn (v0.1.19) */
+        .sg-earlyb { display: block; width: 100%; margin-bottom: 12px; padding: 8px 10px; text-align: center; background: linear-gradient(90deg, rgba(110,80,20,.55), rgba(60,45,12,.75), rgba(110,80,20,.55)); border: 1.5px solid #e8c35a; color: #ffe9b8; box-shadow: 0 0 14px rgba(232,195,90,.25); }
+        .sg-earlyb b { display: block; font: 800 11px var(--sg-font, monospace); letter-spacing: .2em; color: #ffd77a; }
+        .sg-earlyb span { display: block; margin-top: 2px; font: 700 14px var(--sg-font, monospace); } .sg-earlyb .n { display: inline; font-size: 20px; letter-spacing: 0; color: #fff; }
+        .sg-earlyb small { display: block; margin-top: 2px; color: #d9c9a0; font: 500 10.5px/1.3 var(--sg-font, monospace); }
+        .sg-earlyb.urgent { animation: sg-early-pulse 1.6s ease-in-out infinite; } @keyframes sg-early-pulse { 50% { box-shadow: 0 0 22px rgba(255,200,80,.6); } }
+        /* bolondbiztos bevezető: séta + GPS (v0.1.19) */
+        .sg-walker { animation: sg-walk-x 4s linear infinite; } .sg-walker .leg1 { animation: sg-leg 0.5s ease-in-out infinite alternate; transform-origin: 0 -14px; } .sg-walker .leg2 { animation: sg-leg 0.5s ease-in-out infinite alternate-reverse; transform-origin: 0 -14px; }
+        @keyframes sg-walk-x { from { transform: translate(70px, 116px); } to { transform: translate(230px, 116px); } } @keyframes sg-leg { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+        .sg-gps-box { margin-top: 8px; text-align: left; }
+        .sg-gps-row { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; background: rgba(0,0,0,.3); font: 600 12px/1.35 var(--sg-font); color: var(--sg-thread); }
+        .sg-gps-row i { flex: none; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font: 900 12px var(--sg-font); font-style: normal; }
+        .sg-gps-row.ok i { background: #4f7a2a; color: #e6ffd0; } .sg-gps-row.no i { background: #8a5a1a; color: #fff0d0; } .sg-gps-row.no { color: #f0d8b8; }
+        .sg-gps-tips { margin-top: 6px; color: var(--sg-muted); font: 500 11.5px/1.4 var(--sg-font); } .sg-gps-tips b { color: var(--sg-thread); } .sg-gps-tips ol { margin: 3px 0 0 18px; padding: 0; list-style: decimal; }
+        .sg-walk { display: flex; align-items: center; gap: 8px; margin-top: 5px; } .sg-walk span { font: 700 11px var(--sg-mono); color: var(--sg-gold); white-space: nowrap; }
+        .sg-walk-bar { flex: 1; height: 6px; background: rgba(0,0,0,.5); border: 1px solid #000; } .sg-walk-bar i { display: block; height: 100%; background: var(--sg-gold); }
+        .sg-fc-banner { position: relative; display: flex; justify-content: space-between; align-items: flex-end; height: 96px; margin: -16px -16px 8px; padding: 10px 14px;
+            background: linear-gradient(90deg, rgba(10,16,24,.85) 0%, rgba(10,16,24,.35) 45%, rgba(10,16,24,0) 70%), url('/images/winter/fagyos_csend_banner.webp') 62% 40% / cover; border-bottom: 2px solid #8a6a3a; }
+        .sg-fc-x { position: absolute; top: 8px; right: 10px; width: 30px; height: 30px; background: rgba(0,0,0,.55); border: 1px solid #9fd8f0; color: #e6f6ff; font: 800 15px var(--sg-font); }
+        /* ===== AJÁNDÉKVADÁSZAT és TÉLI TÉRKÉP (v0.1.19) ===== */
+        .sg-gift-mk { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 6px rgba(255,90,70,.8)) drop-shadow(0 2px 3px #000); animation: sg-gift-bob 1.4s ease-in-out infinite; }
+        .sg-gift-mk.gold { filter: drop-shadow(0 0 10px rgba(255,210,74,1)) drop-shadow(0 2px 3px #000); }
+        .sg-gift-mk.opened { animation: none; opacity: .35; filter: grayscale(1); }
+        @keyframes sg-gift-bob { 50% { transform: translateY(-5px); } }
+        .sg-gift-img { width: 40px; height: 40px; object-fit: contain; } .sg-gift-emoji { font-size: 30px; line-height: 40px; }
+        .sg-gift-big { width: 120px; height: 120px; margin: 24px auto 0; display: flex; align-items: center; justify-content: center; }
+        .sg-gift-big.shake { animation: sg-gift-shake .22s ease-in-out infinite; } .sg-gift-big.open { animation: sg-dc-pop .45s ease-out forwards; }
+        .sg-gift-bigimg { width: 110px; height: 110px; object-fit: contain; } span.sg-gift-bigimg { font-size: 80px; line-height: 110px; text-align: center; }
+        #gift-chip { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 168px); transform: translateX(-50%); z-index: 900; padding: 5px 12px; background: linear-gradient(90deg, #7a1f18, #b8322a); border: 1.5px solid #ffd77a; color: #fff3d6; font: 800 11px var(--sg-font); letter-spacing: .1em; box-shadow: 0 0 12px rgba(255,120,90,.5); animation: sg-early-pulse 1.8s ease-in-out infinite; }
+        #gift-chip.hidden { display: none; }
+        #snow-canvas { position: fixed; inset: 0; z-index: 450; pointer-events: none; }
+        #snow-canvas.hidden { display: none; }
+        body.sg-winter #map:after { content: ''; position: absolute; inset: 0; z-index: 401; pointer-events: none;
+            background: radial-gradient(ellipse 75% 65% at 50% 50%, transparent 55%, rgba(200,230,255,.22) 85%, rgba(230,245,255,.38) 100%); }
         /* felugró ablak: láda tartalma, csomag vásárlás (v0.1.17) */
         #prem-pop { position: fixed; inset: 0; z-index: 3400; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0,0,0,.72); }
         #prem-pop.hidden { display: none; }
@@ -774,6 +850,8 @@
             <!-- Hiba vagy siker üzenetek jelzése -->
             <div id="auth-message" class="mb-4 text-xs text-center text-red-400 font-bold"></div>
 
+            <!-- Korai túlélő számláló (v0.1.19) -->
+            <button id="early-banner" class="sg-earlyb hidden" onclick="if(!isRegisterMode)toggleAuthMode()"></button>
             <!-- Bejelentkezési / Regisztrációs Űrlap -->
             <div id="auth-form" class="space-y-4">
                 <div>
@@ -831,9 +909,6 @@
             <p class="text-[11px] text-emerald-300/80 mb-4">A karaktered adatai, pozíciója és a zóna állapota folyamatosan szinkronban van a központi szerverrel.</p>
             
             <div class="space-y-2.5">
-                <button id="btn-open-shelter" onclick="document.getElementById('settings-modal').classList.add('hidden'); openShelterModal();" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
-                    🏚 Menedék (raktár, építés)
-                </button>
                 <button id="btn-open-journal" class="w-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 py-2.5 rounded-xl text-xs font-bold text-emerald-200 flex items-center justify-center gap-2 transition shadow">
                     📓 Napló (az utolsó események)
                 </button>
@@ -864,11 +939,13 @@
                         <option value="nightvision">Éjjellátó</option>
                         <option value="original">Eredeti (sötét)</option>
                     </select>
+                <label id="snow-setting" class="hidden flex items-center gap-2 mt-2 text-xs text-emerald-200"><input type="checkbox" id="snow-toggle" onchange="toggleSnow(this.checked)"> ❄ Hóesés a térképen (Fagyos Csend)</label>
                 </label>
                 <button id="btn-install" class="w-full bg-amber-900/50 hover:bg-amber-800/60 border border-amber-600/80 py-2.5 rounded-xl text-xs font-bold text-amber-200 flex items-center justify-center gap-2 transition shadow">
                     📲 Letöltés a telefonra (alkalmazásként)
                 </button>
                 <div id="install-help" class="hidden text-[11px] text-amber-200/90 bg-amber-950/40 border border-amber-700/50 rounded-xl p-2.5"></div>
+                <button id="btn-push" class="w-full bg-amber-900/50 hover:bg-amber-800/60 border border-amber-600/80 py-2.5 rounded-xl text-xs font-bold text-amber-200 flex items-center justify-center gap-2 transition shadow">🔕 Értesítések bekapcsolása a telefonon</button>
                 <button id="btn-logout" class="w-full bg-red-950/60 hover:bg-red-900/70 border border-red-700/70 py-2.5 rounded-xl text-xs font-bold text-red-200 flex items-center justify-center gap-2 transition shadow">
                     🚪 Kijelentkezés
                 </button>
@@ -1170,7 +1247,7 @@
             <div id="intro-card"></div>
             <div id="intro-dots" class="sg-intro-dots"></div>
             <div class="flex gap-2 mt-4">
-                <button onclick="introSkip()" class="sg-tu-big sg-tu-ghost flex-1">ÁTUGROM</button>
+                <button id="intro-skip" onclick="introSkip()" class="sg-tu-big sg-tu-ghost flex-1">ÁTUGROM</button>
                 <button id="intro-next" onclick="introNext()" class="sg-tu-big flex-1">TOVÁBB</button>
             </div>
         </div>
@@ -1247,11 +1324,51 @@
     <!-- ADVENTI NAPTÁR – Fagyos Csend (v0.1.18, js/advent-ui.js) -->
     <div id="advent-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3150]">
         <div class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl sg-adv-panel flex flex-col" style="max-height:92vh">
-            <div class="flex justify-between items-center mb-1">
-                <div><div class="sg-adv-h">❄ FAGYOS CSEND</div><div class="sg-adv-sub">ADVENTI NAPTÁR · DECEMBER 1–24.</div></div>
-                <button onclick="closeAdventModal()" class="text-emerald-500 text-lg font-bold">✕</button>
-            </div>
+            <div class="sg-fc-banner"><div><div class="sg-adv-h">❄ FAGYOS CSEND</div><div class="sg-adv-sub">ADVENTI NAPTÁR · DECEMBER 1–24.</div></div>
+                <button onclick="closeAdventModal()" class="sg-fc-x">✕</button></div>
             <div id="advent-body" style="overflow-y:auto"></div>
+        </div>
+    </div>
+    <!-- KARÁCSONYFA és SZERENCSEKERÉK – Fagyos Csend (v0.1.19, js/winter-ui.js) -->
+    <div id="tree-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3150]" onclick="if(event.target===this)closeTree()">
+        <div class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl sg-adv-panel flex flex-col" style="max-height:92vh">
+            <div class="sg-fc-banner"><div><div class="sg-adv-h">❄ FAGYOS CSEND</div><div class="sg-adv-sub">A TELEPÜLÉS KARÁCSONYFÁJA</div></div>
+                <button onclick="closeTree()" class="sg-fc-x">✕</button></div>
+            <div id="tree-body" style="overflow-y:auto"></div>
+        </div>
+    </div>
+    <div id="wheel-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3200]">
+        <div id="wheel-box" class="hud-panel w-full max-w-md rounded-2xl p-4 clipped-panel shadow-2xl sg-adv-panel flex flex-col" style="max-height:94vh">
+            <div class="flex justify-between items-center mb-1">
+                <div><div class="sg-adv-h">🎡 SZERENCSEKERÉK</div><div class="sg-adv-sub">FAGYOS CSEND · DEC. 6. – JAN. 6.</div></div>
+                <button onclick="closeWheel()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <div style="overflow-y:auto">
+                <div class="sg-wh-wrap" id="wheel-wrap"></div>
+                <div id="wheel-info" class="sg-wh-info"></div>
+                <button id="wheel-btn" class="sg-tu-big sg-wh-go" onclick="wheelGo()">PÖRGETÉS!</button>
+                <div class="sg-tr-h">ESÉLYEK (a nyereményt a szerver sorsolja ezekkel az esélyekkel)</div>
+                <div id="wheel-odds"></div>
+                <p class="sg-tr-empty">Pörgetést csak játékkal szerezhetsz: naponta 1 ingyen, és minden felakasztott dísz után +1. Pénzért nem vásárolható. Ha egy kinézet már megvan, helyette 200 $ jár.</p>
+            </div>
+        </div>
+    </div>
+    <!-- AJÁNDÉKCSOMAG kinyitása (v0.1.19) -->
+    <div id="gift-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3250]">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-4 clipped-panel shadow-2xl sg-adv-panel"><div id="gift-body" style="position:relative;min-height:300px"></div></div>
+    </div>
+    <canvas id="snow-canvas" class="hidden" aria-hidden="true"></canvas>
+    <button id="gift-chip" class="hidden" onclick="logMessage('🎁 Hétvégi ajándékvadászat: a csomagok a térképen, a közeledben vannak. Sétálj oda, és koppints rájuk! Csak közterületen – vigyázz magadra!')">🎁 AJÁNDÉKVADÁSZAT · <b id="gift-chip-n">0</b></button>
+    <!-- "Legyen kéznél a Zóna": telepítés + értesítés ajánló (v0.1.19, js/pwa.js) -->
+    <div id="app-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
+        <div class="hud-panel w-full max-w-sm rounded-2xl p-4 clipped-panel shadow-2xl">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-sm font-bold text-emerald-400 tracking-wider">📲 LEGYEN KÉZNÉL A ZÓNA</h2>
+                <button onclick="closeAppPrompt()" class="text-emerald-500 text-lg font-bold">✕</button>
+            </div>
+            <p class="sg-app-lead">Tedd ki a játékot a kezdőképernyőre, és kérj értesítést: szólunk, ha kinyílt a mai adventi ablak, ajándékvadászat van, vagy ha a stáb válaszolt neked.</p>
+            <div class="sg-app-box"></div>
+            <button class="sg-tu-big sg-tu-ghost" style="margin-top:10px" onclick="appLater()">MOST NEM</button>
         </div>
     </div>
     <div id="quest-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3000]">
@@ -1345,6 +1462,8 @@
     <script src="js/daily.js"></script>
     <script src="js/advent.js"></script>
     <script src="js/wheel.js"></script>
+    <script src="js/winter.js"></script>
+    <script src="js/gifts.js"></script>
     <script src="js/shelter.js"></script>
     <script src="js/combat.js"></script>
     <script src="js/map.js"></script>
@@ -1353,6 +1472,7 @@
     <script src="js/tutorial-ui.js"></script>
     <script src="js/advent-ui.js"></script>
     <script src="js/wheel-ui.js"></script>
+    <script src="js/winter-ui.js"></script>
     <script src="js/notices.js"></script>
     <script src="js/staff.js"></script>
     <script src="js/shop.js"></script>

@@ -94,6 +94,10 @@ ol li, ul li { margin: 4px 0; }
 <script src="/js/roles.js"></script>
 <script src="/js/shop.js"></script>
 <script src="/js/shelter.js"></script>
+<script src="/js/advent.js"></script>
+<script src="/js/wheel.js"></script>
+<script src="/js/winter.js"></script>
+<script src="/js/gifts.js"></script>
 <script>
 // =====================================================================================
 // A wiki a játék saját adatfájljaiból áll össze (tárgyak, receptek, épületek, napi bónusz, rangok),
@@ -163,7 +167,7 @@ function itemFacts(it) {
   if (it.maxWeightBonus) f.push(['Teherbírás', '+' + it.maxWeightBonus + ' kg']);
   if (it.fatigueRate !== undefined && it.fatigueRate !== 1) f.push(['Fáradás', it.fatigueRate < 1 ? `${Math.round((1 - it.fatigueRate) * 100)}%-kal lassabban fáradsz` : `${Math.round((it.fatigueRate - 1) * 100)}%-kal gyorsabban fáradsz`]);
   if (it.durability) f.push([it.light ? 'Égési idő' : 'Tartósság', it.light ? it.durability + ' perc (csak éjjel fogy)' : it.durability + ' használat']);
-  if (it.light) f.push(['Fényforrás', it.light.fuel ? `igen – lemerüléskor magától újratölt ebből: <a href="#/targy/${it.light.fuel}">${esc((ITEMS[it.light.fuel] || {}).name || it.light.fuel)}</a>` : 'igen – ha leég, elfogy']);
+  if (it.light) f.push(['Fényforrás', it.light.fuel ? `igen – lemerüléskor kézzel töltöd újra ezzel: <a href="#/targy/${it.light.fuel}">${esc((ITEMS[it.light.fuel] || {}).name || it.light.fuel)}</a>${it.light.fuel === 'aa_batteries' ? ' (vagy powerbankkal)' : ''}` : 'igen – ha leég, elfogy']);
   if (it.effects) Object.entries(it.effects).forEach(([k, v]) => { if (v) f.push([EFFECT_HU[k] || k, (k === 'fatigue' ? (v < 0 ? `${v} (pihentet)` : `+${v} (fáraszt)`) : (v > 0 ? '+' + v : v))]); });
   if (it.lootCount) f.push(['Egy találatnál', `${it.lootCount[0]}–${it.lootCount[1]} db`]);
   return f;
@@ -244,6 +248,7 @@ const GUIDES = [
       <li>Éjjel megjelenhet az <a href="#/ellenfel/shade">Árnyék</a>, és a ghoulok meg a kutyafalkák gyakoribbak.</li></ul>
     <h2>Fényforrások</h2>
     <p>Ha van nálad működő fényforrás, éjjel is rendesen látsz. Csak éjjel fogy, percenként 1-et.</p>
+    <p><b>A lemerült lámpába neked kell betenni az új elemet</b> (vagy olajat): koppints a lámpára a hátizsákban, és nyomd meg az „… be” gombot, vagy egyszerűen húzd rá az elemet a lámpára. Az elemes lámpákat ${itemLink('power_bank')} is feltöltheti ugyanígy. Magától nem cserél, így te döntöd el, mire használod az elemeidet.</p>
     <div class="grid">${Object.entries(ITEMS).filter(([, it]) => it.light).map(([k, it]) => card(k, it, it.light.fuel ? 'újratölthető' : it.durability + ' percig ég')).join('')}</div>` },
   { slug: 'barkacs', title: 'Barkácsolás', group: 'Útmutatók', render: () => `
     <h1>Barkácsolás</h1><p class="lead">A Barkács gombbal a talált holmiból jobb dolgokat készíthetsz: kötszert, tiszta vizet, fegyvert, lőszert, fényt, ruhát.</p>
@@ -293,6 +298,32 @@ const GUIDES = [
     <h1>🎖️ Korai túlélő</h1><p>Az első ${R().earlyLimit} regisztráló végleges jelvényt kap, amit a többiek is látnak a térképen, és bővebb első csomaggal indul:</p>
     <p>${R().earlyKit.map(s => itemLink(s.key, s.count)).join('')} + felszerelt ${itemLink(R().earlyBackpack)}</p>
     <p class="muted">A bővebb csomag csak az első indulásnál jár, halál után a sima kezdőcsomag. A jelvény örökre megmarad.</p>` },
+  { slug: 'fagyos-csend', title: 'Fagyos Csend (téli esemény)', group: 'Útmutatók', render: () => {
+    const A = window.SurvivalAdvent, Wh = window.SurvivalWheel, Wi = window.SurvivalWinter, Sh = window.SurvivalShop;
+    const orn = Object.entries(ITEMS).filter(([k, it]) => it.ornament);
+    const rar = { common: 'gyakori', rare: 'ritka', epic: 'epikus', legendary: 'legendás' };
+    return `<h1>❄️ Fagyos Csend – téli eseménysorozat</h1>
+    <p>December 1-jétől a Zónában is beköszönt a tél. Az esemény részei: <b>adventi naptár</b>, <b>karácsonyfák minden településen</b> díszgyűjtéssel, <b>szerencsekerék</b>, <b>hétvégi ajándékláda-keresés</b> és a <b>Fagyos szett</b>.</p>
+    <div class="box tip"><b>Vigyázz magadra!</b> Decemberben korán sötétedik, és csúszósak az utak. A fák és az ajándékok mindig közterületen vannak – magánterületre soha ne menj be értük.</div>
+    <h2>🗓 Adventi naptár (dec. 1–24.)</h2>
+    <p>Minden nap egy ablak nyílik (a Küldetés gomb alatt). A kihagyott ablakot pótolhatod: <b>naponta egyet, ${A.CATCHUP_UNTIL.slice(5).replace('-', '. ')}.-ig</b>. A 6. (Mikulás) és a 24. (Szenteste) ablakban csak itt megszerezhető kinézet is van. Ha nincs nálad hely, a menedéked raktárába kerül; ha az sincs, az ablak megvár.</p>
+    <h2>🎄 Karácsonyfák (dec. 6. – jan. 6.)</h2>
+    <p>Minden településen (városban, faluban, városrészben) áll egy közös karácsonyfa a térképen. A díszeidet a fa <b>${Wi.RANGE_METERS} méteres körzetében</b> akaszthatod fel. Minden dísz pontot ad a településed fájának – a fa a pontoktól függően <b>üres → félig díszített → teljesen feldíszített</b> lesz –, és neked <b>+1 pörgetést</b> a szerencsekeréken. A fa ablakában látod, kik díszítették a legtöbbet, és az ország legszebb fáit is.</p>
+    <div class="tbl"><table><tr><th>Dísz</th><th>Ritkaság</th><th>Pont</th></tr>${orn.map(([k, it]) => `<tr><td>${itemLink(k)}</td><td>${rar[it.ornament.rarity]}</td><td class="n">${it.ornament.points}</td></tr>`).join('')}</table></div>
+    <p><b>Honnan szerzel díszt?</b> Az esemény alatt átkutatáskor kb. ${Math.round(Wi.LOOT_CHANCE * 100)}% eséllyel akad egy; barkácsolhatod (Barkács → Karácsony, fogóval); az adventi naptárban és a szerencsekeréken is jár.</p>
+    <h2>🎡 Szerencsekerék</h2>
+    <p>Naponta <b>1 ingyenes</b> pörgetés jár, és minden felakasztott dísz után +1. Naponta legfeljebb <b>${Wh.DAILY_MAX}</b>-szer pörgethetsz. <b>Pörgetést pénzért nem lehet venni.</b> Ha egy kinézet már megvan, helyette ${Wh.DUP_MONEY} $ jár. A kerék cikkei egyformák, a valódi esélyek ezek:</p>
+    <div class="tbl"><table><tr><th>Nyeremény</th><th>Esély</th></tr>${Wh.PRIZES.map(p => `<tr><td>${p.icon} ${esc(p.label)}</td><td class="n">${(p.chance * 100).toLocaleString('hu-HU', { maximumFractionDigits: 1 })}%</td></tr>`).join('')}</table></div>
+    <p class="muted">A Fagyos festéket a skinrendszer elkészülte után (december közepétől) festheted rá egy fegyveredre vagy kabátodra. Addig a Gyűjteményedben vár, és halálkor sem vész el.</p>
+    <h2>🎁 Hétvégi ajándékláda-keresés</h2>
+    <p><b>Szombaton és vasárnap ${window.SurvivalGifts.HOURS[0]}:00 és ${window.SurvivalGifts.HOURS[1]}:00 között</b> ajándékcsomagok jelennek meg a közeledben, mindig <b>utcán, sétányon, közterületen</b> – magánterületen soha. A térkép tetején a piros „Ajándékvadászat” sáv mutatja, hány csomag van a közeledben. Sétálj ${window.SurvivalGifts.GIFT_RANGE} méteren belülre, és koppints rá.</p>
+    <ul><li>A <b>kis csomagot</b> mindenki egyszer kinyithatja: étel, ital, kötszer, elem, pénz, XP vagy dísz lehet benne.</li>
+      <li>Kb. ${Math.round(window.SurvivalGifts.GOLD_CHANCE * 100)}% eséllyel <b>arany láda</b> jelenik meg: 3 jobb ajándék van benne, de <b>csak az első</b> túlélő viheti el, aki odaér.</li>
+      <li>Egy csomag ${window.SurvivalGifts.LIFETIME_MIN} percig marad, aztán eltűnik, és újak jönnek. Naponta legfeljebb ${window.SurvivalGifts.DAILY_MAX} csomagot nyithatsz.</li></ul>
+    <h2>❄ Havas térkép</h2>
+    <p>December 1-jétől január 6-ig finom hóesés hullik a térképre. Ha zavar, vagy kíméled az akkumulátort, a Menüben kikapcsolhatod.</p>
+    <h2>🧊 Fagyos szett</h2>
+    <p>Jégkék, deres festések ruhákra és fegyverekre – december közepén érkezik a skinrendszerrel.</p>`; } },
   { slug: 'eventek', title: 'Eventek', group: 'Útmutatók', render: () => `
     <h1>🎉 Eventek</h1><p>Időnként különleges időszakok vannak, például <b>dupla XP hétvége</b> vagy <b>dupla zsákmány</b> ünnepnapokon. Ilyenkor a térkép tetején egy sáv mutatja, mi fut és meddig.</p>
     ${W.event ? `<div class="box tip"><b>Most fut:</b> ${esc(W.event.name || 'event')} – ${W.event.xp > 1 ? W.event.xp + '× XP ' : ''}${W.event.loot > 1 ? W.event.loot + '× zsákmány' : ''}${W.event.until ? ' · ' + new Date(W.event.until).toLocaleString('hu-HU') + '-ig' : ''}</div>` : '<div class="box">Most nincs futó event. Kövesd a Discordot és a játékon belüli bejelentéseket!</div>'}` },

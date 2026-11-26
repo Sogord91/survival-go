@@ -183,6 +183,14 @@ body.embed header h1 { font-size: 15px; }
         <label>Előnézet</label><div class="paper" id="ann-prev"></div>
       </div>
       <div class="card">
+        <h3>📲 Értesítés a telefonokra (push) – akik bekapcsolták</h3>
+        <p class="muted" id="push-stat">…</p>
+        <label>Cím (max. 60 karakter)</label><input id="push-title" style="width:100%" maxlength="60" placeholder="🎄 Holnap indul a Fagyos Csend!">
+        <label>Szöveg (max. 200 karakter)</label><input id="push-body" style="width:100%" maxlength="200" placeholder="Adventi naptár, karácsonyfák, ajándékvadászat. Gyere be holnap!">
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="sendPush()">ÉRTESÍTÉS KÜLDÉSE</button></div>
+        <p class="muted">Ne küldj túl gyakran (legfeljebb hetente 1–2), különben kikapcsolják. Naponta 17:30-kor a szerver magától küld egy emlékeztetőt annak, aki aznap még nem lépett be.</p>
+      </div>
+      <div class="card">
         <h3>Gyors üzenet mindenkinek, aki MOST online (felugró sáv)</h3>
         <input id="bc-text" style="width:100%" maxlength="300" placeholder="Pl.: 5 perc múlva rövid frissítés, mentsétek a cuccot!">
         <div class="row" style="margin-top:8px"><button class="btn red" onclick="broadcast()">KÜLDÉS MOST</button>
@@ -234,6 +242,7 @@ body.embed header h1 { font-size: 15px; }
       <div class="card"><h3>Adventi naptár – ablakonként (hányan nyitották ki; ebből pótlás)</h3><div id="win-advent"></div></div>
       <div class="card"><h3>Szerencsekerék – nyeremények (tény / várt a kiírt esélyek szerint)</h3><div id="win-wheel"></div></div>
       <div class="card"><h3>Napok szerint (utolsó 14 nap)</h3><div id="win-days"></div></div>
+      <div class="card"><h3>Legszebb fák (pont · dísz · díszítők)</h3><div id="win-trees"></div></div>
       <div class="card"><h3>Jackpot nyertesek · napi bónusz sorozatok</h3><div id="win-jack"></div><div id="win-streak" style="margin-top:10px"></div></div>
     </div>
   </section>
@@ -510,7 +519,18 @@ async function giftSend() {
 
 // ---------- üzenetek ----------
 $('ann-title').oninput = $('ann-body').oninput = () => { $('ann-prev').textContent = ($('ann-title').value ? $('ann-title').value.toUpperCase() + '\n\n' : '') + $('ann-body').value; };
+async function loadPushStat() {
+  try { const d = await api('/api/admin/push', { quiet: true }); $('push-stat').textContent = `${d.users} játékos, ${d.subs} eszközön kapcsolta be.`; } catch (e) { }
+}
+async function sendPush() {
+  const title = $('push-title').value.trim(), body = $('push-body').value.trim();
+  if (!title || !body) return toast('Cím és szöveg is kell.', true);
+  if (!confirm(`Elküldöd mindenkinek a telefonjára?\n\n${title}\n${body}`)) return;
+  const d = await api('/api/admin/push', { method: 'POST', body: { title, body } });
+  toast(d.message); $('push-title').value = ''; $('push-body').value = ''; loadPushStat();
+}
 async function loadAnn() {
+  loadPushStat();
   const d = await api('/api/admin/announcements', { quiet: true });
   $('ann-list').innerHTML = d.announcements.map(a => `<div class="card" style="margin-top:8px;background:var(--panel2)"><div class="row"><b>${esc(a.title)}</b><span class="sp" style="flex:1"></span><span class="pill ${a.active ? 'on' : ''}">${a.active ? 'aktív' : 'kikapcsolva'}</span></div>
     <div class="muted mono" style="font-size:12px">${dt(a.createdAt)} · olvasta: ${a.readCount} / ${d.players} játékos</div><div class="paper" style="margin:6px 0;max-height:160px;overflow:auto">${esc(a.body)}</div>
@@ -528,8 +548,17 @@ function renderReports() {
   const f = $('rep-f').value;
   const list = REP.filter(r => !f || r.status === f);
   $('rep-list').innerHTML = list.map(r => `<div class="card" style="margin-bottom:8px"><div class="row"><b style="cursor:pointer" onclick="openPlayer('${esc(r.user)}')">${esc(r.user)}</b><span class="muted mono">${dt(r.t)}</span><span class="pill ${r.status === 'open' ? 'red' : 'on'}">${{ open: 'nyitott', done: 'megoldva', ignored: 'félretéve' }[r.status] || r.status}</span><span class="sp" style="flex:1"></span>
-    ${can('reports') ? `<button class="btn" onclick="setRep('${r._id}','done')">MEGOLDVA</button><button class="btn ghost" onclick="setRep('${r._id}','ignored')">FÉLRETESZ</button><button class="btn ghost" onclick="setRep('${r._id}','open')">ÚJRANYIT</button>` : ''}</div>
+    ${can('support') ? `<button class="btn gold" onclick="replyRep('${r._id}')">✉ VÁLASZ</button>` : ''}${can('reports') ? `<button class="btn" onclick="setRep('${r._id}','done')">MEGOLDVA</button><button class="btn ghost" onclick="setRep('${r._id}','ignored')">FÉLRETESZ</button><button class="btn ghost" onclick="setRep('${r._id}','open')">ÚJRANYIT</button>` : ''}</div>
     <div class="paper" style="margin-top:6px">${esc(r.text)}</div><div class="muted mono" style="font-size:11px;margin-top:4px">${esc(r.ua || '')}${r.note ? ' · megjegyzés: ' + esc(r.note) : ''}</div></div>`).join('') || '<span class="muted">Nincs ilyen hibajelentés.</span>';
+}
+// Válasz egy hibajelentésre: megnyitja a játékossal a beszélgetést, és beírja az idézetet (offline játékos értesítést kap)
+async function replyRep(id) {
+  const r = REP.find(x => x._id === id);
+  if (!r) return;
+  await openChat(r.user);
+  const quote = r.text.length > 80 ? r.text.slice(0, 80) + '…' : r.text;
+  $('chat-text').value = `Szia! A hibajelentésedről („${quote}”): `;
+  $('chat-text').focus();
 }
 async function setRep(id, status) { await api('/api/admin/reports/' + id, { method: 'POST', body: { status } }); toast('Mentve.'); loadReports(); loadOverview(); }
 
@@ -732,6 +761,8 @@ async function loadWinter() {
     k('Adventi ablak ma', fmt(d.advent.today), `összesen ${fmt(d.advent.total)} · ${fmt(d.advent.users)} játékos · pótlás ${fmt(d.advent.catchups)}`),
     k('Kerékpörgetés ma', fmt(d.wheel.today), `összesen ${fmt(d.wheel.total)} · ${fmt(d.wheel.users)} játékos`),
     k('Kiadott kristály (jackpot)', fmt(d.wheel.credits), `${d.wheel.jackpots.length} jackpot`),
+    k('Díszített fák', fmt(d.trees ? d.trees.total : 0), d.trees ? `${fmt(d.trees.hung)} dísz · ma ${fmt(d.trees.hangsToday)}` : 'dec. 6-tól'),
+    k('Ajándékcsomagok', fmt(d.gifts ? d.gifts.total : 0), d.gifts ? `ma ${fmt(d.gifts.today)} · arany ${fmt(d.gifts.gold)} · ${fmt(d.gifts.users)} játékos` : 'hétvégén'),
     k('Menedékek', fmt(d.shelter.count), `ma ${fmt(d.shelter.today)} új / költözés`)
   ].join('');
   const amax = Math.max(1, ...d.advent.windows.map(w => w.n));
@@ -748,6 +779,8 @@ async function loadWinter() {
     return `<div style="display:grid;grid-template-columns:90px 1fr;gap:6px;margin:3px 0;font:11px var(--mono)"><span>${x.day.slice(5)}</span><span>
       <i style="display:block;height:5px;width:${x.n / dmax * 100}%;background:var(--green)"></i><i style="display:block;height:5px;margin-top:1px;width:${a / dmax * 100}%;background:var(--gold)"></i><i style="display:block;height:5px;margin-top:1px;width:${w / dmax * 100}%;background:#5aa0e0"></i>
       </span></div>`; }).join('');
+  const tr = d.trees || { top: [] }, tmax = Math.max(1, ...tr.top.map(t => t.points));
+  $('win-trees').innerHTML = tr.top.length ? tr.top.map(t => hbar(esc(t.name), t.points, tmax, `${fmt(t.points)} · ${fmt(t.hung)} · ${t.people}👤`, 'var(--gold)')).join('') : '<p class="muted">Még egyik fát sem díszítették (dec. 6-tól).</p>';
   $('win-jack').innerHTML = d.wheel.jackpots.length ? '<table>' + d.wheel.jackpots.map(j => `<tr><td>${new Date(j.t).toLocaleString('hu-HU')}</td><td><b>${esc(j.user)}</b></td><td>💎 100</td></tr>`).join('') + '</table>' : '<p class="muted">Még nincs jackpot nyertes.</p>';
   const smax = Math.max(1, ...Object.values(d.daily.streaks));
   $('win-streak').innerHTML = '<h3 style="margin-top:6px">Napi bónusz: hányadik napot vették át (45 nap)</h3>' + [1, 2, 3, 4, 5, 6, 7].map(n => hbar(`${n}. nap`, d.daily.streaks[n] || 0, smax, fmt(d.daily.streaks[n] || 0))).join('');

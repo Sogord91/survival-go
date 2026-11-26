@@ -18,9 +18,13 @@ const SurvivalTutorial = require('./public/js/tutorial'); // Első lépések (v0
 const SurvivalDaily = require('./public/js/daily'); // napi bónusz (v0.1.11)
 const SurvivalAdvent = require('./public/js/advent'); // adventi naptár – Fagyos Csend (v0.1.18)
 const SurvivalShop = require('./public/js/shop'); // a kinézetek nevei az adventi üzenethez
+const SurvivalWinter = require('./public/js/winter'); // karácsonyfák, díszek (v0.1.19)
+const SurvivalWheel = require('./public/js/wheel');   // szerencsekerék (v0.1.19)
+const SurvivalGifts = require('./public/js/gifts');   // hétvégi ajándékvadászat (v0.1.19)
 const Admin = require('./admin'); // admin oldal, eseménynapló, bejelentések, eventek, tiltás (v0.1.13)
 const Premium = require('./premium'); // prémium credit, bolt, ládák (v0.1.16)
 let adminHooks = null;           // a fájl végén áll össze (Admin.setup)
+let pushHooks = null;            // telefonos értesítések (push.js, v0.1.19)
 let premiumHooks = null;         // a fájl végén áll össze (Premium.setup)
 const SurvivalShelter = require('./public/js/shelter'); // menedék: építmények, raktár (v0.1.12)
 
@@ -202,8 +206,19 @@ app.get('/wiki', (req, res) => res.sendFile(path.join(__dirname, 'public', 'wiki
 app.get('/aszf', (req, res) => res.sendFile(path.join(__dirname, 'public', 'aszf.html')));
 
 // A kliens ebből tudja, kell-e mutatni a meghívókód mezőt (magát a kódot soha nem küldjük ki)
-app.get('/api/registration', (req, res) => {
-    res.json({ codeRequired: !!config.REGISTRATION_CODE });
+// earlyLeft: hány "Korai túlélő" hely maradt (null, ha a korai túlélő időszak nincs bekapcsolva). 30 mp-ig gyorsítótárazva.
+let earlyLeftCache = { at: 0, value: null };
+async function earlyLeft() {
+    if (!config.EARLY_SURVIVOR_OPEN) return null;
+    if (Date.now() - earlyLeftCache.at < 30000) return earlyLeftCache.value;
+    const taken = await PlayerModel.countDocuments({ earlySurvivor: true });
+    earlyLeftCache = { at: Date.now(), value: Math.max(0, config.EARLY_SURVIVOR_LIMIT - taken) };
+    return earlyLeftCache.value;
+}
+app.get('/api/registration', async (req, res) => {
+    let left = null;
+    try { left = await earlyLeft(); } catch (e) { /* nem baj, akkor nem mutatjuk */ }
+    res.json({ codeRequired: !!config.REGISTRATION_CODE, earlyLeft: left, earlyLimit: config.EARLY_SURVIVOR_LIMIT });
 });
 
 // --- REGISZTRÁCIÓS VÉGPONT ---
@@ -241,6 +256,7 @@ app.post('/api/register', async (req, res) => {
 
         // Korai túlélő: amíg be van kapcsolva, az első EARLY_SURVIVOR_LIMIT regisztráló kapja meg
         const early = config.EARLY_SURVIVOR_OPEN && (await PlayerModel.countDocuments({ earlySurvivor: true })) < config.EARLY_SURVIVOR_LIMIT;
+        earlyLeftCache.at = 0; // a számláló frissüljön
         const newUser = new PlayerModel({
             username,
             usernameLower,
@@ -464,6 +480,8 @@ function normalizePlayerFields(p, equipment, inventory) {
         tutorial: normalizeTutorial(p.tutorial),
         daily: normalizeDaily(p.daily),
         advent: normalizeAdvent(p.advent),
+        winter: normalizeWinter(p.winter),
+        gifts: (p.gifts && typeof p.gifts === 'object' && typeof p.gifts.day === 'string') ? { day: p.gifts.day, opened: clamp(Math.floor(num(p.gifts.opened, 0)), 0, 1000) } : { day: null, opened: 0 },
         premiumSlots: Math.max(0, Math.min(6, Math.floor(num(p.premiumSlots, 0)))), // prémium: végleges +hely (v0.1.16)
         shelter: normalizeShelter(p.shelter),
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
@@ -625,6 +643,11 @@ function normalizeTutorial(raw) {
     const done = {};
     SurvivalTutorial.STEPS.forEach(s => { if (t.done && Number.isFinite(Number(t.done[s.key]))) done[s.key] = Number(t.done[s.key]); });
     return { introSeen: !!t.introSeen, done, finalClaimed: !!t.finalClaimed };
+}
+function normalizeWinter(raw) {
+    const w = raw && typeof raw === 'object' ? raw : {};
+    const dk = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    return { bank: clamp(Math.floor(num(w.bank, 0)), 0, 100000), day: dk(w.day), used: clamp(Math.floor(num(w.used, 0)), 0, 1000), freeDay: dk(w.freeDay), hung: clamp(Math.floor(num(w.hung, 0)), 0, 1e7) };
 }
 function normalizeAdvent(raw) {
     const a = raw && typeof raw === 'object' ? raw : {};
@@ -960,26 +983,30 @@ function collectWarnings(entry, p) {
 }
 
 // --- FÉNYFORRÁSOK FOGYÁSA (éjszaka, online) ---
-// A fény percben fogy. Lemerült lámpába automatikusan új elem / lámpaolaj kerül, ha van; a fáklya elég.
-// Visszaadja az üzeneteket (pl. "Elégett a fáklyád").
-// Powerbank: egy lemerült elemes lámpa teljes feltöltése 1 töltésért. true, ha sikerült.
-function rechargeWithPowerBank(p, notices) {
-    const bank = p.inventory.find(s => s.key === 'power_bank' && (s.dur === undefined || s.dur > 0));
-    if (!bank) return false;
-    const lamp = p.inventory.find(s => {
-        const item = itemDatabase[s.key];
-        return item && item.light && item.light.fuel === 'aa_batteries' && s.dur !== undefined && s.dur <= 0;
-    });
-    if (!lamp) return false;
-    const lampItem = itemDatabase[lamp.key];
-    lamp.dur = lampItem.durability;
-    bank.dur = (bank.dur === undefined ? itemDatabase.power_bank.durability : bank.dur) - 1;
-    notices.push(`🔋 A powerbank feltöltötte: ${lampItem.name}.`);
-    if (bank.dur <= 0) {
-        p.inventory = p.inventory.filter(s => s !== bank);
-        notices.push(`Elhasználódott: ${itemDatabase.power_bank.name}.`);
+// A fény percben fogy. A lemerült lámpába a játékos teszi be kézzel az elemet / olajat, vagy powerbankkal tölti fel
+// (refuel_light) – automatikus csere nincs (v0.1.19). A fáklya, gyertya elég.
+// Lámpa feltöltése: 'fuel' = elem / lámpaolaj (1 db), 'power_bank' = a powerbank 1 töltése (csak elemes lámpa)
+function refuelLight(p, index, how) {
+    const lamp = p.inventory[index];
+    const item = lamp && itemDatabase[lamp.key];
+    if (!item || !item.light || !item.light.fuel) return { error: 'Ezt nem lehet feltölteni.' };
+    const full = item.durability;
+    const cur = lamp.dur === undefined ? full : num(lamp.dur, 0);
+    if (cur >= full - 0.5) return { error: `${item.name}: tele van.` };
+    if (how === 'power_bank') {
+        if (item.light.fuel !== 'aa_batteries') return { error: 'A powerbank csak elemes lámpát tud tölteni.' };
+        const bank = p.inventory.find(s => s.key === 'power_bank' && (s.dur === undefined || s.dur > 0));
+        if (!bank) return { error: 'Nincs nálad feltöltött powerbank.' };
+        lamp.dur = full;
+        bank.dur = (bank.dur === undefined ? itemDatabase.power_bank.durability : bank.dur) - 1;
+        let msg = `🔋 A powerbank feltöltötte: ${item.name}.`;
+        if (bank.dur <= 0) { p.inventory = p.inventory.filter(s => s !== bank); msg += ` Elhasználódott: ${itemDatabase.power_bank.name}.`; }
+        return { message: msg };
     }
-    return true;
+    const fuel = itemDatabase[item.light.fuel];
+    if (!removeItem(p, item.light.fuel, 1)) return { error: `Nincs nálad ${fuel ? fuel.name : 'töltet'}.` };
+    lamp.dur = full;
+    return { message: `${fuel.name} került ebbe: ${item.name}.` };
 }
 
 function burnLight(p, minutes) {
@@ -988,19 +1015,12 @@ function burnLight(p, minutes) {
     let guard = 0;
     while (remaining > 1e-9 && guard++ < 20) {
         const light = SurvivalStats.findUsableLight(p.inventory, itemDatabase);
-        // Powerbank: ha nincs elem, egy lemerült elemes lámpát feltölt (mielőtt fáklyát/gyertyát égetnénk el)
-        if ((!light || !light.item.light.fuel) && rechargeWithPowerBank(p, notices)) continue;
         if (!light) {
             notices.push('Nincs működő fényforrásod, sötétben vagy.');
             break;
         }
         const { slot, item } = light;
         if (slot.dur === undefined) slot.dur = item.durability; // stackelt gyertya / jelzőfény: a legfelső darab még ép
-        if (light.needsRefill) {
-            removeItem(p, item.light.fuel, 1);
-            slot.dur = item.durability;
-            notices.push(`${itemDatabase[item.light.fuel].name} került ebbe: ${item.name}.`);
-        }
         const use = Math.min(remaining, slot.dur);
         slot.dur = Math.round((slot.dur - use) * 1000) / 1000;
         remaining -= use;
@@ -1012,7 +1032,8 @@ function burnLight(p, minutes) {
                 notices.push(`Elégett: ${item.name}.`);
             } else {
                 slot.dur = 0;
-                notices.push(`Lemerült: ${item.name}.`);
+                const hasFuel = p.inventory.some(x => x.key === item.light.fuel) || (item.light.fuel === 'aa_batteries' && p.inventory.some(x => x.key === 'power_bank'));
+                notices.push(`Lemerült: ${item.name}.${hasFuel ? ' Koppints rá a hátizsákban, és tegyél bele újat!' : ''}`);
             }
         }
     }
@@ -1074,6 +1095,94 @@ const buildingSchema = new mongoose.Schema({
     fetchedAt: { type: Number }
 });
 const BuildingModel = mongoose.model('SurvivalBuilding', buildingSchema);
+
+// ===== KARÁCSONYFÁK (v0.1.19): minden településen egy közös fa (OSM place pont) =====
+const treeSchema = new mongoose.Schema({
+    _id: { type: String },          // 'place_n123'
+    name: String, place: String, lat: Number, lng: Number, cell: { type: String, index: true },
+    points: { type: Number, default: 0 }, hung: { type: Number, default: 0 },
+    ornaments: { type: mongoose.Schema.Types.Mixed, default: {} },   // díszkulcs -> darab
+    contributors: { type: mongoose.Schema.Types.Mixed, default: {} }, // név -> pont
+    updatedAt: Number
+});
+const TreeModel = mongoose.models.SurvivalTree || mongoose.model('SurvivalTree', treeSchema);
+const TREE_CELL_DEG = 0.2;
+const treeCellOf = (lat, lng) => `${Math.floor(lat / TREE_CELL_DEG)}:${Math.floor(lng / TREE_CELL_DEG)}`;
+const treeCells = new Map(); // cella -> { at, ids:[] } (memória: mikor kérdeztük le az OSM-et)
+async function treeCellLoad(cell) {
+    const c = treeCells.get(cell);
+    if (c && (c.pending || Date.now() - c.at < 24 * 3600000)) return c.pending || null;
+    const [a, b] = cell.split(':').map(Number);
+    const S = a * TREE_CELL_DEG, W = b * TREE_CELL_DEG, N = S + TREE_CELL_DEG, E = W + TREE_CELL_DEG;
+    const run = (async () => {
+        try {
+            const bbox = [S, W, N, E].map(v => v.toFixed(5)).join(',');
+            const json = await overpassQuery(`[out:json][timeout:20][bbox:${bbox}];node[place~"^(${SurvivalWinter.PLACE_TYPES.join('|')})$"][name];out body;`, config.AREA_OVERPASS_TIMEOUT_MS);
+            const places = json.elements.filter(el => el.type === 'node' && el.tags && SurvivalWinter.PLACE_TYPES.includes(el.tags.place) && el.tags.name
+                && el.lat >= S && el.lat < N && el.lon >= W && el.lon < E);
+            if (places.length) await TreeModel.bulkWrite(places.map(el => ({ updateOne: {
+                filter: { _id: 'place_n' + el.id },
+                update: { $set: { name: String(el.tags.name).slice(0, 60), place: el.tags.place, lat: el.lat, lng: el.lon, cell }, $setOnInsert: { points: 0, hung: 0, ornaments: {}, contributors: {}, updatedAt: Date.now() } },
+                upsert: true } })));
+            treeCells.set(cell, { at: Date.now() });
+        } catch (e) { treeCells.set(cell, { at: Date.now() - 23 * 3600000 }); } // hiba: egy óra múlva újra próbáljuk
+    })();
+    treeCells.set(cell, { at: Date.now(), pending: run });
+    await run;
+}
+async function treesNear(lat, lng) {
+    const km = SurvivalWinter.NEAR_KM, dLat = km / 111, dLng = km / (111 * Math.cos(lat * Math.PI / 180));
+    const cells = new Set();
+    for (const y of [lat - dLat, lat, lat + dLat]) for (const x of [lng - dLng, lng, lng + dLng]) cells.add(treeCellOf(y, x));
+    await Promise.all([...cells].map(treeCellLoad));
+    const list = [];
+    for (const cell of cells) list.push(...await TreeModel.find({ cell }).lean());
+    return list.filter(t => SurvivalBuildings.distanceToBuilding({ lat, lng }, t) <= km * 1000);
+}
+function treePublic(t, username) {
+    // a stáb (tesztelés) nem kerül a nyilvános toplistába
+    const contrib = Object.entries(t.contributors || {}).filter(([name]) => !Admin.isStaffName(name)).sort((a, b) => b[1] - a[1]);
+    return { id: t._id, name: t.name, place: t.place, lat: t.lat, lng: t.lng, points: t.points || 0, hung: t.hung || 0,
+        stage: SurvivalWinter.stageOf(t.points || 0, t.place), goal: SurvivalWinter.nextGoal(t.points || 0, t.place),
+        top: contrib.slice(0, 5).map(([name, pts]) => ({ name, pts })), mine: username ? ((t.contributors || {})[username] || 0) : 0, ornaments: t.ornaments || {} };
+}
+
+// ===== HÉTVÉGI AJÁNDÉKVADÁSZAT (v0.1.19): csomagok az utcákon (OSM utcapontok), a memóriában =====
+const STREET_CELL_DEG = 0.02;
+const streetCells = new Map(); // cella -> { at, pts: [[lat, lng]...], pending }
+async function streetPoints(lat, lng) {
+    const cell = `${Math.floor(lat / STREET_CELL_DEG)}:${Math.floor(lng / STREET_CELL_DEG)}`;
+    const c = streetCells.get(cell);
+    if (c && c.pts && Date.now() - c.at < 7 * 24 * 3600000) return c.pts;
+    if (c && c.pending) return c.pending;
+    const [a, b] = cell.split(':').map(Number);
+    const S = a * STREET_CELL_DEG, W = b * STREET_CELL_DEG, N = S + STREET_CELL_DEG, E = W + STREET_CELL_DEG;
+    const pending = (async () => {
+        try {
+            const bbox = [S, W, N, E].map(v => v.toFixed(5)).join(',');
+            const json = await overpassQuery(`[out:json][timeout:20][bbox:${bbox}];way[highway~"^(${SurvivalGifts.STREET_TYPES.join('|')})$"][access!=private];out geom;`, config.AREA_OVERPASS_TIMEOUT_MS);
+            const pts = [];
+            json.elements.forEach(el => {
+                if (el.type !== 'way' || !el.tags || !SurvivalGifts.STREET_TYPES.includes(el.tags.highway) || el.tags.access === 'private' || !Array.isArray(el.geometry)) return;
+                el.geometry.forEach(g => { if (g && isFinite(g.lat) && isFinite(g.lon) && pts.length < 8000) pts.push([g.lat, g.lon]); });
+            });
+            streetCells.set(cell, { at: Date.now(), pts });
+            return pts;
+        } catch (e) { streetCells.delete(cell); return []; }
+    })();
+    streetCells.set(cell, { at: Date.now(), pending });
+    return pending;
+}
+// A játékos körüli ~500 m-es négyzetet lefedő cellák utcapontjai (a cellahatár közelében a szomszéd cella is kell)
+async function streetPointsAround(lat, lng) {
+    const dLat = 0.005, dLng = 0.0075, cells = new Map();
+    for (const y of [lat - dLat, lat + dLat]) for (const x of [lng - dLng, lng + dLng]) cells.set(`${Math.floor(y / STREET_CELL_DEG)}:${Math.floor(x / STREET_CELL_DEG)}`, [y, x]);
+    const lists = await Promise.all([...cells.values()].map(([y, x]) => streetPoints(y, x)));
+    return [].concat(...lists);
+}
+const gifts = new Map(); // id -> { id, lat, lng, kind, expiresAt, openedBy: [], taken }
+let giftSeq = 0;
+function giftsCleanup(now) { for (const [id, g] of gifts) if (g.expiresAt <= now || g.taken) gifts.delete(id); }
 
 const buildingCache = new Map();    // memória-gyorsítótár: id -> { id, type, name, lat, lng, bounds }
 const missingBuildings = new Map(); // nem létező OSM azonosítók -> lejárat (ne kérdezzük le újra és újra)
@@ -1417,8 +1526,11 @@ function useLockpick(p) {
 function rollBuildingLoot(building, emptyFactor) {
     // event: több zsákmány szorzó (kevesebb üres épület, több darab)
     const mult = Admin.lootMultiplier();
-    return SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor: emptyFactor / mult })
+    const found = SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor: emptyFactor / mult })
         .map(({ key, count }) => ({ key, count: mult > 1 ? Math.max(1, Math.round(count * mult)) : count }));
+    // Fagyos Csend: az esemény alatt dísz is akadhat
+    if (SurvivalWinter.active(Date.now()) && Math.random() < SurvivalWinter.LOOT_CHANCE) found.push({ key: SurvivalWinter.rollLootOrnament(Math.random), count: 1 });
+    return found;
 }
 
 // --- SOCKET HITELESÍTÉS ---
@@ -1455,6 +1567,7 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => {
     const username = socket.data.username;
     console.log(`🔌 Új kliens csatlakozott: ${socket.id} (${username})`);
+    if (pushHooks) pushHooks.attach(socket); // telefonos értesítés fel/leiratkozás (v0.1.19)
 
     // Egy fiókhoz egyszerre egy munkamenet tartozhat: az újabb kapcsolat kidobja a régit.
     // A játékos a csatlakozás pillanatától online, így minden válasz és státuszfrissítés eljut hozzá;
@@ -1671,7 +1784,14 @@ io.on('connection', (socket) => {
         if (!Number.isFinite(count) || count < 1) return;
 
         withPlayer(username, freeOnly((p) => {
-            if (!removeItem(p, data.itemKey, count)) return { save: false, error: 'Nincs ennyi ebből a tárgyból!' };
+            // Ha a kliens megmondja, melyik helyről (pl. a kopott zseblámpát, nem az újat), pontosan azt dobjuk el
+            if (Number.isInteger(data.index)) {
+                const slot = p.inventory[data.index];
+                if (!slot || slot.key !== data.itemKey) return { save: false, error: 'A leltár közben megváltozott, próbáld újra!' };
+                if (slot.count < count) return { save: false, error: 'Nincs ennyi ebből a tárgyból!' };
+                slot.count -= count;
+                p.inventory = p.inventory.filter(s => s.count > 0);
+            } else if (!removeItem(p, data.itemKey, count)) return { save: false, error: 'Nincs ennyi ebből a tárgyból!' };
             const item = itemDatabase[data.itemKey];
             return { message: `Eldobtál ${count} db-ot: ${item ? item.name : data.itemKey}` };
         })).then(reply('drop_result')).catch(logError("Hiba eldobás során:"));
@@ -1783,7 +1903,9 @@ io.on('connection', (socket) => {
             addFatigue(p, moved * config.FATIGUE_PER_METER);
             bumpStat(p, 'walkedMeters', moved);
             if (!p.lifeStartedAt) p.lifeStartedAt = Date.now();
-            const levels = xp > 0 ? grantXp(p, xp) : 0;
+            let levels = xp > 0 ? grantXp(p, xp) : 0;
+            // Első lépések: "sétálj 100 métert" (v0.1.19)
+            if (p.stats && p.stats.walkedMeters >= SurvivalTutorial.WALK_METERS) levels += markTutorial(p, 'walk');
             // A cipő a gyaloglástól is kopik (5 km-enként 1)
             const notices = [];
             if (p.equipment.shoes && !SurvivalStats.isBroken(p, 'shoes')) {
@@ -1810,6 +1932,7 @@ io.on('connection', (socket) => {
             const recipe = craftingRecipes.find(r => r.key === data.recipeKey);
             if (!recipe) return { save: false, error: 'Ismeretlen recept!' };
             if (recipe.station) return { save: false, error: 'Ezt csak műhelyben vagy olvasztóban lehet elkészíteni (hamarosan jönnek).' };
+            if (recipe.event === 'winter' && !SurvivalWinter.active(Date.now(), winterTest())) return { save: false, error: 'A díszeket csak a Fagyos Csend alatt (dec. 6. – jan. 6.) lehet barkácsolni.' };
             const itemName = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
 
             for (const [matKey, reqQty] of Object.entries(recipe.req)) {
@@ -2354,6 +2477,17 @@ io.on('connection', (socket) => {
         })).then(reply('daily_result')).catch(logError('Hiba a napi bónusznál:'));
     });
 
+    // Lámpa feltöltése kézzel: elem / olaj, vagy powerbank (v0.1.19)
+    socket.on('refuel_light', (data) => {
+        const index = Math.floor(num(data && data.index, -1));
+        const how = data && data.with === 'power_bank' ? 'power_bank' : 'fuel';
+        withPlayer(username, freeOnly((p) => {
+            const r = refuelLight(p, index, how);
+            if (r.error) return { save: false, error: r.error };
+            return { message: r.message };
+        })).then(reply('refuel_result')).catch(logError('Hiba a lámpa feltöltésénél:'));
+    });
+
     // ===== ADVENTI NAPTÁR – FAGYOS CSEND (v0.1.18) =====
     // Dec. 1–24. naponta egy ablak; kihagyott ablak naponta egy pótolható dec. 26-ig. A szerver dönti el, mi nyitható.
     // ADVENT_TEST=on: a stáb előre kipróbálhatja (minden ablak nyitható); ezek a nyitások az igazi kezdéskor törlődnek.
@@ -2400,6 +2534,166 @@ io.on('connection', (socket) => {
             }
             reply('advent_result')(r);
         }).catch(logError('Hiba az adventi naptárnál:'));
+    });
+
+    // ===== FAGYOS CSEND: KARÁCSONYFÁK, DÍSZEK, SZERENCSEKERÉK (v0.1.19) =====
+    // ADVENT_TEST=on mellett a stáb előre kipróbálhatja (a fák és a kerék is működik).
+    function winterTest() { return adventTest(); }
+    const winterOn = () => SurvivalWinter.active(Date.now(), winterTest());
+    const freshPos = () => { const e = activePlayers[username]; return e && e.lat !== null && e.positionAt && Date.now() - e.positionAt <= config.POSITION_MAX_AGE_SECONDS * 1000 ? e : null; };
+    socket.emit('winter_config', { active: winterOn(), test: winterTest() });
+
+    socket.on('trees_near', async () => {
+        if (!winterOn()) return socket.emit('trees_data', { active: false, trees: [] });
+        const e = freshPos();
+        if (!e) return;
+        try { socket.emit('trees_data', { active: true, trees: (await treesNear(e.lat, e.lng)).map(t => treePublic(t, username)) }); }
+        catch (err) { logError('Hiba a fák betöltésekor:')(err); }
+    });
+    socket.on('tree_info', async (data) => {
+        const id = data && typeof data.treeId === 'string' ? data.treeId : '';
+        const t = id && await TreeModel.findById(id).lean();
+        if (t) socket.emit('tree_info', treePublic(t, username));
+    });
+    socket.on('tree_top', async () => {
+        const all = await TreeModel.find({ points: { $gt: 0 } }).lean();
+        socket.emit('tree_top', all.sort((a, b) => b.points - a.points).slice(0, 10).map(t => ({ id: t._id, name: t.name, points: t.points, hung: t.hung || 0, stage: SurvivalWinter.stageOf(t.points, t.place) })));
+    });
+
+    // Díszek felakasztása: a fa 60 m-es körzetében; pontot ad a fának, pörgetést neked
+    socket.on('tree_hang', async (data) => {
+        const id = data && typeof data.treeId === 'string' ? data.treeId : '';
+        const key = data && typeof data.key === 'string' ? data.key : '';
+        const count = Math.max(1, Math.min(50, Math.floor(num(data && data.count, 1))));
+        const fail = (message) => io.to(socket.id).emit('tree_result', { success: false, message });
+        if (!winterOn()) return fail('A karácsonyfák december 6-tól állnak.');
+        const def = itemDatabase[key];
+        if (!def || !def.ornament) return fail('Ez nem karácsonyfadísz.');
+        const tree = id && await TreeModel.findById(id).lean();
+        if (!tree) return fail('Nincs ilyen fa.');
+        const e = freshPos();
+        if (!e) return fail('Várd meg a friss GPS pozíciót!');
+        const dist = SurvivalBuildings.distanceToBuilding(e, tree);
+        if (dist > SurvivalWinter.RANGE_METERS + 15) return fail(`Ehhez a fánál kell lenned! (${Math.round(dist)} m)`);
+        const pts = def.ornament.points * count;
+        const r = await withPlayer(username, freeOnly((p) => {
+            if (!removeItem(p, key, count)) return { save: false, error: `Nincs nálad ennyi: ${def.name}.` };
+            p.winter = { ...(p.winter || {}), bank: num(p.winter && p.winter.bank, 0) + count, hung: num(p.winter && p.winter.hung, 0) + count };
+            return { message: `Felakasztottad: ${count > 1 ? count + ' ' : ''}${def.name} (+${pts} pont a(z) ${tree.name} fájának, +${count} pörgetés).`, payload: { treeId: id, key, count, points: pts } };
+        }));
+        if (!r || r.result.error) return reply('tree_result')(r);
+        await TreeModel.updateOne({ _id: id }, { $inc: { points: pts, hung: count, [`ornaments.${key}`]: count, [`contributors.${username}`]: pts }, $set: { updatedAt: Date.now() } });
+        Admin.logEvent('tree_hang', username, { tree: id, name: tree.name, key, count, points: pts });
+        reply('tree_result')(r);
+        const t2 = await TreeModel.findById(id).lean();
+        if (t2) {
+            const st = treePublic(t2, username);
+            socket.emit('tree_info', st);
+            if (st.stage > SurvivalWinter.stageOf(tree.points || 0, tree.place)) io.emit('server_notice', { text: `🎄 ${tree.name} fája ${st.stage === 2 ? 'teljesen fel van díszítve!' : 'már félig fel van díszítve!'} Köszönjük, túlélők!` });
+        }
+    });
+
+    // ----- Hétvégi ajándékvadászat -----
+    const giftsOn = () => SurvivalGifts.active(Date.now(), winterTest());
+    socket.on('gifts_near', async () => {
+        if (!giftsOn()) return socket.emit('gifts_data', { active: false, gifts: [] });
+        const e = freshPos();
+        if (!e) return;
+        const now = Date.now();
+        giftsCleanup(now);
+        const here = { lat: e.lat, lng: e.lng };
+        const near = () => [...gifts.values()].filter(g => distanceMeters(here, g) <= SurvivalGifts.NEAR_METERS);
+        let mine = near().filter(g => !g.openedBy.includes(username));
+        if (mine.length < SurvivalGifts.PER_PLAYER && gifts.size < 5000) {
+            try {
+                const pts = (await streetPointsAround(e.lat, e.lng)).filter(pt => { const d = distanceMeters(here, { lat: pt[0], lng: pt[1] }); return d >= SurvivalGifts.MIN_SPAWN_METERS && d <= SurvivalGifts.NEAR_METERS - 30; });
+                for (let i = mine.length; i < SurvivalGifts.PER_PLAYER && pts.length; i++) {
+                    const pt = pts[Math.floor(Math.random() * pts.length)];
+                    const g = { id: 'g' + (++giftSeq) + '_' + Math.floor(Math.random() * 1e6).toString(36), lat: pt[0], lng: pt[1], kind: Math.random() < SurvivalGifts.GOLD_CHANCE ? 'gold' : 'small', expiresAt: now + SurvivalGifts.LIFETIME_MIN * 60000, openedBy: [], taken: false };
+                    gifts.set(g.id, g);
+                }
+            } catch (err) { logError('Hiba az ajándékok elhelyezésekor:')(err); }
+        }
+        socket.emit('gifts_data', { active: true, gifts: near().map(g => ({ id: g.id, lat: g.lat, lng: g.lng, kind: g.kind, opened: g.openedBy.includes(username), expiresAt: g.expiresAt })) });
+    });
+    socket.on('gift_open', async (data) => {
+        const id = data && typeof data.id === 'string' ? data.id : '';
+        const fail = (message, extra) => io.to(socket.id).emit('gift_result', { success: false, message, ...(extra || {}) });
+        if (!giftsOn()) return fail('Az ajándékvadászat most nem zajlik (hétvégén 9 és 19 óra között).');
+        const g = gifts.get(id);
+        if (!g || g.expiresAt <= Date.now()) return fail('Ez a csomag már eltűnt.', { id, gone: true });
+        if (g.taken) return fail('Valaki megelőzött: az arany ládát már elvitték!', { id, gone: true });
+        if (g.openedBy.includes(username)) return fail('Ezt a csomagot már kinyitottad.', { id });
+        const e = freshPos();
+        if (!e) return fail('Várd meg a friss GPS pozíciót!');
+        const dist = distanceMeters(e, g);
+        if (dist > SurvivalGifts.GIFT_RANGE + 15) return fail(`Sétálj oda a csomaghoz! (${Math.round(dist)} m – menj ${SurvivalGifts.GIFT_RANGE} m-en belülre)`);
+        const contents = SurvivalGifts.rollContents(g.kind, Math.random);
+        const r = await withPlayer(username, aliveOnly((p) => {
+            const today = SurvivalGifts.dayKey(Date.now());
+            const st = p.gifts && p.gifts.day === today ? p.gifts : { day: today, opened: 0 };
+            if (st.opened >= SurvivalGifts.DAILY_MAX) return { save: false, error: `Ma már ${SurvivalGifts.DAILY_MAX} csomagot kinyitottál. Holnap folytathatod!` };
+            if (g.taken || g.openedBy.includes(username)) return { save: false, error: 'Valaki megelőzött!' };
+            const got = [];
+            contents.forEach(c => {
+                if (c.money) { p.money += c.money; got.push(`${c.money} $`); }
+                if (c.xp) { grantXp(p, c.xp); got.push(`${c.xp} XP`); }
+                (c.items || []).forEach(it => {
+                    if (!addItem(p, it.key, it.count).ok) {
+                        if (p.shelter && p.shelter.stash.length < SurvivalShelter.stashSlots(p.shelter)) pushItem({ inventory: p.shelter.stash }, it.key, it.count);
+                        else { p.money += 25; got.push('(+25 $, mert nem fért el)'); return; }
+                    }
+                    got.push(`${it.count > 1 ? it.count + ' ' : ''}${itemDatabase[it.key].name}`);
+                });
+            });
+            p.gifts = { day: today, opened: st.opened + 1 };
+            g.openedBy.push(username);
+            if (g.kind === 'gold') g.taken = true;
+            return { message: `${g.kind === 'gold' ? '🏆 ARANY LÁDA' : '🎁 Ajándékcsomag'}: ${got.join(', ')}!`, payload: { id, kind: g.kind, contents } };
+        }));
+        if (r && !r.result.error) Admin.logEvent('gift_open', username, { kind: g.kind });
+        reply('gift_result')(r);
+    });
+
+    // Szerencsekerék: a nyereményt itt sorsoljuk; a kliens ide pörög
+    socket.on('wheel_spin', async () => {
+        const fail = (message) => io.to(socket.id).emit('wheel_result', { success: false, message });
+        if (!winterOn()) return fail('A szerencsekerék december 6-tól pörög.');
+        const prizeKey = SurvivalWheel.roll(Math.random);
+        const prize = SurvivalWheel.BY_KEY[prizeKey];
+        const r = await withPlayer(username, aliveOnly((p) => {
+            const st = SurvivalWinter.spinStatus(p.winter, Date.now(), SurvivalWheel.DAILY_MAX);
+            if (st.available <= 0) return { save: false, error: st.capReached ? `Ma már ${SurvivalWheel.DAILY_MAX}-szer pörgettél. Holnap folytathatod!` : 'Nincs pörgetésed. Akassz díszt a fára, vagy gyere vissza holnap az ingyenes pörgetésért!' };
+            const w = { ...(p.winter || {}) };
+            if (w.day !== st.today) { w.day = st.today; w.used = 0; }
+            w.used = (w.used || 0) + 1;
+            if (st.free) w.freeDay = st.today; else w.bank = Math.max(0, (w.bank || 0) - 1);
+            p.winter = w;
+            let note = '';
+            if (prize.kind === 'item') {
+                if (!addItem(p, prize.item, prize.count).ok) {
+                    if (p.shelter && p.shelter.stash.length < SurvivalShelter.stashSlots(p.shelter)) { pushItem({ inventory: p.shelter.stash }, prize.item, prize.count); note = ' (nem fért el nálad, a menedéked raktárába került)'; }
+                    else { p.money += 50; note = ' (nem fért el, helyette +50 $)'; }
+                }
+            } else if (prize.kind === 'xp') { grantXp(p, prize.amount); }
+            else if (prize.kind === 'money') { p.money += prize.amount; }
+            return { message: `Szerencsekerék: ${prize.label}${note}!`, payload: { prize: prizeKey, note } };
+        }));
+        if (!r || r.result.error) return reply('wheel_result')(r);
+        let dup = false;
+        try {
+            if (prize.kind === 'cosmetic' && premiumHooks) {
+                const g = await premiumHooks.grantCosmetic(username, prize.cosmetic);
+                if (g && g.dup) { dup = true; const d2 = await withPlayer(username, (p) => { p.money += SurvivalWheel.DUP_MONEY; return {}; }); if (d2 && d2.p) r.p = d2.p; }
+            } else if (prize.kind === 'paint' && premiumHooks) await premiumHooks.grantKey(username, prize.paint, 'Szerencsekerék');
+            else if (prize.kind === 'credits' && premiumHooks) {
+                await premiumHooks.grantCredits(username, prize.amount, 'Ajándék (szerencsekerék jackpot)');
+                io.emit('server_notice', { text: `💎 ${username} megütötte a JACKPOTOT a szerencsekeréken: ${prize.amount} kristály!`, big: true });
+            }
+        } catch (err) { logError('Hiba a kerék nyereményénél:')(err); }
+        Admin.logEvent('wheel_spin', username, { prize: prizeKey, credits: prize.kind === 'credits' ? prize.amount : 0, dup });
+        if (dup) r.result.payload.dup = SurvivalWheel.DUP_MONEY;
+        reply('wheel_result')(r);
     });
 
     // ===================== MENEDÉK (v0.1.12) =====================
@@ -2538,9 +2832,10 @@ io.on('connection', (socket) => {
             const keepTutorial = p.tutorial; // az Első lépések a fiókhoz tartozik
             const keepDaily = p.daily;       // a napi bónusz sorozata is
             const keepAdvent = p.advent;     // az adventi naptár ablakai is
+            const keepWinter = p.winter;     // a téli pörgetések is
             const keepSlots = p.premiumSlots; // a megvett prémium hátizsák-hely is
             const keepShelter = p.shelter;   // a menedék és a raktára is megmarad (v0.1.12)
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, advent: keepAdvent, premiumSlots: keepSlots, shelter: keepShelter, lifeStartedAt: Date.now() });
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, advent: keepAdvent, winter: keepWinter, premiumSlots: keepSlots, shelter: keepShelter, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };
@@ -2567,6 +2862,11 @@ io.on('connection', (socket) => {
 adminHooks = Admin.setup({
     app, io, PlayerModel, config, authToken, activePlayers, itemDatabase, bcrypt, enemies: Combat.ENEMIES,
     withPlayer, pushItem, grantXp, playerStats, sendPlayerState,
+    push: {
+        notifyUser: (user, msg) => (pushHooks ? pushHooks.notifyUser(user, msg) : Promise.resolve(0)),
+        notifyAll: (msg) => (pushHooks ? pushHooks.notifyAll(msg) : Promise.resolve({ tried: 0, ok: 0, total: 0 })),
+        stats: () => (pushHooks ? pushHooks.stats() : Promise.resolve({ subs: 0, users: 0 }))
+    },
     usernameValid: (n) => USERNAME_RE.test(n),
     onRename: async (from, to) => {
         // minden lépés külön: ha az egyik nem sikerül, a többi még lefut
@@ -2579,6 +2879,17 @@ adminHooks = Admin.setup({
     },
     noTimers: !!process.env.SG_TEST
 });
+// Telefonos értesítések (v0.1.19). A napi emlékeztető szövege a mai naptól függ.
+pushHooks = require('./push').setup({
+    app, io, PlayerModel, activePlayers, SettingModel: Admin.models.SettingModel,
+    reminderText: (now) => {
+        const day = SurvivalAdvent.dayKey(now), md = day.slice(5);
+        if (md >= '12-01' && md <= '12-24') return { title: '🎁 Kinyílt a mai adventi ablak', body: `A Fagyos Csend naptárában ma a ${Number(md.slice(3))}. ablak vár rád. Ne hagyd ki!`, url: '/' };
+        if (SurvivalGifts.active(now, false)) return { title: '🎁 Ajándékvadászat a környékeden', body: 'Ma 19 óráig ajándékcsomagok rejtőznek az utcákon. Indulj el, és keresd meg őket!', url: '/' };
+        return { title: '☀️ Vár a napi bónuszod', body: 'Lépj be a Survival GO-ba, és vedd át a mai csomagodat. Ha kihagysz egy napot, a sor elölről kezdődik!', url: '/' };
+    }
+});
+
 premiumHooks = Premium.setup({
     app, io, PlayerModel, activePlayers, adminHooks, withPlayer, sendPlayerState,
     usernameValid: (n) => USERNAME_RE.test(n), lootMultiplier: Admin.lootMultiplier
