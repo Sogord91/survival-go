@@ -17,8 +17,8 @@ const TEAM_REWARD = { money: 150, xp: 250 };
 const SOCIAL_REWARD = { money: 100, xp: 100 };        // közösségi oldal meglátogatása (egyszer platformonként)
 const SHARE_REWARD = { money: 30, xp: 50 };            // megosztás (naponta egyszer)
 const PLATFORMS = [
-    { key: 'discord', name: 'Discord', env: 'SOCIAL_DISCORD', icon: '💬' },
-    { key: 'facebook', name: 'Facebook', env: 'SOCIAL_FACEBOOK', icon: '📘' },
+    { key: 'discord', name: 'Discord', env: 'SOCIAL_DISCORD', icon: '💬', url: 'https://discord.gg/PN4w2VACfh' },
+    { key: 'facebook', name: 'Facebook', env: 'SOCIAL_FACEBOOK', icon: '📘', url: 'https://www.facebook.com/profile.php?id=61596336031862' },
     { key: 'instagram', name: 'Instagram', env: 'SOCIAL_INSTAGRAM', icon: '📸' },
     { key: 'tiktok', name: 'TikTok', env: 'SOCIAL_TIKTOK', icon: '🎵' },
     { key: 'x', name: 'X (Twitter)', env: 'SOCIAL_X', icon: '✖️' },
@@ -40,7 +40,8 @@ function makeModels() {
 }
 
 function platformLinks() {
-    return PLATFORMS.map(p => ({ key: p.key, name: p.name, icon: p.icon, url: String(process.env[p.env] || '').trim() })).filter(p => /^https:\/\//.test(p.url));
+    // az env felülírja a beépített linket (új oldal: elég az env fájlba írni, pl. SOCIAL_TIKTOK=https://...)
+    return PLATFORMS.map(p => ({ key: p.key, name: p.name, icon: p.icon, url: String(process.env[p.env] || p.url || '').trim() })).filter(p => /^https:\/\//.test(p.url));
 }
 
 function setup(ctx) {
