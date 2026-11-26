@@ -12,10 +12,16 @@ const pImg = (name) => `/images/premium/${name}.webp`;
 socket.on('premium_state', (data) => {
     premium = Object.assign({ owned: [], crates: {}, keys: {}, orders: [] }, data || {});
     const btn = document.getElementById('btn-open-premium');
-    if (btn) btn.classList.toggle('hidden', !premium.enabled);
+    // zárt boltnál csak akkor látszik (Gyűjtemény néven), ha már van nyert kinézete vagy kristálya
+    const hasStuff = (premium.owned || []).length > 0 || (premium.credits || 0) > 0;
+    if (btn) {
+        btn.classList.toggle('hidden', !premium.enabled && !(premium.collection && hasStuff));
+        const lbl = btn.querySelector('.sg-prem-lbl');
+        if (lbl) lbl.textContent = premium.enabled ? 'Prémium bolt' : 'Gyűjteményem';
+    }
     const chip = document.getElementById('premium-menu-credits');
     if (chip) chip.textContent = premium.credits || 0;
-    player.cosmetic = premium.enabled ? { frame: premium.frame || '', title: premium.title || '' } : null;
+    player.cosmetic = (premium.enabled || premium.collection) ? { frame: premium.frame || '', title: premium.title || '' } : null;
     if (typeof renderStaffHud === 'function') renderStaffHud();
     if (typeof refreshMyMarker === 'function') refreshMyMarker();
     if (!document.getElementById('premium-modal').classList.contains('hidden')) renderPremium();
@@ -75,7 +81,19 @@ function renderPremium() {
     document.querySelectorAll('#premium-tabs button').forEach(b => b.classList.toggle('on', b.dataset.pt === premiumTab));
     const body = document.getElementById('premium-body');
     const msg = '<div id="premium-msg" class="sg-ann-from" style="min-height:14px;margin-bottom:4px"></div>';
-    if (!premium.enabled) { body.innerHTML = '<p class="sg-ann-from">A prémium bolt hamarosan érkezik.</p>'; return; }
+    // zárt bolt: csak a Gyűjtemény (a nyert keretek, címek felvehetők; a kristályok megmaradnak)
+    document.getElementById('premium-tabs').classList.toggle('hidden', !premium.enabled);
+    if (!premium.enabled) {
+        if (!premium.collection) { body.innerHTML = '<p class="sg-ann-from">A prémium bolt hamarosan érkezik.</p>'; return; }
+        const mine = S.COSMETICS.filter(c => (premium.owned || []).includes(c.key));
+        const eqBtn = (c) => { const on = premium[c.kind] === c.key; return `<button class="${on ? '' : 'eq'}" onclick="socket.emit('premium_equip',{kind:'${c.kind}',key:'${on ? '' : c.key}'})">${on ? 'LEVÉTEL' : 'FELVÉTEL'}</button>`; };
+        const paints = Object.keys(premium.keys || {}).filter(k => S.BY_KEY[k] && S.BY_KEY[k].paint && premium.keys[k] > 0);
+        body.innerHTML = msg + `<div class="sg-prem-h">KERETEK ÉS CÍMEK (${mine.length})</div>` +
+            (mine.length ? `<div class="sg-prem-grid">${mine.map(c => shopCard(c, eqBtn(c))).join('')}</div>` : '<p class="sg-ann-from">Még nincs nyert kinézeted. Az adventi naptárban és a szerencsekeréken szerezhetsz!</p>') +
+            (paints.length ? `<div class="sg-prem-h">FESTÉKEK</div><p class="sg-ann-from">${paints.map(k => `${pEsc(S.BY_KEY[k].name)} ×${premium.keys[k]}`).join(' · ')} – a skinrendszerrel festheted majd fel.</p>` : '') +
+            `<p class="sg-ann-from" style="margin-top:10px">${premium.credits ? `💎 ${premium.credits} kristályod van. ` : ''}A bolt később nyílik; a nyert kinézeteid és kristályaid addig is megmaradnak, halálkor sem vesznek el.</p>`;
+        return;
+    }
 
     if (premiumTab === 'shop') {
         const buyable = S.COSMETICS.filter(c => c.price);

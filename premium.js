@@ -82,8 +82,9 @@ function setup(ctx) {
 
     async function sendState(socket, username, role, pr) {
         const enabled = enabledFor(role !== undefined ? role : socket.data.role);
-        if (!enabled) return socket.emit('premium_state', { enabled: false });
         if (!pr) { const u = await PlayerModel.findOne({ username }, { premium: 1 }).lean(); pr = normalizePremium(u && u.premium); }
+        // Zárt bolt mellett is: a nyert kinézetek (advent, kerék) és kristályok a Gyűjteményben (v0.1.19.1)
+        if (!enabled) return socket.emit('premium_state', { enabled: false, collection: true, owned: pr.owned, frame: pr.frame, title: pr.title, credits: pr.credits, keys: pr.keys, crates: {}, orders: [] });
         const orders = await OrderModel.find({ user: username }).sort({ createdAt: -1 }).limit(10).lean();
         const s = sellerInfo();
         socket.emit('premium_state', {
@@ -208,7 +209,7 @@ function setup(ctx) {
         const done = (p) => p.then(r => socket.emit('premium_result', r.error ? { success: false, message: r.error } : { success: true, message: r.message || 'Kész.', reveal: r.reveal || null }))
             .catch(err => { console.error('Prémium hiba:', err); socket.emit('premium_result', { success: false, message: 'Hiba történt, próbáld újra.' }); });
 
-        socket.on('premium_state', guard(() => sendState(socket, username).catch(() => { })));
+        socket.on('premium_state', () => sendState(socket, username).catch(() => { })); // zárt boltnál a Gyűjteményt küldi
 
         socket.on('premium_buy', guard((data) => done(withPremium(username, async (pr, u, txs) => {
             const def = Shop.BY_KEY[String(data.key)];
@@ -237,13 +238,13 @@ function setup(ctx) {
             return { message: `Megvetted: ${def.name} (−${def.price} credit).` };
         }))));
 
-        socket.on('premium_equip', guard((data) => done(withPremium(username, (pr) => {
+        socket.on('premium_equip', (data) => { data = data || {}; done(withPremium(username, (pr) => { // zárt boltnál is felvehető
             const kind = data.kind === 'title' ? 'title' : 'frame';
             const key = String(data.key || '');
             if (key && (!pr.owned.includes(key) || Shop.BY_KEY[key].kind !== kind)) return { error: 'Ez nincs meg neked.' };
             pr[kind] = key;
             return { message: key ? `Felvéve: ${Shop.BY_KEY[key].name}` : (kind === 'frame' ? 'Keret levéve.' : 'Cím levéve.') };
-        }))));
+        })); });
 
         socket.on('premium_open_crate', guard((data) => done(withPremium(username, (pr, u, txs) => {
             const ck = Shop.CRATE_ALIASES[data.key] || String(data.key);
