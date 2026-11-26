@@ -225,11 +225,11 @@ const itemDatabase = {
 
     // --- ALAPANYAGOK ---
     'empty_can': { name: 'Üres Konzervdoboz', type: 'material', icon: '🥫', img: 'SURV-0876_empty_tin_can', desc: 'Olvasztható fémforrás', weight: 0.1, stackable: true, loot: { household: 6, kitchen: 6, scrap: 4, warehouse: 3 } },
-    'old_battery': { name: 'Lemerült Akksi', type: 'material', icon: '🪫', img: 'SURV-0998_lead_acid_battery', desc: 'Ólom és fém nyerhető belőle', weight: 0.4, stackable: true, loot: { auto: 5, scrap: 5, household: 1 } },
+    'old_battery': { name: 'Lemerült Akksi', type: 'material', icon: '🪫', img: 'SURV-0998_lead_acid_battery', desc: 'Ólom és fém nyerhető belőle', weight: 1.5, stackable: true, loot: { auto: 5, scrap: 5, household: 1 } },
     'broken_toaster': { name: 'Törött Kenyérpirító', type: 'material', icon: '🔌', img: 'drawn_broken_toaster', desc: 'Sok fémhulladék és drót', weight: 1.8, stackable: false, loot: { household: 3, scrap: 2 } },
     'scrap_wire_bundle': { name: 'Gabalyodott Rézkábel', type: 'material', icon: '〰️', img: 'SURV-0853_insulated_electrical_wire_spool', desc: 'Olvasztásra váró vastag réz', weight: 0.9, stackable: true, loot: { industrial: 4, utility: 5, scrap: 3 } },
     'radiator_chunk': { name: 'Ócska Alumínium Radiátor', type: 'material', icon: '🪟', img: 'SURV-0756_aluminum_plate', desc: 'Hatalmas fém / alu bázis', weight: 4.5, stackable: false, loot: { scrap: 3, industrial: 2, household: 1 } },
-    'lead_pipes_scrap': { name: 'Ólomcső Darabok', type: 'material', icon: '🧪', img: 'SURV-0744_lead_rod', desc: 'Nehéz, olvasztható ólom', weight: 3, stackable: true, loot: { industrial: 3, utility: 3, scrap: 2 } },
+    'lead_pipes_scrap': { name: 'Ólomcső Darabok', type: 'material', icon: '🧪', img: 'SURV-0744_lead_rod', desc: 'Nehéz, olvasztható ólom', weight: 0.5, stackable: true, loot: { industrial: 3, utility: 3, scrap: 2 } },
     'raw_iron_ore': { name: 'Nyers Vasérc', type: 'material', icon: '🪨', img: 'SURV-0701_iron_ore', desc: 'Olvasztható vasérc darab', weight: 2, stackable: true, loot: { industrial: 2, warehouse: 1 } },
     'raw_copper_ore': { name: 'Nyers Rézérc', type: 'material', icon: '🧱', img: 'SURV-0702_copper_ore', desc: 'Vöröses rézérc rög', weight: 1.8, stackable: true, loot: { industrial: 1.5, utility: 0.5 } },
     'pure_metal_bar': { name: 'Tiszta Fémtömb', type: 'material', icon: '🧈', img: 'SURV-0725_steel_ingot', desc: 'Olvasztott, prémium fémrúd', weight: 3.5, stackable: true, loot: { industrial: 1, warehouse: 0.5 } },

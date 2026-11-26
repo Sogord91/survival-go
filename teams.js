@@ -28,6 +28,9 @@ function setup(ctx) {
     const { PlayerModel, activePlayers, Admin, weekKey, seasonMonth, reward, notify, emitTo } = ctx;
     const TeamModel = ctx.TeamModel || makeModel();
     const isStaff = (n) => (Admin.isStaffName ? Admin.isStaffName(n) : false);
+    // a stáb csapata (a vezetője stábtag): csak a stáb látja, csak stábtag lehet benne, a ranglistán sincs
+    const staffTeam = (t) => !!t && isStaff(t.owner);
+    const STAFF_ONLY = 'A stáb csapatába csak stábtag kerülhet.';
 
     // ---------- csapatonként sorban futó módosítás (nincs két egyszerre futó írás ugyanarra a csapatra) ----------
     const locks = new Map();
@@ -208,7 +211,8 @@ function setup(ctx) {
     }
     // csapat-ranglista: a tagok havi szezonpontjainak összege (a stáb pontja nem számít)
     async function board(rows) {
-        const teams = (await TeamModel.find({}).lean()).map(normalize);
+        // a stáb csapata (a vezetője stábtag) nem kerül a ranglistára
+        const teams = (await TeamModel.find({}).lean()).map(normalize).filter(t => !isStaff(t.owner));
         const byUser = {}; rows.forEach(r => { byUser[r.name] = r; });
         return teams.map(t => ({ id: t._id, name: `[${t.tag}] ${t.name}`, tag: t.tag, emblem: t.emblem, members: t.members.length, xp: t.members.reduce((a, n) => a + ((byUser[n] && byUser[n].xp) || 0), 0), memberNames: t.members }))
             .filter(t => t.xp > 0).sort((a, b) => b.xp - a.xp);
@@ -219,6 +223,7 @@ function setup(ctx) {
         const lv = await levelOf(username);
         const r = await withTeam(id, (t) => {
             if (!t) return nosave({ error: 'Ez a csapat már nem létezik.' });
+            if (staffTeam(t) && !isStaff(username)) return nosave({ error: STAFF_ONLY });
             if (t.members.includes(username)) return nosave({ error: 'Már tagja vagy.' });
             if (t.members.length >= T.MAX) return nosave({ error: `A csapat megtelt (${T.MAX} fő).` });
             t.members.push(username); t.joined[username] = Date.now();
@@ -293,6 +298,7 @@ function setup(ctx) {
             const u = await PlayerModel.findOne({ username }, { teamApps: 1 }).lean();
             const apps = (u && u.teamApps) || [];
             const teams = (await TeamModel.find({}).lean()).map(normalize)
+                .filter(t => !staffTeam(t) || isStaff(username))
                 .filter(t => !q || fold(t.name).includes(q) || fold(t.tag).includes(q))
                 .sort((a, b) => (a.mode === 'invite') - (b.mode === 'invite') || (a.members.length >= T.MAX) - (b.members.length >= T.MAX) || b.members.length - a.members.length)
                 .slice(0, 20);
@@ -304,6 +310,7 @@ function setup(ctx) {
             const id = String(d.id || ''), msg = String(d.msg || '').trim().slice(0, 120);
             const doc = await TeamModel.findById(id).lean(); if (!doc) return bad(R, 'Ez a csapat már nem létezik.');
             const t0 = normalize(doc), lv = await levelOf(username);
+            if (staffTeam(t0) && !isStaff(username)) return bad(R, 'Ez a csapat már nem létezik.');
             if (t0.mode === 'invite' && !t0.invites.includes(username)) return bad(R, 'Ez zárt csapat: csak meghívóval lehet belépni.');
             if (lv < t0.minLevel) return bad(R, `Ehhez a csapathoz legalább ${t0.minLevel}. szint kell.`);
             if (t0.members.length >= T.MAX) return bad(R, 'A csapat megtelt.');
@@ -396,6 +403,7 @@ function setup(ctx) {
             if (u.team) return bad(R, `${other} már egy másik csapat tagja.`);
             const r = await withTeam(id, (t) => {
                 if (!t) return nosave({ error: 'Nem vagy csapatban.' });
+                if (staffTeam(t) && !isStaff(u.username)) return nosave({ error: STAFF_ONLY });
                 if (t.mode === 'invite' && !isLeader(t, username)) return nosave({ error: 'Zárt csapatban csak a vezető és a helyettes hívhat meg.' });
                 if (t.members.length >= T.MAX) return nosave({ error: `A csapat megtelt (${T.MAX} fő).` });
                 t.invites = [...new Set(t.invites.concat([other]))].slice(-30);
