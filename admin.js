@@ -63,6 +63,10 @@ function normalizeSkillPrices(v) {
     return { moneyPerLevel: clampN(v.moneyPerLevel, 100, 0, 100000), crystalBase: clampN(v.crystalBase, 50, 0, 100000), crystalPerLevel: clampN(v.crystalPerLevel, 2, 0, 10000) };
 }
 function skillPrices() { return skillPricesValue; }
+// Szolgáltatások ára (v0.1.23): csapat alapítás / címer / átnevezés / küldetéscsere, menedék költöztetése
+const Prices = require('./public/js/prices');
+let gamePricesValue = Prices.normalize(null);
+function gamePrices() { return gamePricesValue; }
 function xpMultiplier() { return activeSettings().xpMultiplier; }
 function lootMultiplier() { return activeSettings().lootMultiplier; }
 function publicEvent() {
@@ -160,6 +164,7 @@ function setup(c) {
 
     SettingModel.findById('game').lean().then(d => { if (d) settings = normalizeSettings(d.value); }).catch(() => { });
     SettingModel.findById('skills').lean().then(d => { if (d) skillPricesValue = normalizeSkillPrices(d.value); }).catch(() => { });
+    SettingModel.findById('prices').lean().then(d => { if (d) gamePricesValue = Prices.normalize(d.value); }).catch(() => { });
 
     // 10 percenként rögzítjük, hányan vannak online (napszak-grafikonhoz, csúcsokhoz)
     const snap = () => {
@@ -588,6 +593,10 @@ function setup(c) {
         if (!d) return res.status(404).json({ success: false, message: 'Nincs ilyen csapat.' });
         res.json({ success: true, team: d });
     });
+    route('get', '/api/admin/team/:id/chat', async (req, res) => {
+        const T = teamsApi(); if (!T) return res.status(400).json({ success: false, message: 'Nem elérhető.' });
+        res.json({ success: true, ...(await T.adminChat(String(req.params.id), Number(req.query.before) || 0)) });
+    });
     route('post', '/api/admin/team/:id', async (req, res) => {
         const T = teamsApi(); if (!T) return res.status(400).json({ success: false, message: 'Nem elérhető.' });
         const r = await T.adminAction(req.admin, String(req.params.id), req.body || {});
@@ -595,6 +604,34 @@ function setup(c) {
         audit(req, 'team_' + String((req.body || {}).action || ''), String(req.params.id), { name: (req.body || {}).name || null });
         res.json({ success: true, message: r.message });
     }, 'kick');
+
+    // ---- QR-matricák (v0.1.24): gyártás, statisztika, ki-/bekapcsolás ----
+    const qrApi = () => (ctx.qr ? ctx.qr() : null);
+    route('get', '/api/admin/qr', async (req, res) => {
+        const Q = qrApi(); if (!Q) return res.json({ success: true, batches: [], total: {} });
+        res.json({ success: true, ...(await Q.adminList()) });
+    });
+    route('post', '/api/admin/qr', async (req, res) => {
+        const Q = qrApi(); if (!Q) return res.status(400).json({ success: false, message: 'Nem elérhető.' });
+        const b = req.body || {};
+        const r = b.action === 'create' ? await Q.adminCreate(req.admin, b) : b.action === 'hint' ? await Q.adminHint(b) : await Q.adminUpdate(req.admin, b);
+        if (!r || r.error) return res.status(400).json({ success: false, message: (r && r.error) || 'Hiba.' });
+        audit(req, 'qr_' + (b.action || 'update'), b.code || b.batch || r.batch || null, { count: b.count, label: b.label, money: b.money, xp: b.xp, active: b.active });
+        res.json({ success: true, ...r });
+    }, 'events');
+
+    // ---- PvP (v0.1.26): ki-/bekapcsolás, biztonságos zónák, harcnapló ----
+    const pvpApi = () => (ctx.pvp ? ctx.pvp() : null);
+    route('get', '/api/admin/pvp', async (req, res) => {
+        const P = pvpApi(); if (!P) return res.json({ success: true, settings: { enabled: false, safeZones: [], squares: { on: true, r: 100 } }, logs: [], fights: [], bandits: [] });
+        res.json({ success: true, ...(await P.adminState()) });
+    });
+    route('post', '/api/admin/pvp', async (req, res) => {
+        const P = pvpApi(); if (!P) return res.status(400).json({ success: false, message: 'Nem elérhető.' });
+        const r = await P.adminSave(req.body || {});
+        audit(req, 'pvp_settings', null, { enabled: (req.body || {}).enabled !== false, zones: ((req.body || {}).safeZones || []).length });
+        res.json({ success: true, ...r });
+    }, 'events');
 
     // ---- telefonos értesítés (push) mindenkinek ----
     route('get', '/api/admin/push', async (req, res) => {
@@ -696,6 +733,13 @@ function setup(c) {
         audit(req, 'season_close', null, r ? { month: r.month, winners: r.winners.length } : null);
         res.json({ success: true, message: r ? `${r.month} lezárva: ${r.winners.length} jutalmazott.` : 'Nincs lezárandó szezon (vagy már lezárult).', result: r });
     }, 'server');
+    route('get', '/api/admin/game-prices', async (req, res) => res.json({ success: true, prices: gamePricesValue, defaults: Prices.ITEMS }));
+    route('post', '/api/admin/game-prices', async (req, res) => {
+        gamePricesValue = Prices.normalize(req.body || {});
+        await SettingModel.updateOne({ _id: 'prices' }, { value: gamePricesValue }, { upsert: true });
+        audit(req, 'game_prices', null, Object.fromEntries(Object.entries(gamePricesValue).map(([k, v]) => [k, `${v.money}$/${v.crystals}💎${v.free ? '/1x ingyen' : ''}`])));
+        res.json({ success: true, message: 'Az árak mentve.', prices: gamePricesValue });
+    }, 'events');
     route('post', '/api/admin/skill-prices', async (req, res) => {
         skillPricesValue = normalizeSkillPrices(req.body || {});
         await SettingModel.updateOne({ _id: 'skills' }, { value: skillPricesValue }, { upsert: true });
@@ -797,7 +841,7 @@ function setup(c) {
 
 module.exports = {
     isStaffName, refreshStaff,
-    setup, logEvent, onPlayerSaved, skillPrices, snapshotBefore, banInfo, isAdminName, roleOf, xpMultiplier, lootMultiplier, publicEvent,
+    setup, logEvent, onPlayerSaved, skillPrices, gamePrices, snapshotBefore, banInfo, isAdminName, roleOf, xpMultiplier, lootMultiplier, publicEvent,
     models: { EventModel, MetricModel, SettingModel, AnnouncementModel, ReportModel, SupportModel },
     _setSettings: (s) => { settings = normalizeSettings(s); }
 };

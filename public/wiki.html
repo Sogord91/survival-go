@@ -343,6 +343,11 @@ const GUIDES = [
     const E = window.SurvivalSeason;
     return `<h1>🏆 Ranglista és havi szezon</h1>
     <p class="lead">A ranglista minden hónapban tiszta lappal indul. A <b>szezonpont</b> a hónapban szerzett XP-d: séta, kutatás, harc, küldetések. A halál nem nullázza.</p>
+    <h2>📅 E hónap és ♾️ összesített</h2>
+    <ul><li>A ranglista tetején válthatsz: <b>E hónap</b> (a havi szezon, ez dönti el a jutalmat) vagy <b>Összesített</b> (a játék kezdete óta).</li>
+      <li>Az összesített fülek: összes XP, megtett út, felfedezés, kutatás, győzelmek, szint.</li>
+      <li>A listán <b>minden túlélő</b> szerepel, az is, aki még nem szerzett pontot (a lista végén). A 📍 gombbal a saját helyedre ugorhatsz.</li>
+      <li><b>Halálkor</b> a tárgyaid és a képességeid elvesznek, és a szint is elölről kezdődik, de a <b>pontjaid megmaradnak</b>: a havi szezonpont, a megtett út, a felfedezés és minden összesített számláló.</li></ul>
     <h2>Mivel gyűlik a szezonpont?</h2>
     <p>Minden XP, amit a hónapban szerzel, egyben szezonpont is:</p>
     <ul><li>🚶 <b>séta</b> (a legtöbb pont ebből jön) és a 🧭 <b>felfedező bónusz</b> új területekért,</li>
@@ -368,7 +373,7 @@ const GUIDES = [
       <li><b>Napi ajándék:</b> minden barátodnak naponta 1 ajándékot küldhetsz (kötszer, konzerv, víz, elem vagy rongy), összesen naponta 5-öt. Ha nincs nála hely, a menedéke raktárába kerül.</li>
       <li>A barátaid jelölője a térképen <b>arany keretet</b> kap, ha a közeledben járnak. A pontos helyüket továbbra sem látod, csak ha a közeledben vannak.</li></ul>
     <h2>🏕️ Csapat</h2>
-    <ul><li>Csapatot a 3. szinttől alapíthatsz: név, 2–4 betűs rövidítés (pl. <b>[ÉRD]</b>) és <b>címer</b> (32 jelkép, 12 szín, 4 forma). Legfeljebb 15 tag lehet benne.</li>
+    <ul><li>Csapatot a 3. szinttől alapíthatsz <b>500 $</b> alapítási díjért: név, 2–4 betűs rövidítés (pl. <b>[ÉRD]</b>) és <b>címer</b> (32 jelkép, 12 szín, 4 forma). Legfeljebb 15 tag lehet benne.</li>
       <li><b>Csapatkereső:</b> Barátok → Csapat → 🔎 Csapatkereső. Név vagy rövidítés alapján keresel (ékezet nélkül is megtalálja). Egyszerre legfeljebb 3 csapathoz jelentkezhetsz.</li>
       <li>A csatlakozás módját a vezető állítja: <b>nyitott</b> (bárki azonnal beléphet), <b>jelentkezéssel</b> (a vezető vagy a helyettes fogad el) vagy <b>zárt</b> (csak meghívóval). Minimum szintet is megadhat.</li>
       <li>Meghívni bármelyik tag tud a játékos nevével vagy a barátlistáról (zárt csapatban csak a vezető és a helyettes). A térképen egy játékosra koppintva is meghívhatod.</li></ul>
@@ -384,6 +389,13 @@ const GUIDES = [
       <li>Jutalom: a közös sétáért <b>+250 XP és 150 $</b>, a többiért <b>+150 XP és 100 $</b>, mind a háromért még <b>+300 XP és 200 $</b>.</li>
       <li><b>Jutalmat az kap, aki a héten bármivel hozzájárult</b> (sétált, kutatott, harcolt…). Aki egész héten nem segített, nem kap.</li>
       <li>Hétfőn új küldetések indulnak.</li></ul>
+    <h3>🏦 Csapatkassza</h3>
+    <ul><li>A csapat közös pénze. <b>Bárki befizethet</b> a Csapat fülön, de <b>kivenni nem lehet</b>: a vezető és a helyettes a csapatra költi.</li>
+      <li>Minden kész csapatküldetésért <b>+50 $</b>, mind a háromért még <b>+100 $</b> kerül a kasszába.</li>
+      <li>Mire költhető (az <b>első alkalom mindig ingyenes</b>):
+        <ul><li>🛡️ új címer: 300 $</li><li>✏️ átnevezés: 1000 $ · 🏷️ új rövidítés: 500 $ (csak a vezető)</li>
+          <li>🔄 másik csapatküldetés: 300 $ – a közös séta és a már kész küldetés nem cserélhető, hetente legfeljebb 3×, az új küldetés nulláról indul.</li></ul></li>
+      <li>A leírás, a hirdetőtábla és a csatlakozás módja ingyen módosítható.</li></ul>
     <h3>Csapat ablak</h3>
     <ul><li><b>🏕️ Csapat:</b> hirdetőtábla (a vezetők kitűzött üzenete), heti küldetések, statisztika és csapatnapló.</li>
       <li><b>👥 Tagok:</b> ki mennyit segített a héten, mikor játszott utoljára. A ⚠️ jelölt tag több mint egy hete nem játszott.</li>
@@ -391,6 +403,27 @@ const GUIDES = [
       <li><b>⚙️ Kezelés</b> (vezetőknek): jelentkezők, hirdetőtábla, meghívás, címer, csatlakozás módja, átnevezés.</li>
       <li>A csapattársaid jelölője a térképen <b>kék keretet</b> kap.</li>
       <li>A csapatok a <a href="#/oldal/ranglista">ranglistán</a> is versenyeznek: a tagok havi szezonpontjai összeadódnak (a stáb pontja nem számít).</li></ul>
+    <h2>👤 Játékosprofil</h2>
+    <ul><li>Minden túlélőnek van profilja: rang és szint, cím és keret (ha van), csapat, barátok száma, mióta játszik, bemutatkozás és statisztikák (megtett út, felfedezés, kutatás, győzelmek, leghosszabb élet…).</li>
+      <li>Megnyitható a térképen egy játékosra koppintva (👤 PROFIL), a ranglistán, a barátlistán és a csapattagok között a névre koppintva.</li>
+      <li><b>Saját profil:</b> Menü → 👤 Profilom → ✏️ Szerkesztés. Választhatsz szalagszínt (12), mintát (6), jelvényt az avatarodra, írhatsz bemutatkozást (160 karakter), kiválaszthatod a 3 kiemelt statisztikát, vagy el is rejtheted őket.</li>
+      <li>A profilról üzenetet küldhetsz, barátnak jelölhetsz, csapatba hívhatsz, letilthatsz vagy jelentheted a sértő bemutatkozást. 🤝 Kereskedés és ⚔️ támadás: hamarosan!</li></ul>
+    <h2>⭕ Körmenü</h2>
+    <ul><li>A térképen egy közeli játékost <b>hosszan nyomva</b> (gépen jobb egérgombbal) körmenü nyílik: ✉️ üzenet, 👤 profil, ➕ barátnak jelölés, 🏕️ csapatba hívás. A 🤝 kereskedés és a ⚔️ támadás gomb is itt lesz, amint elkészülnek.</li></ul>
+    <h2>💬 Privát üzenetek</h2>
+    <ul><li>Barátok gomb → 💬 <b>Üzenetek</b>: beszélgetés két játékos között. Írni a barátlistáról (✉), a térképen egy játékosra koppintva (✉ ÜZENET) vagy név alapján lehet.</li>
+      <li>A barátaidnak bármikor írhatsz. <b>Ismeretlennek a 3. szinttől</b> lehet írni, és naponta legfeljebb 15 új beszélgetést kezdhetsz.</li>
+      <li>Ha nem vagy a játékban, értesítést kapsz az új üzenetről.</li>
+      <li><b>Védelem:</b> a „Csak a barátaim írhatnak” beállítással ismeretlen nem kezdhet veled beszélgetést. A beszélgetésben a ⋯ gombbal <b>letilthatod</b> vagy <b>jelentheted</b> a játékost. A jelentéssel a stáb a beszélgetés utolsó üzeneteit látja, más beszélgetésbe nem lát bele.</li>
+      <li>Soha ne add meg a lakcímed, telefonszámod vagy jelszavad, és a stáb sem kér tőled ilyet!</li></ul>
+    <h2>📮 QR-matricák</h2>
+    <ul><li>Az országban Survival GO matricák bukkannak fel, rajtuk QR-kóddal. Olvasd be a telefonod kamerájával!</li>
+      <li><b>Ha már játszol:</b> minden matrica egyszer ad jutalmat (pénz és XP). Naponta korlátozott számú (alapból 5) matricát válthatsz be.</li>
+      <li><b>🎉 QR-eventek:</b> időnként QR-event indul: ilyenkor a matricák többszörös jutalmat adnak, és van, amikor a már beváltott matricák is újra beválthatók. Figyeld a híreket!</li>
+      <li><b>Ha új vagy:</b> a kód a regisztrációhoz visz, és a jutalmat már induláskor megkapod.</li>
+      <li>Ha a kamera nem olvassa be, írd be kézzel a QR-kód alatti 7 betűs kódot: Menü → „QR-matrica kódjának beírása”.</li>
+      <li><b>Kereső segítség:</b> ha egy kiragasztott matrica közelébe érsz (kb. 200 m), a térképen megjelenik egy sárga, szaggatott kör „QR” jellel, és értesítést is kapsz. A matrica a körön belül van, de nem pontosan a közepén: meg kell keresni! Beváltás után a kör eltűnik.</li>
+      <li>Nézz körül kávézókban, edzőtermekben, közösségi helyeken is!</li></ul>
     <h2>🤝 Hozd a barátod</h2>
     <ul><li>A Meghívás fülön megtalálod a saját linkedet. Küldd el Messengeren, WhatsAppon, Viberen vagy bárhol.</li>
       <li>Aki a linkeddel regisztrál, automatikusan a barátod lesz. Ha eléri az <b>5. szintet</b>: te <b>+300 XP-t és 300 $-t</b>, ő <b>+150 XP-t és 200 $-t</b> kap.</li>
@@ -398,6 +431,7 @@ const GUIDES = [
     <h2>📸 Megosztás és közösségi oldalak</h2>
     <ul><li>A Megosztás fülön a játék elkészíti a <b>túlélőkártyádat</b> (szint, megtett km, felfedezett területek, legyőzött ellenségek, szezonpont), rajta a meghívó linkeddel. A telefonod megosztás menüjével Facebookra, Instagramra, TikTokra, Discordra vagy bárhová elküldheted.</li>
       <li>Decemberben a karácsonyfák ablakában a fát is megoszthatod: hívd oda a többieket díszíteni!</li>
+      <li><b>📣 Megosztási kampány:</b> időnként a Megosztás fül tetején egy plakát vár (pl. egy nagy frissítésé). Ha a játékból megosztod, egyszer külön jutalom jár – a kampány végéig.</li>
       <li>Naponta az első megosztásért <b>+50 XP és 30 $</b> jár, és van napi küldetés is: „Ossz meg egy képet a játékból”.</li>
       <li>Ha benézel a közösségi oldalainkra (Discord, Facebook, Instagram, TikTok…), platformonként egyszer <b>+100 XP és 100 $</b> jár.</li>
       <li>A legszebb fák listája bejelentkezés nélkül is megnézhető és megosztható: <a href="/fak">survivalgo.hu/fak</a>.</li></ul>` },
@@ -464,7 +498,32 @@ const GUIDES = [
       <li>Egy kifosztott épület mindenkinek zárva van egy ideig – aki előbb ér oda, azé a zsákmány.</li>
       <li>A más által ott hagyott holmit te is elviheted.</li>
       <li>A <b>stáb tagjait</b> színes keret és felirat jelzi. Lásd: <a href="#/oldal/stab">Stáb</a>.</li></ul>
-    <div class="box">🏕️ Csapatot alapíthatsz vagy kereshetsz: lásd <a href="#/oldal/kozosseg">Barátok, csapatok, meghívás</a>. ⚔️ PvP (játékos a játékos ellen) egy későbbi frissítésben jön.</div>` },
+    <div class="box">🏕️ Csapatot alapíthatsz vagy kereshetsz: lásd <a href="#/oldal/kozosseg">Barátok, csapatok, meghívás</a>. ⚔️ Más túlélőt meg is támadhatsz: lásd <a href="#/oldal/tamadas">Támadás (PvP)</a>.</div>` },
+  { slug: 'tamadas', title: 'Támadás (PvP)', group: 'Útmutatók', render: () => `
+    <h1>🔫 Támadás (PvP)</h1>
+    <p class="lead">A Zónában nem csak a szörnyek veszélyesek. Az 5. szinttől bárki megtámadhat bárkit – és téged is megtámadhatnak.</p>
+    <h2>Ki kit támadhat?</h2>
+    <ul><li>Az <b>5. szinttől (Kadét)</b> bárki bárkit, szintkorlát nélkül. Az 5. szint alatti újoncot nem lehet megtámadni, és ő sem támadhat.</li>
+      <li>Csak a <b>közeledben</b> (kb. 100 m-en belül) lévő, épp játszó túlélőt.</li>
+      <li>Nem támadható: a <b>csapattársad</b>, a <b>stáb</b>, aki épp egy szörnnyel harcol, és senki a <b>biztonságos zónákban</b>: minden település <b>főterén</b> (ahol decemberben a karácsonyfa áll, kb. 100 m-es körben), és később a kereskedők, olvasztók, műhelyek környékén.</li></ul>
+    <h2>Hogyan?</h2>
+    <ul><li>A térképen <b>hosszan nyomd</b> a játékost → körmenü → ⚔️ <b>Támadás</b>. (A profiljáról is lehet.)</li>
+      <li>Az <b>első lövésed ritkán talál</b> – a meglepetés nem jelent biztos győzelmet. Az első lövés soha nem halálos.</li>
+      <li>Utána felváltva léptek, lépésenként 20 másodperc: <b>🔫 lövés</b> (bármelyik fegyvereddel), <b>💊 gyógyítás</b> vagy <b>🏃 menekülés</b>. Aki nem lép (zsebben a telefon, kilépett), helyette a játék lő vissza.</li></ul>
+    <h2>Ha téged támadnak meg</h2>
+    <ul><li>Feljön a <b>„RÁD LŐTTEK!”</b> ablak (a telefon rezeg). Választhatsz:</li>
+      <li><b>🔫 Visszalősz</b> – tűzharc lesz.</li>
+      <li><b>🏃 Menekülsz</b> – nagy eséllyel sikerül, kis eséllyel még utánad lőnek. A környéket nem kell elhagynod: aki elől elmenekültél, az <b>10 percig nem támadhat meg újra</b>.</li>
+      <li><b>🏳️ Megadod magad</b> – a támadó választ <b>3 tételt</b> a hátizsákodból, és viszi a <b>pénzed felét</b>. A <b>viselt felszerelésed megmarad</b>. De ő <b>vissza is utasíthatja</b> („Nem kegyelmezek”) – ilyenkor könnyebben menekülhetsz, ő pedig tovább marad bandita.</li>
+      <li>A <b>menedékedben</b> nehezebben találnak el – minél erősebb a fal, annál jobban.</li></ul>
+    <h2>Ha valaki elesik</h2>
+    <ul><li>Ugyanúgy újrakezd, mint a szörnyek után. A <b>hátizsákja, a felszerelése és a pénze egy zsákban a helyszínen marad</b> 🎒 30 percig – <b>bárki</b> felveheti, aki odaér (30 m-re kell menni hozzá).</li>
+      <li>A győztes XP-t kap (a legyőzött szintjétől függően) és egy <b>PvP-győzelmet</b>: ezek a ranglistán is látszanak (🔫 PvP fül, havi és összesített).</li>
+      <li>Ugyanaz a két játékos egy harc után 30 percig nem támadhatja egymást.</li></ul>
+    <h2>💀 Bandita és 🔫 lövéshang</h2>
+    <ul><li>Aki <b>kezdeményez</b> egy támadást, <b>30 percig bandita</b>: a térképen piros keretet és 💀 jelet kap. Aki visszalő, az nem lesz bandita.</li>
+      <li>A lövéseket <b>500 m-ről hallani</b>: értesítést kapsz („Lövéseket hallasz északról, kb. 300 m-re”), és a térképen egy percig jelölve van a környék. Akinek van esze, arra nem megy… vagy éppen arra, a zsákért.</li></ul>
+    <div class="box">Figyelem: a támadás a játékban történik! A valóságban soha ne kövess, ne zaklass és ne fenyegess senkit. A közös helyszíneken légy udvarias – a zaklatás a szabályzat szerint kitiltással jár.</div>` },
   { slug: 'premium', title: 'Prémium bolt és credit', group: 'Útmutatók', render: () => {
     const S = window.SurvivalShop;
     return `<h1>💎 Prémium bolt és credit</h1>
@@ -487,7 +546,7 @@ const GUIDES = [
     return `<h1>🏚️ Menedék</h1>
     <p>Egy valódi épületet a térképen a saját menedékeddé tehetsz. Mindenki látja a térképen, és a <b>raktára a halál után is megmarad</b>.</p>
     <h2>Elfoglalás</h2>
-    <p>Kell hozzá egy <b>${I(S.CLAIM_ITEM)}</b> (barkácsolható: Menedék kategória), ami elfogy. Menj egy épülethez, nyisd meg a Menedék gombot, és foglald el. Egy játékosnak egy menedéke lehet; máshová költözni ${S.MOVE_COOLDOWN_DAYS} naponta lehet, ehhez újabb csomag kell.</p>
+    <p>Kell hozzá egy <b>${I(S.CLAIM_ITEM)}</b> (barkácsolható: Menedék kategória), ami elfogy. Menj egy épülethez, nyisd meg a Menedék gombot, és foglald el. Egy játékosnak egy menedéke lehet; máshová költözni ${S.MOVE_COOLDOWN_DAYS} naponta lehet, ehhez újabb csomag kell. Az <b>első költözés ingyenes</b>, utána minden költözés <b>500 $</b>.</p>
     <h2>Raktár</h2>
     <p>A menedéktől legfeljebb ${S.RANGE_METERS} méterre állva rakhatsz be és vehetsz ki: koppints a tárgyra, vagy húzd át (telefonon tartsd rajta egy pillanatig az ujjad). Mérete ${S.STASH_SLOTS.join(' → ')} hely, ládákkal bővíthető.</p>
     <h2>Építmények</h2>
@@ -526,7 +585,13 @@ const GUIDES = [
     <ul><li>A csapat neve, rövidítése és leírása, a hirdetőtábla és a csapat-csevegés is a 3. pont szerint nem lehet sértő, trágár vagy gyűlöletkeltő.</li>
       <li>A csevegésben ne adj meg érzékeny adatot (lakcím, telefonszám). Közös sétát nyilvános, biztonságos helyre szervezzetek.</li>
       <li>A stáb a szabálytalan csapatot átnevezheti, üzenetet törölhet, tagot eltávolíthat vagy a csapatot feloszlathatja.</li></ul>
-    <h2>7. Biztonság a valóságban</h2>
+    <h2>7. Privát üzenetek</h2>
+    <ul><li>A privát üzenetekre is a 3. pont vonatkozik: tilos a zaklatás, sértegetés, kéretlen reklám és a kiskorúakkal való nem helyénvaló kapcsolatfelvétel.</li>
+      <li>A stáb csak a jelentett beszélgetést látja (az utolsó 20 üzenetet). Szabálysértésnél a fiók felfüggeszthető vagy törölhető.</li></ul>
+    <h2>8. Támadás (PvP)</h2>
+    <ul><li>A játékbeli támadás megengedett, de a valóságban tilos bárkit követni, zaklatni vagy fenyegetni a játék miatt.</li>
+      <li>Tilos a PvP-vel csalni: második fiókkal „megöletni” magad, pénzt vagy tárgyat így átpasszolni. Ez kitiltással jár.</li></ul>
+    <h2>9. Biztonság a valóságban</h2>
     <ul><li>Az épületeket nem kell megközelítened jobban, mint ${R().lootRangeMeters} méter: <b>soha ne menj be</b> idegen épületbe, magánterületre, lezárt vagy veszélyes helyre a játék miatt.</li>
       <li>Figyelj a forgalomra és a környezetedre, tartsd be a helyi szabályokat.</li></ul>
     <h2>Következmények</h2>

@@ -13,6 +13,10 @@ const GIFTS_PER_DAY = 5;                               // naponta ennyi barátna
 const GIFT_ITEMS = [{ key: 'bandage', count: 1 }, { key: 'canned_food', count: 1 }, { key: 'water_bottle', count: 1 }, { key: 'aa_batteries', count: 1 }, { key: 'rag', count: 2 }];
 const SOCIAL_REWARD = { money: 100, xp: 100 };        // közösségi oldal meglátogatása (egyszer platformonként)
 const SHARE_REWARD = { money: 30, xp: 50 };            // megosztás (naponta egyszer)
+// MEGOSZTÁSI KAMPÁNY (v0.1.26.6): a nagy frissítés plakátja – aki a játékból megosztja, egyszer külön jutalmat kap (a Fagyos Csendig)
+const CAMPAIGN = { key: 'upd2611', until: '2026-11-30', reward: { money: 250, xp: 250 }, img: '/images/promo/frissites-2611.jpg',
+    text: 'Nagy frissítés a Survival GO-ban: támadás (PvP), profilok, privát üzenetek, csapatkassza és teljes ranglista! Gyere te is a Zónába – ezzel a linkkel mindketten jutalmat kapunk:' };
+const campaignOn = (now) => DAY(now) <= CAMPAIGN.until;
 const PLATFORMS = [
     { key: 'discord', name: 'Discord', env: 'SOCIAL_DISCORD', icon: '💬', url: 'https://discord.gg/PN4w2VACfh' },
     { key: 'facebook', name: 'Facebook', env: 'SOCIAL_FACEBOOK', icon: '📘', url: 'https://www.facebook.com/profile.php?id=61596336031862' },
@@ -152,8 +156,14 @@ function setup(ctx) {
     }
 
     // ---------- CSAPATOK (teams.js, v0.1.22) ----------
-    const teams = require('./teams').setup({ PlayerModel, activePlayers, Admin, weekKey, seasonMonth, reward, notify, emitTo, TeamModel });
+    const teams = require('./teams').setup({ PlayerModel, activePlayers, Admin, weekKey, seasonMonth, reward, notify, emitTo, TeamModel, withPlayer, sendPlayerState, premium: ctx.premium });
     const onWalk = (u, m) => teams.onWalk(u, m);
+    // ---------- JÁTÉKOSPROFIL (profile.js, v0.1.25) ----------
+    const profile = require('./profile').setup({ PlayerModel, activePlayers, Admin, teams, FriendModel, pairId, seasonMonth, xpForLevel: ctx.xpForLevel || ((L) => 50 * Math.max(1, L || 1) * (Math.max(1, L || 1) - 1)) });
+    // ---------- PRIVÁT ÜZENETEK (dm.js, v0.1.25) ----------
+    const dm = require('./dm').setup({ PlayerModel, activePlayers, Admin, emitTo, notify,
+        isFriend: async (a, b) => { const f = await FriendModel.findById(pairId(a, b)).lean(); return !!(f && f.status === 'ok'); },
+        levelOf: async (n) => { const a = (activePlayers[n] && activePlayers[n].level) || 0; const u = await PlayerModel.findOne({ username: n }, { 'playerData.level': 1 }).lean(); return Math.max(a, (u && u.playerData && u.playerData.level) || 1); } });
     const flushTeams = () => teams.flush();
     const teamBoard = (rows) => teams.board(rows);
 
@@ -165,6 +175,7 @@ function setup(ctx) {
         const guard = (fn) => (data) => { Promise.resolve(fn(data || {})).catch(e => { console.error('Közösség hiba:', e); bad('social_result', 'Hiba történt, próbáld újra.'); }); };
         const sendAll = async () => {
             const [friends, team, code, u] = await Promise.all([friendList(username), teams.info(username), ensureCode(username), PlayerModel.findOne({ username }, { refDone: 1, socialClaimed: 1, shareDay: 1 }).lean()]);
+            const campDone = ((u && u.socialClaimed) || []).includes('camp:' + CAMPAIGN.key);
             const joined = await PlayerModel.countDocuments({ refBy: username });
             const host = (socket.handshake && socket.handshake.headers && socket.handshake.headers.host) || 'survivalgo.hu';
             socket.emit('social_state', {
@@ -172,7 +183,8 @@ function setup(ctx) {
                 ref: { code, link: `https://${host}/?ref=${code}`, joined, done: (u && u.refDone) || 0, level: REF_LEVEL, rewardNew: REF_REWARD_NEW, rewardInviter: REF_REWARD_INVITER },
                 platforms: platformLinks().map(p => ({ ...p, claimed: ((u && u.socialClaimed) || []).includes(p.key) })), socialReward: SOCIAL_REWARD,
                 share: { reward: SHARE_REWARD, done: !!(u && u.shareDay === DAY(Date.now())) },
-                teamRules: team.rules
+                campaign: campaignOn(Date.now()) ? { key: CAMPAIGN.key, until: CAMPAIGN.until, reward: CAMPAIGN.reward, img: CAMPAIGN.img, text: CAMPAIGN.text, done: campDone } : null,
+                teamRules: { ...team.rules, crystals: !!(ctx.premium && ctx.premium() && ctx.premium().enabledFor && ctx.premium().enabledFor(socket.data.role)) }
             });
         };
         socket.on('social_state', guard(sendAll));
@@ -251,6 +263,8 @@ function setup(ctx) {
 
         // --- csapat (teams.js) ---
         teams.attach(socket, { ok, bad, guard, sendAll });
+        dm.attach(socket);
+        profile.attach(socket);
 
         // --- közösségi oldalak és megosztás ---
         const visits = {};
@@ -271,6 +285,15 @@ function setup(ctx) {
             const kind = String(d.kind || 'card').slice(0, 20), today = DAY(Date.now());
             const u = await PlayerModel.findOne({ username }, { shareDay: 1 }).lean();
             Admin.logEvent('share', username, { kind });
+            // kampány: a frissítés plakátjának megosztásáért egyszer külön jutalom (a határidőig)
+            if (kind === 'campaign' && campaignOn(Date.now())) {
+                const ck = 'camp:' + CAMPAIGN.key;
+                const cu = await PlayerModel.findOne({ username }, { socialClaimed: 1 }).lean();
+                if (!((cu && cu.socialClaimed) || []).includes(ck)) {
+                    const got = await reward(username, CAMPAIGN.reward, '📣 Köszönjük, hogy megosztottad a nagy frissítést!');
+                    if (got) { await PlayerModel.updateOne({ username }, { $addToSet: { socialClaimed: ck } }); Admin.logEvent('campaign_share', username, { key: CAMPAIGN.key }); }
+                }
+            }
             await withPlayer(username, (p) => { ctx.questEvent(p, username, 'share'); return {}; }).then(x => { if (x && x.p) sendPlayerState(username, x.p); }).catch(() => { });
             if (u && u.shareDay === today) return ok('social_result', '📸 Köszönjük a megosztást!');
             await PlayerModel.updateOne({ username }, { shareDay: today });
@@ -279,7 +302,7 @@ function setup(ctx) {
         }));
     }
 
-    return { attach, onRegister, checkReferral, onWalk, flushTeams, teamBoard, friendsOf, teams, onTeamEvent: (u, k, n) => teams.onEvent(u, k, n), REF_LEVEL, models: { FriendModel, TeamModel } };
+    return { dm, reward, attach, onRegister, checkReferral, onWalk, flushTeams, teamBoard, friendsOf, teams, onTeamEvent: (u, k, n) => teams.onEvent(u, k, n), REF_LEVEL, models: { FriendModel, TeamModel } };
 }
 
-module.exports = { setup, PLATFORMS, REF_LEVEL, GIFT_ITEMS };
+module.exports = { setup, CAMPAIGN, PLATFORMS, REF_LEVEL, GIFT_ITEMS };

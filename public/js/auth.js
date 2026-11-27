@@ -14,6 +14,20 @@
         }
     } catch (e) { /* */ }
 })();
+// QR-matrica (v0.1.24): /q/KÓD -> /?qr=KÓD. Megjegyezzük: meglévő játékosnak belépés után beváltjuk,
+// új játékos a regisztrációval kapja meg a jutalmat.
+(function () {
+    try {
+        const m = /[?&]qr=([A-Za-z0-9]{7})/.exec(location.search);
+        if (!m) return;
+        localStorage.setItem('sg-qr', m[1].toUpperCase()); history.replaceState(null, '', location.pathname);
+        window.addEventListener('load', () => setTimeout(() => {
+            const scr = document.getElementById('auth-modal');
+            if (!scr || scr.classList.contains('hidden')) return; // már be van lépve: a qr-ui.js váltja be
+            if (typeof setAuthMessage === 'function') setAuthMessage('📮 Matricát találtál! Ha már játszol, lépj be, és megkapod a jutalmat. Ha új vagy, regisztrálj: a jutalom már az induláskor a tiéd!', true);
+        }, 700));
+    } catch (e) { /* */ }
+})();
 let isRegisterMode = false;
 let selectedAvatar = 'avatar1.png'; // Alapértelmezett
 
@@ -177,7 +191,7 @@ async function handleAuthSubmit() {
 
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     const payload = isRegisterMode
-        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed, privacyAccepted, ref: (() => { try { return localStorage.getItem('sg-ref') || undefined; } catch (e) { return undefined; } })() }
+        ? { username, email, password, avatar: selectedAvatar, inviteCode, ageConfirmed, privacyAccepted, ref: (() => { try { return localStorage.getItem('sg-ref') || undefined; } catch (e) { return undefined; } })(), qr: (() => { try { return localStorage.getItem('sg-qr') || undefined; } catch (e) { return undefined; } })() }
         : { username, password };
 
     try {
@@ -199,7 +213,8 @@ async function handleAuthSubmit() {
         if (isRegisterMode) {
             // Siker regisztráció után átváltunk sima bejelentkezésre
             toggleAuthMode(); // ez törli az üzenetet, ezért utána írjuk ki a sikert
-            setAuthMessage('Sikeres regisztráció! Most már bejelentkezhetsz.', true);
+            let fromQr = false; try { fromQr = !!localStorage.getItem('sg-qr'); localStorage.removeItem('sg-qr'); } catch (e) { /* */ } // a regisztrációval már beváltotta
+            setAuthMessage(fromQr ? 'Sikeres regisztráció! 📮 A matrica jutalmát már jóváírtuk. Most jelentkezz be!' : 'Sikeres regisztráció! Most már bejelentkezhetsz.', true);
         } else {
             // Sikeres bejelentkezés!
             setAuthMessage('Sikeres belépés! Játék betöltése...', true);

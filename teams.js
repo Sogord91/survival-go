@@ -9,6 +9,8 @@ const T = require('./public/js/teams');
 const NAME_RE = /^[\p{L}\p{N} ._-]{3,24}$/u;
 const TAG_RE = /^[A-Z0-9ÁÉÍÓÖŐÚÜŰ]{2,4}$/;
 const CHAT_MAX = 80, LOG_MAX = 40, REQ_MAX = 30, APPS_MAX = 3;
+const Prices = require('./public/js/prices');
+const BANK_LOG_MAX = 40, DEPOSIT_MIN = 10, REROLL_MAX = 3; // csapatkassza (v0.1.23)
 const KINDS = Object.keys(T.QUESTS);
 
 function makeModel() {
@@ -18,15 +20,45 @@ function makeModel() {
         _id: String, name: String, tag: String, owner: String, officers: [String], members: [String], invites: [String],
         requests: Mixed, emblem: Mixed, desc: String, board: Mixed, mode: String, minLevel: Number, t: Number,
         week: String, prog: Mixed, qdone: Mixed, allDone: Boolean, contrib: Mixed, joined: Mixed,
-        chat: Mixed, log: Mixed, stats: Mixed,
+        chat: Mixed, log: Mixed, stats: Mixed, bank: Number, bankLog: Mixed, free: Mixed, kinds: Mixed, rerolls: Number,
         meters: Number, done: Boolean // régi (v0.1.21) mezők: az első heti váltáskor átvesszük őket
     });
     return mongoose.models.SurvivalTeam || mongoose.model('SurvivalTeam', team);
 }
 
+// CSAPAT-CSEVEGÉS ARCHÍVUM (v0.1.26.5): minden üzenet külön is megmarad, így a játékban és az adminban is sokkal visszább olvasható.
+// A csapat dokumentumában csak az utolsó CHAT_MAX üzenet van (gyors betöltés), a régebbiek innen jönnek, lapozva.
+function makeChatModel() {
+    const mongoose = require('mongoose');
+    const s = new mongoose.Schema({ _id: String, team: { type: String, index: true }, t: { type: Number, index: true }, from: String, text: String, del: Boolean });
+    return mongoose.models.SurvivalTeamChat || mongoose.model('SurvivalTeamChat', s);
+}
+const HIST_PAGE = 100, HIST_PAGE_ADMIN = 300;
+
 function setup(ctx) {
-    const { PlayerModel, activePlayers, Admin, weekKey, seasonMonth, reward, notify, emitTo } = ctx;
+    const { PlayerModel, activePlayers, Admin, weekKey, seasonMonth, reward, notify, emitTo, withPlayer, sendPlayerState } = ctx;
+    const prices = () => (Admin.gamePrices ? Admin.gamePrices() : Prices.normalize(null));
+    const prem = () => (ctx.premium ? ctx.premium() : null);
     const TeamModel = ctx.TeamModel || makeModel();
+    const ChatModel = ctx.ChatModel || makeChatModel();
+    const backfilled = new Set();
+    // a régi (archívum előtti) üzeneteket egyszer átmásoljuk az archívumba
+    async function backfill(id) {
+        if (backfilled.has(id)) return; backfilled.add(id);
+        try {
+            const d = await TeamModel.findById(id).lean(); if (!d || !Array.isArray(d.chat) || !d.chat.length) return;
+            const have = new Set((await ChatModel.find({ team: id }, { _id: 1 }).lean()).map(x => x._id));
+            for (const m of d.chat) if (m && m.id && !have.has(m.id)) await ChatModel.create({ _id: m.id, team: id, t: m.t, from: m.from, text: m.text, del: false }).catch(() => { });
+        } catch (e) { backfilled.delete(id); }
+    }
+    // régebbi üzenetek: a `before` időpont előttiek, a legújabbtól visszafelé `limit` darab; időrendben adjuk vissza
+    async function history(id, before, limit) {
+        await backfill(id);
+        const q = { team: id, del: { $ne: true } }; if (Number(before) > 0) q.t = { $lt: Number(before) };
+        const rows = await ChatModel.find(q).sort({ t: -1 }).limit(limit + 1).lean();
+        const more = rows.length > limit;
+        return { list: rows.slice(0, limit).reverse().map(m => ({ id: m._id, t: m.t, from: m.from, text: m.text })), more };
+    }
     const isStaff = (n) => (Admin.isStaffName ? Admin.isStaffName(n) : false);
     // a stáb csapata (a vezetője stábtag): csak a stáb látja, csak stábtag lehet benne, a ranglistán sincs
     const staffTeam = (t) => !!t && isStaff(t.owner);
@@ -68,6 +100,10 @@ function setup(ctx) {
         t.chat = Array.isArray(t.chat) ? t.chat : [];
         t.log = Array.isArray(t.log) ? t.log : [];
         t.stats = t.stats && typeof t.stats === 'object' ? t.stats : { quests: 0, weeks: 0, km: 0 };
+        t.bank = Math.max(0, Math.floor(Number(t.bank) || 0));
+        t.bankLog = Array.isArray(t.bankLog) ? t.bankLog : [];
+        t.free = t.free && typeof t.free === 'object' ? t.free : {}; // melyik ingyenes első alkalmat használták már el
+        t.rerolls = Math.max(0, Math.floor(Number(t.rerolls) || 0));
         if (!t.prog || typeof t.prog !== 'object') { // átállás a régi heti séta-célról
             t.prog = { walk: Number(t.meters) || 0 };
             t.qdone = { walk: !!t.done };
@@ -81,10 +117,34 @@ function setup(ctx) {
         const wk = weekKey(Date.now());
         if (t.week === wk) return t;
         if (t.week) { t.stats.weeks = (t.stats.weeks || 0) + 1; }
-        t.week = wk; t.prog = {}; t.qdone = {}; t.allDone = false; t.contrib = {};
+        t.week = wk; t.prog = {}; t.qdone = {}; t.allDone = false; t.contrib = {}; t.kinds = null; t.rerolls = 0;
         return t;
     }
-    const kindsOf = (t) => T.questKinds(t._id, t.week);
+    const kindsOf = (t) => (Array.isArray(t.kinds) && t.kinds.length === 3 ? t.kinds : T.questKinds(t._id, t.week));
+    const addBank = (t, amount, who, what) => {
+        t.bank = Math.max(0, t.bank + amount);
+        t.bankLog.push({ t: Date.now(), who, amount, what }); if (t.bankLog.length > BANK_LOG_MAX) t.bankLog = t.bankLog.slice(-BANK_LOG_MAX);
+    };
+    // Fizetés egy csapat-szolgáltatásért (withTeam-en belül hívd): első alkalom ingyenes, utána a kasszából vagy kristállyal.
+    // keys: több tétel együtt (pl. név + rövidítés); előbb mindet ellenőrzi, csak utána von le.
+    async function teamCharge(t, keys, username, pay, crystalsOn) {
+        const P = prices(), free = [], paid = [];
+        keys.forEach(k => { if (P[k].free && !t.free[k]) free.push(k); else paid.push(k); });
+        const money = paid.reduce((a, k) => a + P[k].money, 0), crystals = paid.reduce((a, k) => a + P[k].crystals, 0);
+        const what = keys.map(k => P[k].name).join(' + ');
+        if (paid.length && pay === 'crystal') {
+            if (!crystalsOn) return { error: 'Kristállyal most nem lehet fizetni.' };
+            if (!crystals) return { error: 'Ezt kristállyal nem lehet kifizetni.' };
+            const r = prem() ? await prem().spendCredits(username, crystals, `Csapat: ${what}`) : { error: 'Kristállyal most nem lehet fizetni.' };
+            if (!r || r.error) return { error: (r && r.error) || 'Nem sikerült a fizetés.' };
+            free.forEach(k => { t.free[k] = true; });
+            return { ok: true, how: `${crystals} 💎` };
+        }
+        if (paid.length && t.bank < money) return { error: `Ehhez ${money.toLocaleString('hu-HU')} $ kell a csapatkasszában, most ${t.bank.toLocaleString('hu-HU')} $ van. Bárki befizethet: Csapat fül → Csapatkassza.` };
+        free.forEach(k => { t.free[k] = true; });
+        if (paid.length) addBank(t, -money, username, what);
+        return { ok: true, how: paid.length ? `${money.toLocaleString('hu-HU')} $ a kasszából` : 'ingyen (első alkalom)' };
+    }
     const roleOf = (t, n) => (n === t.owner ? 'owner' : t.officers.includes(n) ? 'officer' : t.members.includes(n) ? 'member' : null);
     const isLeader = (t, n) => { const r = roleOf(t, n); return r === 'owner' || r === 'officer'; };
     const addLog = (t, text) => { t.log.push({ t: Date.now(), text }); if (t.log.length > LOG_MAX) t.log = t.log.slice(-LOG_MAX); };
@@ -144,9 +204,9 @@ function setup(ctx) {
                     if (k === 'walk') t.stats.km = Math.round(((t.stats.km || 0) + v / 1000) * 10) / 10;
                 }
                 const need = T.helpersNeeded(n), helpers = (k) => t.members.filter(m => t.contrib[m] && t.contrib[m][k] > 0).length;
-                kinds.forEach(k => { if (!t.qdone[k] && (t.prog[k] || 0) >= T.target(k, n) && helpers(k) >= need) { t.qdone[k] = true; t.stats.quests = (t.stats.quests || 0) + 1; done.push(k); addLog(t, `✅ Kész a csapatküldetés: ${T.QUESTS[k].icon} ${T.QUESTS[k].title}`); } });
+                kinds.forEach(k => { if (!t.qdone[k] && (t.prog[k] || 0) >= T.target(k, n) && helpers(k) >= need) { t.qdone[k] = true; t.stats.quests = (t.stats.quests || 0) + 1; done.push(k); addLog(t, `✅ Kész a csapatküldetés: ${T.QUESTS[k].icon} ${T.QUESTS[k].title}`); addBank(t, T.BANK_QUEST, null, `Csapatküldetés: ${T.QUESTS[k].title}`); } });
                 let all = false;
-                if (!t.allDone && kinds.every(k => t.qdone[k])) { t.allDone = true; all = true; addLog(t, '🏆 Mind a 3 heti csapatküldetés kész!'); }
+                if (!t.allDone && kinds.every(k => t.qdone[k])) { t.allDone = true; all = true; addLog(t, '🏆 Mind a 3 heti csapatküldetés kész!'); addBank(t, T.BANK_ALL, null, 'Mind a 3 heti csapatküldetés'); }
                 if (!done.length && !all) return {};
                 return { all };
             });
@@ -196,7 +256,7 @@ function setup(ctx) {
         const invites = [], apps = [];
         for (const tid of ((u && u.teamInvites) || []).slice(0, 5)) { const d = await TeamModel.findById(tid).lean(); if (d) invites.push(brief(normalize(d))); }
         for (const tid of ((u && u.teamApps) || []).slice(0, APPS_MAX)) { const d = await TeamModel.findById(tid).lean(); if (d) apps.push(brief(normalize(d))); }
-        const base = { invites, apps, rules: { max: T.MAX, minLevel: T.MIN_LEVEL, appsMax: APPS_MAX, allBonus: T.ALL_BONUS } };
+        const base = { invites, apps, rules: { max: T.MAX, minLevel: T.MIN_LEVEL, appsMax: APPS_MAX, allBonus: T.ALL_BONUS, prices: prices(), depositMin: DEPOSIT_MIN, bankQuest: T.BANK_QUEST, bankAll: T.BANK_ALL } };
         if (!id) return { ...base, team: null };
         const doc = await TeamModel.findById(id).lean();
         if (!doc) { teamOf.set(username, null); return { ...base, team: null }; }
@@ -209,6 +269,7 @@ function setup(ctx) {
             quests: questView(t), allDone: !!t.allDone, members, points: members.filter(m => !m.staff).reduce((a, m) => a + m.points, 0),
             stats: t.stats, log: t.log.slice(-20).reverse(),
             requests: lead ? t.requests : [], invited: t.invites,
+            bank: t.bank, bankLog: t.bankLog.slice(-15).reverse(), free: t.free, rerolls: t.rerolls, rerollMax: REROLL_MAX,
             chatLast: t.chat.length ? t.chat[t.chat.length - 1].t : 0
         } };
     }
@@ -274,6 +335,7 @@ function setup(ctx) {
         const username = socket.data.username;
         const { ok, bad, guard, sendAll } = h;
         const R = 'social_result';
+        const cOn = () => !!(prem() && prem().enabledFor && prem().enabledFor(socket.data.role));
         myTeamId(username).catch(() => { });
         const mine = async () => { const id = await myTeamId(username); return id; };
 
@@ -286,12 +348,23 @@ function setup(ctx) {
             if (await TeamModel.findOne({ tag }).lean()) return bad(R, 'Ez a rövidítés már foglalt.');
             const all = await TeamModel.find({}, { name: 1 }).lean();
             if (all.some(x => fold(x.name) === fold(name))) return bad(R, 'Ilyen nevű csapat már van.');
+            // alapítási díj a játékos saját pénzéből (az admin oldalon állítható)
+            const cost = prices().team_create;
+            if (cost.money > 0) {
+                const pay = await withPlayer(username, (p) => {
+                    if (p.dead) return { save: false, error: 'Halott túlélő nem alapíthat csapatot.' };
+                    if (p.money < cost.money) return { save: false, error: `A csapat alapítása ${cost.money.toLocaleString('hu-HU')} $, neked ${p.money.toLocaleString('hu-HU')} $ van.` };
+                    p.money -= cost.money; return {};
+                });
+                if (!pay || (pay.result && pay.result.error) || pay.error) return bad(R, (pay && ((pay.result && pay.result.error) || pay.error)) || 'Nem sikerült a fizetés.');
+                if (pay.p && activePlayers[username]) sendPlayerState(username, pay.p);
+            }
             const id = 't' + crypto.randomBytes(5).toString('hex'), now = Date.now();
             const mode = T.MODES.some(m => m.key === d.mode) ? d.mode : 'request';
             await TeamModel.create({ _id: id, name, tag, owner: username, officers: [], members: [username], invites: [], requests: [], emblem: T.normEmblem(d.emblem), desc: '', board: null, mode, minLevel: 1,
-                t: now, week: weekKey(now), prog: {}, qdone: {}, allDone: false, contrib: {}, joined: { [username]: now }, chat: [], log: [{ t: now, text: `🏕️ ${username} megalapította a csapatot` }], stats: { quests: 0, weeks: 0, km: 0 } });
+                t: now, week: weekKey(now), prog: {}, qdone: {}, allDone: false, contrib: {}, joined: { [username]: now }, chat: [], log: [{ t: now, text: `🏕️ ${username} megalapította a csapatot` }], stats: { quests: 0, weeks: 0, km: 0 }, bank: 0, bankLog: [], free: {}, kinds: null, rerolls: 0 });
             await setTeam(username, id);
-            Admin.logEvent('team_create', username, { name, tag });
+            Admin.logEvent('team_create', username, { name, tag, cost: cost.money });
             ok(R, `🏕️ Megalapítottad: [${tag}] ${name}! Állítsd be a címert, és hívd meg a barátaidat.`); return sendAll();
         }));
 
@@ -447,18 +520,25 @@ function setup(ctx) {
         }));
         socket.on('team_settings', guard(async (d) => {
             const r = await asLeader(async (t, role) => {
-                const ch = [];
-                if (d.emblem) { t.emblem = T.normEmblem(d.emblem); ch.push('címer'); }
-                if (typeof d.desc === 'string') { t.desc = d.desc.trim().replace(/\s+/g, ' ').slice(0, 140); ch.push('leírás'); }
-                if (d.mode !== undefined) { if (role !== 'owner') return nosave({ error: 'A csatlakozás módját csak a vezető állíthatja.' }); if (T.MODES.some(m => m.key === d.mode)) { t.mode = d.mode; ch.push('csatlakozás'); } }
-                if (d.minLevel !== undefined) { if (role !== 'owner') return nosave({ error: 'A minimum szintet csak a vezető állíthatja.' }); t.minLevel = Math.max(1, Math.min(99, Math.floor(Number(d.minLevel) || 1))); ch.push('min. szint'); }
-                if (d.name !== undefined && String(d.name).trim() !== t.name) {
+                // 1) ellenőrzés: mi változik, és melyik fizetős
+                const ch = [], paid = [], apply = [];
+                if (d.emblem) {
+                    const e = T.normEmblem(d.emblem);
+                    if (JSON.stringify(e) !== JSON.stringify(t.emblem)) { paid.push('team_emblem'); ch.push('címer'); apply.push(() => { t.emblem = e; addLog(t, `🛡️ Új címer (${username})`); }); }
+                }
+                if (typeof d.desc === 'string') { const v = d.desc.trim().replace(/\s+/g, ' ').slice(0, 140); if (v !== t.desc) { ch.push('leírás'); apply.push(() => { t.desc = v; }); } }
+                if (d.mode !== undefined && d.mode !== t.mode) { if (role !== 'owner') return nosave({ error: 'A csatlakozás módját csak a vezető állíthatja.' }); if (T.MODES.some(m => m.key === d.mode)) { ch.push('csatlakozás'); apply.push(() => { t.mode = d.mode; }); } }
+                if (d.minLevel !== undefined) {
+                    const v = Math.max(1, Math.min(99, Math.floor(Number(d.minLevel) || 1)));
+                    if (v !== t.minLevel) { if (role !== 'owner') return nosave({ error: 'A minimum szintet csak a vezető állíthatja.' }); ch.push('min. szint'); apply.push(() => { t.minLevel = v; }); }
+                }
+                if (d.name !== undefined && String(d.name).trim().replace(/\s+/g, ' ') !== t.name) {
                     if (role !== 'owner') return nosave({ error: 'A nevet csak a vezető változtathatja meg.' });
                     const name = String(d.name).trim().replace(/\s+/g, ' ');
                     if (!NAME_RE.test(name)) return nosave({ error: 'A csapatnév 3–24 karakter: betű, szám, szóköz, pont, kötőjel.' });
                     const all = await TeamModel.find({}, { name: 1 }).lean();
                     if (all.some(x => x._id !== t._id && fold(x.name) === fold(name))) return nosave({ error: 'Ilyen nevű csapat már van.' });
-                    addLog(t, `✏️ Új név: ${name} (korábban ${t.name})`); t.name = name; ch.push('név');
+                    paid.push('team_name'); ch.push('név'); apply.push(() => { addLog(t, `✏️ Új név: ${name} (korábban ${t.name})`); t.name = name; });
                 }
                 if (d.tag !== undefined && String(d.tag).trim().toUpperCase() !== t.tag) {
                     if (role !== 'owner') return nosave({ error: 'A rövidítést csak a vezető változtathatja meg.' });
@@ -466,13 +546,53 @@ function setup(ctx) {
                     if (!TAG_RE.test(tag)) return nosave({ error: 'A rövidítés 2–4 nagybetű vagy szám.' });
                     const other = await TeamModel.findOne({ tag }).lean();
                     if (other && other._id !== t._id) return nosave({ error: 'Ez a rövidítés már foglalt.' });
-                    t.tag = tag; ch.push('rövidítés');
+                    paid.push('team_tag'); ch.push('rövidítés'); apply.push(() => { addLog(t, `🏷️ Új rövidítés: [${tag}] (korábban [${t.tag}])`); t.tag = tag; });
                 }
-                if (!ch.length) return nosave({ error: 'Nincs mit menteni.' });
-                return { ok: true, ch };
+                if (!ch.length) return nosave({ error: 'Nincs mit menteni: nem változott semmi.' });
+                // 2) fizetés (első alkalom ingyenes), 3) mentés
+                let how = '';
+                if (paid.length) { const c = await teamCharge(t, paid, username, d.pay, cOn()); if (c.error) return nosave({ error: c.error }); how = c.how; }
+                apply.forEach(f => f());
+                return { ok: true, ch, how };
             });
             if (r.error) return bad(R, r.error);
-            ping(r.t); ok(R, `✓ Mentve (${r.ch.join(', ')}).`); return sendAll();
+            ping(r.t); ok(R, `✓ Mentve (${r.ch.join(', ')})${r.how ? ` · ${r.how}` : ''}.`); return sendAll();
+        }));
+        // másik csapatküldetés a héten (a közös séta marad; a kész küldetés nem cserélhető)
+        socket.on('team_reroll', guard(async (d) => {
+            const kind = String(d.kind || '');
+            const r = await asLeader(async (t) => {
+                const kinds = kindsOf(t).slice(), i = kinds.indexOf(kind);
+                if (i < 1) return nosave({ error: 'Ezt a küldetést nem lehet cserélni.' });
+                if (t.qdone[kind]) return nosave({ error: 'A kész küldetést már nem lehet cserélni.' });
+                if (t.rerolls >= REROLL_MAX) return nosave({ error: `Egy héten legfeljebb ${REROLL_MAX}-szor cserélhettek.` });
+                const pool = T.POOL.filter(k => !kinds.includes(k));
+                if (!pool.length) return nosave({ error: 'Nincs másik küldetés.' });
+                const c = await teamCharge(t, ['team_reroll'], username, d.pay, cOn()); if (c.error) return nosave({ error: c.error });
+                const nk = pool[Math.floor(Math.random() * pool.length)];
+                kinds[i] = nk; t.kinds = kinds; t.rerolls++;
+                t.prog[nk] = 0; t.qdone[nk] = false; Object.values(t.contrib).forEach(x => { if (x) x[nk] = 0; }); // az új küldetés nulláról indul
+                addLog(t, `🔄 ${username} lecserélte: ${T.QUESTS[kind].title} → ${T.QUESTS[nk].icon} ${T.QUESTS[nk].title}`);
+                return { ok: true, how: c.how, title: T.QUESTS[nk].title };
+            });
+            if (r.error) return bad(R, r.error);
+            ping(r.t); ok(R, `🔄 Új csapatküldetés: ${r.title} (${r.how}).`); return sendAll();
+        }));
+        // befizetés a csapatkasszába (bármelyik tag; kivenni nem lehet, csak a csapatra költeni)
+        socket.on('team_deposit', guard(async (d) => {
+            const amount = Math.floor(Number(d.amount) || 0);
+            if (amount < DEPOSIT_MIN) return bad(R, `Legalább ${DEPOSIT_MIN} $-t fizethetsz be.`);
+            const id = await mine(); if (!id) return bad(R, 'Nem vagy csapatban.');
+            const pay = await withPlayer(username, (p) => {
+                if (p.money < amount) return { save: false, error: `Nincs ennyi pénzed (${p.money.toLocaleString('hu-HU')} $).` };
+                p.money -= amount; return {};
+            });
+            if (!pay || (pay.result && pay.result.error)) return bad(R, (pay && pay.result && pay.result.error) || 'Nem sikerült.');
+            const r = await withTeam(id, (t) => { if (!t) return nosave(null); addBank(t, amount, username, 'Befizetés'); return { ok: true }; });
+            if (!r.t) { await withPlayer(username, (p) => { p.money += amount; return {}; }); return bad(R, 'Nem vagy csapatban.'); }
+            if (pay.p && activePlayers[username]) sendPlayerState(username, pay.p);
+            Admin.logEvent('team_deposit', username, { team: r.t.name, amount });
+            ping(r.t); ok(R, `🏦 Befizettél ${amount.toLocaleString('hu-HU')} $-t a csapatkasszába.`); return sendAll();
         }));
         socket.on('team_board', guard(async (d) => {
             const text = String(d.text || '').trim().slice(0, 200);
@@ -496,7 +616,16 @@ function setup(ctx) {
         socket.on('team_chat_load', guard(async () => {
             const id = await mine(); if (!id) return socket.emit('team_chat', { all: true, list: [] });
             const d = await TeamModel.findById(id).lean();
-            socket.emit('team_chat', { all: true, list: d ? normalize(d).chat.slice(-50) : [] });
+            const list = d ? normalize(d).chat.slice(-50) : [];
+            // van-e még régebbi (az archívumban, vagy a dokumentumban 50-nél több)
+            let more = d && normalize(d).chat.length > 50;
+            if (!more && list.length) { try { await backfill(id); more = !!(await ChatModel.findOne({ team: id, del: { $ne: true }, t: { $lt: list[0].t } }, { _id: 1 }).lean()); } catch (e) { /* */ } }
+            socket.emit('team_chat', { all: true, list, more: !!more });
+        }));
+        socket.on('team_chat_more', guard(async (d) => {
+            const id = await mine(); if (!id) return;
+            const r = await history(id, d && d.before, HIST_PAGE);
+            socket.emit('team_chat_older', r);
         }));
         socket.on('team_chat_send', guard(async (d) => {
             const text = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -507,6 +636,8 @@ function setup(ctx) {
             const msg = { id: crypto.randomBytes(4).toString('hex'), t: Date.now(), from: username, text };
             const r = await withTeam(id, (t) => { if (!t) return nosave(null); t.chat.push(msg); if (t.chat.length > CHAT_MAX) t.chat = t.chat.slice(-CHAT_MAX); return { ok: true }; });
             if (!r.t) return;
+            await backfill(id);
+            ChatModel.create({ _id: msg.id, team: id, t: msg.t, from: username, text, del: false }).catch(e => console.error('Csapatchat archív hiba:', e.message));
             r.t.members.forEach(n => emitTo(n, 'team_chat', { msg }));
             // telefonos értesítés a nem online tagoknak: tagonként legfeljebb félóránként egy
             r.t.members.filter(n => n !== username && !activePlayers[n] && Date.now() - (chatPushAt.get(n) || 0) > 30 * 60000).forEach(n => { chatPushAt.set(n, Date.now()); notify(n, `💬 [${r.t.tag}] ${username}`, text.slice(0, 100)); });
@@ -523,14 +654,19 @@ function setup(ctx) {
         return teams.map(t => {
             const pts = t.members.reduce((a, n) => { const se = byName[n] && byName[n].playerData && byName[n].playerData.season; return a + (se && se.month === month && !isStaff(n) ? se.xp || 0 : 0); }, 0);
             const active7 = t.members.filter(n => activePlayers[n] || ((byName[n] && byName[n].playerData && byName[n].playerData.lastSeen) || 0) > week).length;
-            return { ...brief(t), points: pts, active7, online: t.members.filter(n => activePlayers[n]).length, created: t.t, quests: questView(t), stats: t.stats, requests: t.requests.length, chat: t.chat.length, lastChat: t.chat.length ? t.chat[t.chat.length - 1].t : null };
+            return { ...brief(t), bank: t.bank, points: pts, active7, online: t.members.filter(n => activePlayers[n]).length, created: t.t, quests: questView(t), stats: t.stats, requests: t.requests.length, chat: t.chat.length, lastChat: t.chat.length ? t.chat[t.chat.length - 1].t : null };
         }).sort((a, b) => b.points - a.points || b.members - a.members);
     }
     async function adminDetail(id) {
         const d = await TeamModel.findById(id).lean(); if (!d) return null;
         const t = normalize(d);
-        return { ...brief(t), officers: t.officers, board: t.board, created: t.t, week: t.week, quests: questView(t), allDone: t.allDone, stats: t.stats,
-            members: await memberRows(t), requests: t.requests, invites: t.invites, chat: t.chat.slice(-80), log: t.log.slice().reverse() };
+        return { ...brief(t), bank: t.bank, bankLog: t.bankLog.slice().reverse(), free: t.free, rerolls: t.rerolls, officers: t.officers, board: t.board, created: t.t, week: t.week, quests: questView(t), allDone: t.allDone, stats: t.stats,
+            members: await memberRows(t), requests: t.requests, invites: t.invites, ...(await adminChat(id)), log: t.log.slice().reverse() };
+    }
+    async function adminChat(id, before) {
+        const r = await history(id, before, HIST_PAGE_ADMIN);
+        const total = await ChatModel.countDocuments({ team: id, del: { $ne: true } }).catch(() => r.list.length);
+        return { chat: r.list, chatMore: r.more, chatTotal: total };
     }
     async function adminAction(admin, id, a) {
         const act = String(a.action || '');
@@ -543,7 +679,8 @@ function setup(ctx) {
         }
         const r = await withTeam(id, (t) => {
             if (!t) return nosave({ error: 'Nincs ilyen csapat.' });
-            if (act === 'chat_del') { t.chat = t.chat.filter(m => m.id !== a.msg); addLog(t, '🛡️ A stáb törölt egy üzenetet'); return { message: 'Üzenet törölve.' }; }
+            if (act === 'chat_del') { t.chat = t.chat.filter(m => m.id !== a.msg); ChatModel.updateOne({ _id: String(a.msg) }, { $set: { del: true } }).catch(() => { }); addLog(t, '🛡️ A stáb törölt egy üzenetet'); return { message: 'Üzenet törölve.' }; }
+            if (act === 'bank_add') { const v = Math.floor(Number(a.amount) || 0); if (!v || Math.abs(v) > 1000000) return nosave({ error: 'Érvénytelen összeg.' }); addBank(t, v, `stáb (${admin})`, v > 0 ? 'Stáb jóváírás' : 'Stáb levonás'); return { message: `Csapatkassza: ${v > 0 ? '+' : ''}${v} $` }; }
             if (act === 'board_clear') { t.board = null; return { message: 'Hirdetőtábla törölve.' }; }
             if (act === 'desc_clear') { t.desc = ''; return { message: 'Leírás törölve.' }; }
             if (act === 'rename') {
@@ -570,9 +707,10 @@ function setup(ctx) {
             if (t.joined[from]) { t.joined[to] = t.joined[from]; delete t.joined[from]; }
             if (t.contrib[from]) { t.contrib[to] = t.contrib[from]; delete t.contrib[from]; }
         });
+        await ChatModel.updateMany({ from }, { $set: { from: to } }).catch(() => { });
     }
 
-    return { renameUser, attach, info, onWalk, onEvent, flush, board, myTeamId, adminList, adminDetail, adminAction, TeamModel };
+    return { renameUser, attach, info, onWalk, onEvent, flush, board, myTeamId, adminList, adminDetail, adminAction, adminChat, history, TeamModel, ChatModel };
 }
 
-module.exports = { setup, makeModel, NAME_RE, TAG_RE };
+module.exports = { setup, makeModel, makeChatModel, NAME_RE, TAG_RE };

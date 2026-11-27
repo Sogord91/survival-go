@@ -175,6 +175,10 @@ function openShelterClaimFor(b) {
     const cooldownUntil = sh ? (sh.claimedAt || 0) + S.MOVE_COOLDOWN_DAYS * 86400000 : 0;
     const coolLeft = cooldownUntil - Date.now();
     const row = (ok, txt) => `<div class="sg-shc-req ${ok ? 'ok' : 'no'}"><i>${ok ? '✔' : '✕'}</i><span>${txt}</span></div>`;
+    // költözés ára (v0.1.23): az első ingyenes, utána pénz (vagy kristály, ha be van kapcsolva)
+    const mv = shelterMovePrice(sh);
+    const money = (player && player.money) || 0;
+    const canPay = !mv || mv.free || money >= mv.money || mv.crystalsOn;
     const kitImg = kit && kit.img ? `<img src="/images/items/${kit.img}.webp" alt="">` : '🏚';
     document.getElementById('shelter-claim-body').innerHTML = `
         <div class="sg-shc-head" style="--bc:${t.color || '#d9c58a'}">
@@ -191,17 +195,32 @@ function openShelterClaimFor(b) {
         ${row(near, dist === null ? 'Várd meg a GPS-t' : near ? `Itt vagy (${dist} m)` : `Túl messze: ${dist} m (legfeljebb ${S.RANGE_METERS} m)`)}
         ${row(kits > 0, `<span class="sg-shc-kit">${kitImg}</span>${escapeAttr(kit ? kit.name : 'Menedékalapító Csomag')}: ${kits} db ${kits > 0 ? '(1 elfogy)' : '– barkácsolható: Barkács → Menedék'}`)}
         ${sh ? row(coolLeft <= 0, coolLeft <= 0 ? 'Költözhetsz: a raktár és az építmények veled jönnek' : `Költözni ${Math.ceil(coolLeft / 86400000)} nap múlva lehet`) : ''}
+        ${sh && mv ? row(canPay, mv.free ? '🎁 Az első költözés ingyenes' : `Költözés ára: ${mv.money.toLocaleString('hu-HU')} $${mv.crystalsOn && mv.crystals ? ` vagy ${mv.crystals} 💎` : ''} (neked ${money.toLocaleString('hu-HU')} $ van)`) : ''}
         <p class="sg-sh-dim" style="margin-top:6px">A menedékedet a térképen mindenki látja, a neveddel együtt.</p>`;
-    const ok = near && kits > 0 && (!sh || coolLeft <= 0);
+    const ok = near && kits > 0 && (!sh || coolLeft <= 0) && canPay;
     const yes = document.getElementById('shelter-claim-yes');
     yes.disabled = !ok;
     yes.textContent = ok ? (sh ? 'IDE KÖLTÖZÖM' : 'IGEN, EZ LESZ') : 'MÉG NEM LEHET';
     document.getElementById('shelter-claim-craft').classList.toggle('hidden', kits > 0);
     document.getElementById('shelter-claim-modal').classList.remove('hidden');
 }
+function shelterMovePrice(sh) {
+    if (!sh) return null;
+    const r = (typeof socialState !== 'undefined' && socialState && socialState.teamRules) || {};
+    const p = (r.prices && r.prices.shelter_move) || (window.SurvivalPrices && SurvivalPrices.ITEMS.shelter_move);
+    if (!p) return null;
+    return { free: !!(p.free && !sh.movedFree), money: p.money || 0, crystals: p.crystals || 0, crystalsOn: !!r.crystals };
+}
 function confirmShelterClaim() {
+    const mv = shelterMovePrice(myShelter());
+    let pay = 'money';
+    if (mv && !mv.free && mv.crystalsOn && mv.crystals) {
+        const c = prompt(`Költözés ára:\n1 = ${mv.money} $\n2 = ${mv.crystals} 💎`, (player && player.money >= mv.money) ? '1' : '2');
+        if (c === null) return;
+        pay = String(c).trim() === '2' ? 'crystal' : 'money';
+    }
     document.getElementById('shelter-claim-modal').classList.add('hidden');
-    if (shelterClaimTarget) socket.emit('shelter_claim', { buildingId: shelterClaimTarget.id });
+    if (shelterClaimTarget) socket.emit('shelter_claim', { buildingId: shelterClaimTarget.id, pay });
     cancelShelterClaim();
 }
 function abortShelterClaim() {

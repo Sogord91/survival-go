@@ -41,6 +41,25 @@ function teamAlerts(st) { // a fülön és a menügombon látszó szám
     return ((t && t.requests) || []).length + ((st && st.teamInvites) || []).length + teamChatUnread(st);
 }
 
+// ---------- árak (v0.1.23): első alkalom ingyenes, utána a csapatkasszából vagy kristállyal ----------
+function teamPrice(key) { const r = (socialState && socialState.teamRules) || {}; return (r.prices && r.prices[key]) || (window.SurvivalPrices ? SurvivalPrices.ITEMS[key] : null); }
+function teamFreeLeft(key) { const t = socialState && socialState.team, p = teamPrice(key); return !!(p && p.free && !(t && t.free && t.free[key])); }
+function teamPriceText(key) {
+    const p = teamPrice(key); if (!p) return '';
+    if (teamFreeLeft(key)) return '🎁 első alkalommal ingyenes';
+    return `${p.money.toLocaleString('hu-HU')} $ a kasszából`;
+}
+// mentés gomb(ok): ha kell fizetni és be van kapcsolva a kristály, két gomb (kassza / kristály)
+function teamPayButtons(keys, call, label) {
+    const r = (socialState && socialState.teamRules) || {};
+    const paid = keys.filter(k => !teamFreeLeft(k));
+    const money = paid.reduce((a, k) => a + ((teamPrice(k) || {}).money || 0), 0), cr = paid.reduce((a, k) => a + ((teamPrice(k) || {}).crystals || 0), 0);
+    const sub = paid.length ? `${money.toLocaleString('hu-HU')} $ a kasszából` : '🎁 ingyen (első alkalom)';
+    let h = `<button class="ok wide" onclick="${call.replace('PAY', 'bank')}">${label} <small>· ${sub}</small></button>`;
+    if (paid.length && r.crystals && cr) h += `<button class="wide sg-tm-cr" onclick="${call.replace('PAY', 'crystal')}">${label} <small>· ${cr} 💎</small></button>`;
+    return h;
+}
+
 // ---------- fő belépési pont: a social-ui.js hívja ----------
 function teamHtml(st) {
     return st.team ? teamInHtml(st) : teamOutHtml(st);
@@ -62,7 +81,8 @@ function teamOutHtml(st) {
         h += `<div class="sg-so-card"><div class="sg-tm-head">${teamEmblemHtml(d, 64)}<div><b>Alapíts csapatot!</b><small>Legfeljebb ${r.max || 15} fő · a ${r.minLevel || 3}. szinttől</small></div></div>
             <input id="so-team-name" maxlength="24" placeholder="Csapat neve (pl. Érdi Farkasok)"><input id="so-team-tag" maxlength="4" placeholder="Rövidítés (2–4 betű, pl. ÉRD)" style="text-transform:uppercase">
             ${teamEmblemPicker(d, 'teamCreatePick')}
-            <button class="ok wide" onclick="socialCreateTeam()">CSAPAT ALAPÍTÁSA</button>
+            <button class="ok wide" onclick="socialCreateTeam()">CSAPAT ALAPÍTÁSA${(teamPrice('team_create') || {}).money ? ` <small>· ${(teamPrice('team_create').money).toLocaleString('hu-HU')} $</small>` : ''}</button>
+            ${(teamPrice('team_create') || {}).money ? `<small class="sg-so-muted">Az alapítás ${teamPrice('team_create').money.toLocaleString('hu-HU')} $ a saját pénzedből (neked ${((player && player.money) || 0).toLocaleString('hu-HU')} $ van).</small>` : ''}
             <small class="sg-so-muted">Minden héten 3 közös csapatküldetés (köztük mindig egy közös séta). Mindegyikért jutalom jár annak, aki a héten segített, mind a háromért még +${r.allBonus ? r.allBonus.xp : 300} XP és ${r.allBonus ? r.allBonus.money : 200} $. A csapatok havi ranglistán is versenyeznek.</small></div>`;
     }
     return h;
@@ -136,22 +156,49 @@ function teamSubSet(k) {
     if (k === 'chat') teamChatScroll();
 }
 function teamHomeHtml(st) {
-    const t = st.team, r = st.teamRules || {};
+    const t = st.team, r = st.teamRules || {}, lead = t.role === 'owner' || t.role === 'officer';
     let h = '';
     if (t.board) h += `<div class="sg-tm-board"><b>📌 HIRDETŐTÁBLA</b><p>${tE(t.board.text)}</p><small>${tE(t.board.by)} · ${teamAgo(t.board.t)}</small></div>`;
     h += `<div class="sg-so-h">HETI CSAPATKÜLDETÉSEK</div>`;
     h += t.quests.map(q => {
         const pct = Math.min(100, Math.round(q.progress / q.target * 100));
         const fmt = (v) => (q.div > 1 ? (v / q.div).toFixed(1).replace('.', ',').replace(',0', '') : String(v));
-        return `<div class="sg-tm-q${q.done ? ' done' : ''}"><div class="sg-tm-qh"><span>${q.icon}</span><b>${tE(q.title)}</b><small>${q.done ? '✓ KÉSZ' : `+${q.reward.xp} XP · ${q.reward.money} $`}</small></div>
+        const canRe = lead && q.kind !== 'walk' && !q.done && (t.rerolls || 0) < (t.rerollMax || 3);
+        return `<div class="sg-tm-q${q.done ? ' done' : ''}"><div class="sg-tm-qh"><span>${q.icon}</span><b>${tE(q.title)}</b><small>${q.done ? '✓ KÉSZ' : `+${q.reward.xp} XP · ${q.reward.money} $`}</small>${canRe ? `<button class="sg-tm-re" onclick="teamReroll('${q.kind}')" title="Másik küldetést kérek">🔄</button>` : ''}</div>
             <div class="sg-qs-bar"><i style="width:${pct}%"></i><span>${fmt(q.progress)} / ${fmt(q.target)} ${tE(q.unit)}</span></div>
             <small class="sg-so-muted">${tE(q.desc)}! · <b class="${(q.helpers || 0) >= (q.need || 2) ? 'ok' : ''}">👥 ${Math.min(q.helpers || 0, q.need || 2)} / ${q.need || 2} segítő</b>${!q.done && q.progress >= q.target && (q.helpers || 0) < (q.need || 2) ? ' – még kell segítő!' : ''}</small></div>`;
     }).join('');
     h += `<div class="sg-tm-note">${t.allDone ? '🏆 Mind a 3 kész ezen a héten! Hétfőn újak jönnek.' : `🏆 Mind a háromért: még +${r.allBonus ? r.allBonus.xp : 300} XP és ${r.allBonus ? r.allBonus.money : 200} $.`}<br>Egy küldetés csak akkor teljesül, ha legalább ${(t.quests[0] && t.quests[0].need) || 3} különböző tag segít benne. A jutalmat az kapja, aki a héten bármivel hozzájárult. Hétfőn új küldetések jönnek.</div>`;
     const s = t.stats || {};
     h += `<div class="sg-tm-stats"><div><b>${String(Math.round(s.km || 0))}</b><small>km közösen</small></div><div><b>${s.quests || 0}</b><small>csapatküldetés</small></div><div><b>${(s.weeks || 0) + 1}</b><small>hét együtt</small></div></div>`;
+    h += teamBankHtml(st);
     if ((t.log || []).length) h += `<div class="sg-so-h">CSAPATNAPLÓ</div><div class="sg-tm-log">${t.log.slice(0, 10).map(l => `<div><small>${teamAgo(l.t)}</small> ${tE(l.text)}</div>`).join('')}</div>`;
     return h;
+}
+function teamBankHtml(st) {
+    const t = st.team, r = st.teamRules || {};
+    const log = (t.bankLog || []).slice(0, 8).map(l => `<div><small>${teamAgo(l.t)}</small> <b class="${l.amount >= 0 ? 'in' : 'out'}">${l.amount >= 0 ? '+' : ''}${l.amount.toLocaleString('hu-HU')} $</b> ${tE(l.what)}${l.who ? ` · ${tE(l.who)}` : ''}</div>`).join('');
+    return `<div class="sg-so-h">🏦 CSAPATKASSZA</div><div class="sg-tm-bank"><div class="sg-tm-bal"><b>${(t.bank || 0).toLocaleString('hu-HU')} $</b><small>a csapat közös pénze</small></div>
+        <div class="sg-so-add"><input id="tm-dep" type="number" min="${r.depositMin || 10}" step="10" placeholder="Összeg ($)"><button class="ok" onclick="teamDeposit()">BEFIZETEK</button></div>
+        <small class="sg-so-muted">Bárki befizethet, kivenni nem lehet: a vezetők a csapatra költik (új címer, átnevezés, másik küldetés). Minden kész csapatküldetésért +${r.bankQuest || 50} $, mind a háromért még +${r.bankAll || 100} $ kerül a kasszába.</small>
+        ${log ? `<div class="sg-tm-blog">${log}</div>` : ''}</div>`;
+}
+function teamDeposit() {
+    const i = document.getElementById('tm-dep'); const v = Math.floor(Number(i && i.value) || 0);
+    if (v <= 0) return;
+    if (player && v > player.money) { if (typeof showToast === 'function') showToast(`⚠️ Csak ${player.money} $-od van.`); return; }
+    if (confirm(`Befizetsz ${v.toLocaleString('hu-HU')} $-t a csapatkasszába? Kivenni nem lehet.`)) { socket.emit('team_deposit', { amount: v }); i.value = ''; }
+}
+function teamReroll(kind) {
+    const q = socialState.team.quests.find(x => x.kind === kind); if (!q) return;
+    const r = socialState.teamRules || {}, p = teamPrice('team_reroll') || {};
+    const free = teamFreeLeft('team_reroll');
+    let pay = 'bank';
+    if (!free && r.crystals && p.crystals) {
+        const c = prompt(`Másik küldetés a(z) „${q.title}” helyett.\nFizetés: 1 = ${p.money} $ a kasszából, 2 = ${p.crystals} 💎`, '1');
+        if (c === null) return; pay = String(c).trim() === '2' ? 'crystal' : 'bank';
+    } else if (!confirm(`Másik küldetést kértek a(z) „${q.title}” helyett? Az új nulláról indul.\nÁra: ${free ? 'első alkalommal ingyenes' : `${p.money} $ a csapatkasszából`}.`)) return;
+    socket.emit('team_reroll', { kind, pay });
 }
 function teamMembersHtml(st) {
     const t = st.team, me = player && player.username;
@@ -162,7 +209,7 @@ function teamMembersHtml(st) {
         const parts = [w.km ? `${String(w.km).replace('.', ',')} km` : '', w.loot ? `${w.loot} épület` : '', w.win ? `${w.win} győzelem` : '', w.cells ? `${w.cells} terület` : '', w.craft ? `${w.craft} barkács` : '', w.quests ? `${w.quests} küldetés` : ''].filter(Boolean);
         const idle = !m.online && m.lastSeen && Date.now() - m.lastSeen > 7 * 86400000;
         const canKick = m.name !== me && (t.role === 'owner' || (t.role === 'officer' && m.role === 'member'));
-        return `<div class="sg-tm-mem${idle ? ' idle' : ''}"><span class="sg-so-dot ${m.online ? 'on' : ''}"></span><div class="sg-so-who">
+        return `<div class="sg-tm-mem${idle ? ' idle' : ''}"><span class="sg-so-dot ${m.online ? 'on' : ''}"></span><div class="sg-so-who" onclick="openProfile('${tJ(m.name)}')" style="cursor:pointer">
             <b>${m.role === 'owner' ? '👑 ' : m.role === 'officer' ? '⭐ ' : ''}${tE(m.name)}${m.name === me ? ' (te)' : ''}</b>
             <small>${m.level}. szint · ${m.points} pont a hónapban · ${m.online ? 'online' : teamAgo(m.lastSeen)}${idle ? ' ⚠️' : ''}</small>
             <small class="${w.active ? 'act' : 'no'}">${parts.length ? '🟢 ' + parts.join(' · ') : '⚪ ezen a héten még nem segített'}</small></div>
@@ -202,7 +249,8 @@ function teamChatListHtml() {
     if (!teamChatLoaded) return '<p class="sg-so-muted">Betöltés…</p>';
     if (!teamChat.length) return '<p class="sg-so-muted">Még nincs üzenet. Köszönj a csapatnak! 👋</p>';
     let lastDay = '';
-    return teamChat.map(m => {
+    const older = teamChatMore ? `<button class="sg-tm-older" onclick="teamChatOlder()"${teamChatBusy ? ' disabled' : ''}>${teamChatBusy ? 'BETÖLTÉS…' : '▲ RÉGEBBI ÜZENETEK'}</button>` : (teamChat.length > 50 ? '<div class="sg-tm-day">A csevegés eleje</div>' : '');
+    return older + teamChat.map(m => {
         const day = new Date(m.t).toLocaleDateString('hu-HU', { month: 'long', day: 'numeric' });
         const sep = day !== lastDay ? `<div class="sg-tm-day">${day}</div>` : ''; lastDay = day;
         return `${sep}<div class="sg-tm-msg${m.from === me ? ' me' : ''}"><small>${tE(m.from)} · ${new Date(m.t).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</small><p>${tE(m.text)}</p></div>`;
@@ -213,6 +261,23 @@ function teamChatHtml() {
         <div class="sg-so-add"><input id="tm-say" maxlength="200" placeholder="Üzenet a csapatnak…" autocomplete="off" onkeydown="if(event.key==='Enter')teamSay()"><button class="ok" onclick="teamSay()">KÜLD</button></div>
         <small class="sg-so-muted">Csak a csapattagok látják. Légy kedves – a stáb a sértő üzeneteket törli.</small>`;
 }
+// régebbi üzenetek betöltése (v0.1.26.5): a lista teteje marad a helyén
+let teamChatMore = false, teamChatBusy = false;
+function teamChatOlder() {
+    if (teamChatBusy || !teamChat.length) return;
+    teamChatBusy = true; const c = document.getElementById('tm-chat'); if (c) c.innerHTML = teamChatListHtml();
+    socket.emit('team_chat_more', { before: teamChat[0].t });
+}
+socket.on('team_chat_older', (d) => {
+    teamChatBusy = false;
+    const have = new Set(teamChat.map(m => m.id));
+    const add = ((d && d.list) || []).filter(m => !have.has(m.id));
+    teamChat = add.concat(teamChat); teamChatMore = !!(d && d.more);
+    const c = document.getElementById('tm-chat'); if (!c) return;
+    const fromBottom = c.scrollHeight - c.scrollTop;
+    c.innerHTML = teamChatListHtml();
+    c.scrollTop = c.scrollHeight - fromBottom;
+});
 function teamSay() { const i = document.getElementById('tm-say'); const v = i && i.value.trim(); if (!v) return; socket.emit('team_chat_send', { text: v }); i.value = ''; }
 function teamChatScroll() { requestAnimationFrame(() => { const c = document.getElementById('tm-chat'); if (c) c.scrollTop = c.scrollHeight; }); }
 
@@ -230,6 +295,7 @@ function socialTeamInvite() { const i = document.getElementById('so-team-inv'); 
 function teamManageHtml(st) {
     const t = st.team, owner = t.role === 'owner', S = TM();
     let h = '';
+    h += `<div class="sg-tm-note">🏦 Csapatkassza: <b>${(t.bank || 0).toLocaleString('hu-HU')} $</b> · 🔄 Másik csapatküldetés a Csapat fülön (${teamPriceText('team_reroll')}, hetente legfeljebb ${t.rerollMax || 3}×).</div>`;
     h += `<div class="sg-so-h">JELENTKEZŐK (${(t.requests || []).length})</div>`;
     h += (t.requests || []).length ? t.requests.map(r => `<div class="sg-tm-req"><div class="sg-so-who"><b>${tE(r.name)}</b><small>${r.level}. szint · ${teamAgo(r.t)}</small>${r.msg ? `<em>„${tE(r.msg)}”</em>` : ''}</div>
         <button class="ok" onclick="socket.emit('team_accept',{name:'${tJ(r.name)}'})">FELVESZEM</button><button onclick="socket.emit('team_reject',{name:'${tJ(r.name)}'})">✕</button></div>`).join('')
@@ -242,13 +308,15 @@ function teamManageHtml(st) {
     h += `<div class="sg-so-h">CÍMER ÉS LEÍRÁS</div><div class="sg-so-card"><div class="sg-tm-head">${teamEmblemHtml(d, 64)}<div><b>[${tE(t.tag)}] ${tE(t.name)}</b><small>előnézet</small></div></div>
         ${teamEmblemPicker(d, 'teamDraftPick')}
         <textarea id="tm-desc" maxlength="140" rows="2" placeholder="Rövid leírás a csapatkeresőbe (pl. Érdi esti sétálók, bárkit várunk!)">${tE(t.desc)}</textarea>
-        <button class="ok wide" onclick="teamSaveLook()">MENTÉS</button></div>`;
+        ${teamPayButtons(['team_emblem'], "teamSaveLook('PAY')", 'MENTÉS')}
+        <small class="sg-so-muted">Új címer: ${teamPriceText('team_emblem')}. A leírás módosítása ingyenes.</small></div>`;
     if (owner && S) {
         h += `<div class="sg-so-h">CSATLAKOZÁS</div><div class="sg-so-card">${S.MODES.map(m => `<label class="sg-tm-radio"><input type="radio" name="tm-mode" value="${m.key}" ${t.mode === m.key ? 'checked' : ''}><span><b>${m.name}</b><small>${m.desc}</small></span></label>`).join('')}
             <label class="sg-tm-lv">Minimum szint: <input id="tm-minlv" type="number" min="1" max="99" value="${t.minLevel}"></label>
             <button class="ok wide" onclick="teamSaveJoin()">MENTÉS</button></div>`;
         h += `<div class="sg-so-h">NÉV ÉS RÖVIDÍTÉS</div><div class="sg-so-card"><input id="tm-name" maxlength="24" value="${tE(t.name)}"><input id="tm-tag" maxlength="4" value="${tE(t.tag)}" style="text-transform:uppercase">
-            <button class="wide" onclick="teamSaveName()">ÁTNEVEZÉS</button></div>
+            ${teamPayButtons(['team_name'], "teamSaveName('PAY')", 'ÁTNEVEZÉS')}
+            <small class="sg-so-muted">Új név: ${teamPriceText('team_name')} · új rövidítés: ${teamPriceText('team_tag')}.</small></div>
             <button class="sg-so-leave" onclick="if(confirm('Biztosan feloszlatod a csapatot? Minden tag kikerül, és ez nem vonható vissza.'))socket.emit('team_disband')">CSAPAT FELOSZLATÁSA</button>`;
     } else h += `<p class="sg-so-muted">Helyettesként felvehetsz és elküldhetsz tagot, kitűzhetsz a hirdetőtáblára, és módosíthatod a címert. A nevet, a csatlakozás módját és a minimum szintet a vezető állítja.</p>`;
     return h;
@@ -257,12 +325,12 @@ function teamDraftPick(k, v) {
     teamDraft = teamDraft || { ...socialState.team.emblem }; teamDraft[k] = v;
     teamKeepInputs(['tm-desc', 'tm-board', 'tm-name', 'tm-tag', 'tm-minlv', 'so-team-inv'], renderSocial);
 }
-function teamSaveLook() { socket.emit('team_settings', { emblem: teamDraft || socialState.team.emblem, desc: (document.getElementById('tm-desc') || {}).value || '' }); }
+function teamSaveLook(pay) { socket.emit('team_settings', { emblem: teamDraft || socialState.team.emblem, desc: (document.getElementById('tm-desc') || {}).value || '', pay }); }
 function teamSaveJoin() {
     const m = document.querySelector('input[name="tm-mode"]:checked');
     socket.emit('team_settings', { mode: m ? m.value : undefined, minLevel: Number((document.getElementById('tm-minlv') || {}).value || 1) });
 }
-function teamSaveName() { socket.emit('team_settings', { name: (document.getElementById('tm-name') || {}).value || '', tag: (document.getElementById('tm-tag') || {}).value || '' }); }
+function teamSaveName(pay) { socket.emit('team_settings', { name: (document.getElementById('tm-name') || {}).value || '', tag: (document.getElementById('tm-tag') || {}).value || '', pay }); }
 
 // ---------- események ----------
 socket.on('team_search_result', (d) => {
@@ -272,9 +340,9 @@ socket.on('team_search_result', (d) => {
 });
 socket.on('team_chat', (d) => {
     if (!d) return;
-    if (d.all) { teamChat = d.list || []; teamChatLoaded = true; }
+    if (d.all) { teamChat = d.list || []; teamChatLoaded = true; teamChatMore = !!d.more; teamChatBusy = false; }
     else if (d.msg) {
-        teamChat.push(d.msg); if (teamChat.length > 80) teamChat = teamChat.slice(-80);
+        teamChat.push(d.msg); if (teamChat.length > 2000) { teamChat = teamChat.slice(-2000); teamChatMore = true; }
         if (socialState && socialState.team) socialState.team.chatLast = d.msg.t;
     }
     const m = document.getElementById('social-modal');

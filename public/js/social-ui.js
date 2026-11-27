@@ -12,13 +12,13 @@ function openSocial(tab) {
     renderSocial();
 }
 function closeSocial() { document.getElementById('social-modal').classList.add('hidden'); }
-function socialSetTab(t) { socialTab = t; renderSocial(); const b = document.getElementById('social-body'); if (b) b.scrollTop = 0; }
+function socialSetTab(t) { socialTab = t; if (t === 'dm' && typeof dmThread !== 'undefined') { dmThread = null; socket.emit('dm_list'); } renderSocial(); const b = document.getElementById('social-body'); if (b) b.scrollTop = 0; }
 const sEsc = (s) => (typeof escapeAttr === 'function' ? escapeAttr(String(s)) : String(s));
 const sJs = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 function socialBadge() {
     const st = socialState; if (!st) return;
-    const n = (st.friends || []).filter(f => f.incoming).length + (typeof teamAlerts === 'function' ? teamAlerts(st) : (st.teamInvites || []).length);
+    const n = (st.friends || []).filter(f => f.incoming).length + (typeof teamAlerts === 'function' ? teamAlerts(st) : (st.teamInvites || []).length) + (typeof dmUnread !== 'undefined' ? dmUnread : 0);
     const b = document.getElementById('nav-social-badge');
     if (b) { b.textContent = String(n); b.classList.toggle('hidden', n <= 0); }
 }
@@ -27,12 +27,13 @@ function renderSocial() {
     const body = document.getElementById('social-body');
     if (!body) return;
     const st = socialState;
-    const tabs = [['friends', '👥', 'Barátok'], ['team', '🏕️', 'Csapat'], ['invite', '🤝', 'Meghívás'], ['share', '📸', 'Megosztás']];
-    const badge = (k) => { if (!st) return 0; if (k === 'friends') return (st.friends || []).filter(f => f.incoming).length; if (k === 'team' && typeof teamAlerts === 'function') return teamAlerts(st); return 0; };
+    const tabs = [['friends', '👥', 'Barátok'], ['dm', '💬', 'Üzenetek'], ['team', '🏕️', 'Csapat'], ['invite', '🤝', 'Meghívás'], ['share', '📸', 'Megosztás']];
+    const badge = (k) => { if (!st) return 0; if (k === 'friends') return (st.friends || []).filter(f => f.incoming).length; if (k === 'team' && typeof teamAlerts === 'function') return teamAlerts(st); if (k === 'dm' && typeof dmUnread !== 'undefined') return dmUnread; return 0; };
     let html = `<div class="sg-so-tabs">${tabs.map(([k, ic, n]) => { const b = badge(k); return `<button class="${k === socialTab ? 'on' : ''}" onclick="socialSetTab('${k}')">${ic}<span>${n}</span>${b ? `<i class="sg-tm-dot">${b}</i>` : ''}</button>`; }).join('')}</div>`;
     if (!st) { body.innerHTML = html + '<p class="sg-so-muted">Betöltés…</p>'; return; }
     if (socialTab === 'friends') html += friendsHtml(st);
     else if (socialTab === 'team') html += teamHtml(st);
+    else if (socialTab === 'dm' && typeof dmHtml === 'function') html += dmHtml();
     else if (socialTab === 'invite') html += inviteHtml(st);
     else html += shareHtml(st);
     // gépelés közben érkező frissítés ne vigye el a fókuszt és a beírt szöveget
@@ -53,7 +54,8 @@ function friendsHtml(st) {
     if (out.length) h += `<div class="sg-so-h">ELKÜLDÖTT KÉRÉSEK</div>` + out.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><small class="sg-so-muted">várja, hogy elfogadja</small><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
     if (req.length) h += `<div class="sg-so-h">BARÁTKÉRÉSEK</div>` + req.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><button class="ok" onclick="socket.emit('friend_accept',{name:'${sJs(f.name)}'})">ELFOGADOM</button><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
     h += `<div class="sg-so-h">BARÁTAIM (${ok.length}) <small>· ma még ${st.giftsLeft} ajándékot küldhetsz</small></div>`;
-    h += ok.length ? ok.map(f => `<div class="sg-so-row"><span class="sg-so-dot ${f.online ? 'on' : ''}"></span><div class="sg-so-who"><b>${sEsc(f.name)}</b><small>${f.level}. szint · ${String(f.km).replace('.', ',')} km és ${f.points} pont a hónapban${f.online ? ' · online' : ''}</small></div>
+    h += ok.length ? ok.map(f => `<div class="sg-so-row"><span class="sg-so-dot ${f.online ? 'on' : ''}"></span><div class="sg-so-who" onclick="openProfile('${sJs(f.name)}')" style="cursor:pointer"><b>${sEsc(f.name)}</b><small>${f.level}. szint · ${String(f.km).replace('.', ',')} km és ${f.points} pont a hónapban${f.online ? ' · online' : ''}</small></div>
+        <button class="msg" title="Üzenet" onclick="openDm('${sJs(f.name)}')">✉</button>
         <button class="gift" ${f.canGift && st.giftsLeft > 0 ? '' : 'disabled'} onclick="socket.emit('friend_gift',{name:'${sJs(f.name)}'})">${f.canGift ? '🎁 AJÁNDÉK' : '✓ MA KÜLDTÉL'}</button>
         <button class="x" onclick="socialRemoveFriend('${sJs(f.name)}')">✕</button></div>`).join('')
         : `<p class="sg-so-muted">Még nincs barátod. Írd be egy játékos nevét, koppints rá a térképen, vagy hívd meg a barátaidat a Meghívás fülön – aki a linkeddel regisztrál, automatikusan a barátod lesz.</p>`;
@@ -102,7 +104,11 @@ function socialShareLink() {
 // ---------- Megosztás és közösségi oldalak ----------
 function shareHtml(st) {
     const sr = st.share || {}, rw = st.socialReward || {};
-    let h = `<div class="sg-so-card"><b>📸 Ossz meg egy képet!</b><p>A játék elkészíti a túlélőkártyádat (szint, megtett km, felfedezett területek, szezonpont), rajta a meghívó linkeddel. ${sr.done ? '✓ A mai megosztási jutalmat már megkaptad.' : `Naponta az első megosztásért <b>+${sr.reward.xp} XP és ${sr.reward.money} $</b> jár.`}</p>
+    const cp = st.campaign;
+    let h = cp ? `<div class="sg-so-card sg-so-camp"><b>📣 Oszd meg a nagy frissítést!</b><img src="${cp.img}" alt="Survival GO – nagy frissítés" class="sg-so-camp-img">
+        <p>${cp.done ? '✓ A kampányjutalmat már megkaptad – de oszd meg bátran újra!' : `Oszd meg a frissítés plakátját a meghívó linkeddel, és egyszer <b>+${cp.reward.xp} XP és ${cp.reward.money} $</b> jár. Aki a linkeddel regisztrál, az is jutalmat kap, és te is.`} <small>A Fagyos Csendig (${cp.until.slice(5).replace('-', '.')}.-ig).</small></p>
+        <button class="ok wide" onclick="socialShareCampaign()">📤 PLAKÁT MEGOSZTÁSA</button></div>` : '';
+    h += `<div class="sg-so-card"><b>📸 Ossz meg egy képet!</b><p>A játék elkészíti a túlélőkártyádat (szint, megtett km, felfedezett területek, szezonpont), rajta a meghívó linkeddel. ${sr.done ? '✓ A mai megosztási jutalmat már megkaptad.' : `Naponta az első megosztásért <b>+${sr.reward.xp} XP és ${sr.reward.money} $</b> jár.`}</p>
         <div id="so-card-prev" class="sg-so-prev"></div>
         <button class="ok wide" onclick="socialShareCard('profile')">📤 TÚLÉLŐKÁRTYA MEGOSZTÁSA</button>
         <small class="sg-so-muted">Facebook, Instagram, TikTok, Discord, Messenger – a telefonod megosztás menüjében választhatsz.</small></div>`;
@@ -182,6 +188,23 @@ async function socialShareCard(kind, extra) {
     logMessage('📸 A kép letöltve – oszd meg bárhol!');
     socket.emit('share_done', { kind });
 }
+// kampány: a frissítés plakátja + a meghívó link
+async function socialShareCampaign() {
+    const cp = socialState && socialState.campaign; if (!cp) return;
+    const link = (socialState.ref && socialState.ref.link) || 'https://survivalgo.hu';
+    const text = `${cp.text} ${link}`;
+    let blob = null; try { blob = await (await fetch(cp.img)).blob(); } catch (e) { /* */ }
+    const file = blob ? new File([blob], 'survivalgo-frissites.jpg', { type: 'image/jpeg' }) : null;
+    try {
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text, title: 'Survival GO' }); socket.emit('share_done', { kind: 'campaign' }); return; }
+        if (navigator.share) { await navigator.share({ title: 'Survival GO', text, url: link }); socket.emit('share_done', { kind: 'campaign' }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    // számítógépen: a kép letöltődik, a szöveg a vágólapra kerül
+    if (blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'survivalgo-frissites.jpg'; document.body.appendChild(a); a.click(); a.remove(); }
+    try { await navigator.clipboard.writeText(text); } catch (e) { /* */ }
+    logMessage('📣 A plakát letöltve, a szöveg a linkeddel a vágólapon – oszd meg bárhol!');
+    socket.emit('share_done', { kind: 'campaign' });
+}
 function shareTreeCard() { if (typeof winterTree !== 'undefined' && winterTree) socialShareCard('tree', winterTree); }
 
 // ---------- egy másik játékos a térképen ----------
@@ -193,6 +216,9 @@ function socialPlayerCard(pData) {
     const pop = document.getElementById('social-pop');
     if (!pop) return;
     pop.innerHTML = `<b>👤 ${sEsc(pData.username)}</b><small>${pData.level || 1}. szintű túlélő</small>
+        <button onclick="openProfile('${sJs(pData.username)}')">👤 PROFIL</button>
+        <button onclick="openDm('${sJs(pData.username)}')">✉ ÜZENET</button>
+        <small>Tipp: hosszan nyomva a játékoson körmenü nyílik.</small>
         ${isFriend ? '<small>✓ a barátod</small>' : `<button onclick="socket.emit('friend_request',{name:'${sJs(pData.username)}'});document.getElementById('social-pop').classList.add('hidden')">+ BARÁTNAK JELÖLÖM</button>`}
         ${window.sgTeamSet && window.sgTeamSet.has(pData.username) ? '<small>🏕️ csapattársad</small>' : ''}
         ${myTeam && !(window.sgTeamSet && window.sgTeamSet.has(pData.username)) ? `<button onclick="socket.emit('team_invite',{name:'${sJs(pData.username)}'});document.getElementById('social-pop').classList.add('hidden')">🏕️ MEGHÍVOM A CSAPATBA</button>` : ''}

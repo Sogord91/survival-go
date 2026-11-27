@@ -118,6 +118,8 @@ body.embed header h1 { font-size: 15px; }
   <button data-t="win" data-perm="events">❄ FAGYOS CSEND</button>
   <button data-t="prog" data-perm="events">⭐ FEJLŐDÉS</button>
   <button data-t="teams">🏕 CSAPATOK</button>
+  <button data-t="qr" data-perm="events">📮 QR</button>
+  <button data-t="pvp" data-perm="events">🔫 PvP</button>
   <button data-t="eco">GAZDASÁG</button>
   <button data-t="log">NAPLÓ</button>
   <button data-t="srv" data-perm="server">SZERVER</button>
@@ -265,7 +267,7 @@ body.embed header h1 { font-size: 15px; }
 
   <!-- FEJLŐDÉS (v0.1.20): képességek, újraosztás, küldetések -->
   <section class="tab" id="t-prog">
-    <div class="row" style="margin-bottom:8px"><button class="btn ghost" onclick="loadProgress(); loadSeasonAdmin()">↻ FRISSÍTÉS</button><span class="muted" id="prog-asof"></span></div>
+    <div class="row" style="margin-bottom:8px"><button class="btn ghost" onclick="loadProgress(); loadSeasonAdmin(); loadGamePrices()">↻ FRISSÍTÉS</button><span class="muted" id="prog-asof"></span></div>
     <div class="grid cards" id="prog-kpis"></div>
     <div class="grid two" style="margin-top:10px">
       <div class="card"><h3>Képesség-újraosztás ára</h3>
@@ -277,6 +279,9 @@ body.embed header h1 { font-size: 15px; }
         </div>
         <p class="muted" id="sp-example" style="margin-top:6px"></p>
         <p class="muted">Az első újraosztás mindenkinek ingyenes (karakterenként).</p></div>
+      <div class="card"><h3>Szolgáltatások ára (csapat, menedék)</h3><div id="gp-table"></div>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="saveGamePrices()">MENTÉS</button></div>
+        <p class="muted">„1× ingyen”: az első alkalom ingyenes (csapatonként, illetve játékosonként). A csapat dolgait a csapatkasszából fizetik, a kristály csak akkor választható, ha a prémium be van kapcsolva.</p></div>
       <div class="card"><h3>Ágak (elköltött pontok, a stáb nélkül)</h3><div id="prog-branch"></div></div>
       <div class="card"><h3>Képességek népszerűsége (rangok összesen · játékosok)</h3><div id="prog-skills"></div></div>
       <div class="card"><h3>Küldetések típus szerint (30 nap) · 🚶 = mozgásos</h3><div id="prog-quests"></div></div>
@@ -295,6 +300,71 @@ body.embed header h1 { font-size: 15px; }
     <div class="grid cards" id="teams-kpis"></div>
     <div class="card" style="margin-top:10px"><h3>Csapatok (havi szezonpont szerint)</h3><div id="teams-list" style="overflow-x:auto"></div></div>
     <div id="team-detail" style="margin-top:10px"></div>
+  </section>
+
+  <!-- PvP (v0.1.26): ki-/bekapcsolás, biztonságos zónák, harcnapló -->
+  <section class="tab" id="t-pvp">
+    <div class="grid cards" id="pvp-kpis"></div>
+    <div class="card" style="margin-top:10px"><h3>Beállítások</h3>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="pvp-on"> A támadás (PvP) be van kapcsolva</label>
+      <h3 style="margin-top:12px">Biztonságos zónák (itt nem lehet támadni)</h3>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0"><label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="pvp-sq-on"> A települések főterei (ahol a karácsonyfák állnak) biztonságos zónák</label>
+        <label>sugár (m) <input id="pvp-sq-r" type="number" min="30" max="500" style="width:80px"></label></div>
+      <p class="muted" style="margin-top:0">Minden városban, faluban és városrészben automatikusan működik, nem kell felvenni. Lent kézzel további zónákat adhatsz hozzá.</p>
+      <div id="pvp-zones"></div>
+      <div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn ghost" onclick="pvpZoneAdd()">+ ZÓNA</button><button class="btn" onclick="pvpSave()">MENTÉS</button></div>
+      <p class="muted">Koordinátát a Google Térképen kapsz: jobb klikk a helyre → az első sor (pl. 47.4979, 19.0402). Később a kereskedők, olvasztók és műhelyek körül magától is biztonságos zóna lesz.</p></div>
+    <div class="grid two" style="margin-top:10px">
+      <div class="card"><h3>Most zajló harcok</h3><div id="pvp-live"></div><h3 style="margin-top:10px">Banditák (online)</h3><div id="pvp-bandits"></div></div>
+      <div class="card"><h3>Harcnapló (utolsó 100)</h3><div id="pvp-log" style="max-height:420px;overflow-y:auto"></div></div>
+    </div>
+  </section>
+
+  <!-- QR-MATRICÁK (v0.1.24): gyártás, nyomtatás, statisztika -->
+  <section class="tab" id="t-qr">
+    <div class="grid cards" id="qr-kpis"></div>
+    <div class="card" style="margin-top:10px"><h3>📍 Matrica kiragasztása (telefonról, a helyszínen)</h3>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label>A matrica kódja (a QR alatt)<br><input id="qr-place-code" maxlength="7" placeholder="pl. K7QW2MZ" style="width:130px;text-transform:uppercase"></label>
+        <label>Hol van? (nem kötelező)<br><input id="qr-place-note" maxlength="60" placeholder="pl. Fő utca, pékség ajtaja" style="width:220px"></label>
+        <button class="btn" onclick="qrPlaceHere()">📍 ITT RAKTAM KI</button>
+      </div>
+      <p class="muted">Ragaszd ki a matricát, nyisd meg ezt az oldalt a telefonodon, írd be a kódot, és nyomd meg a gombot: a matrica a telefonod mostani helyére kerül. Később a kódok listájánál is beállíthatod vagy törölheted.</p></div>
+    <div class="card" style="margin-top:10px"><h3>🔎 Kereső segítség a játékosoknak</h3>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="qr-hint-on"> Bekapcsolva</label>
+        <label>Ennyi méterről látszik<br><input id="qr-hint-dist" type="number" min="30" max="2000" style="width:90px"></label>
+        <label>A kör sugara (m)<br><input id="qr-hint-r" type="number" min="10" max="200" style="width:80px"></label>
+        <button class="btn" onclick="qrHintSave()">MENTÉS</button>
+      </div>
+      <p class="muted">Aki még nem találta meg, annak a térképén ennyi méterről megjelenik egy sárga, szaggatott kör „QR” jellel. A matrica a körön belül van, de nem pontosan a közepén: meg kell keresni. Beváltás után a kör eltűnik.</p></div>
+    <div class="card" style="margin-top:10px"><h3>⏱ Napi korlát és 🎉 QR-event</h3>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label>Naponta ennyi matricát válthat be egy játékos<br><input id="qr-daily-in" type="number" min="1" max="100" style="width:90px"></label>
+        <button class="btn" onclick="qrDailySave()">MENTÉS</button>
+      </div>
+      <p class="muted">Ugyanazt a matricát egy játékos alapból csak egyszer válthatja be. A napi korlát a lefotózott és megosztott kódok tömeges beváltása ellen véd.</p>
+      <div id="qr-ev-state" style="margin:8px 0;font-weight:700"></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label>Event neve<br><input id="qr-ev-name" maxlength="40" placeholder="pl. Dupla QR hétvége" style="width:190px"></label>
+        <label>Jutalom szorzó<br><select id="qr-ev-mult"><option value="1">×1</option><option value="2">×2</option><option value="3">×3</option><option value="4">×4</option><option value="5">×5</option></select></label>
+        <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="qr-ev-repeat"> A már beváltott matricák újra beválthatók</label>
+        <label>Vége (üresen: amíg ki nem kapcsolod)<br><input id="qr-ev-until" type="datetime-local"></label>
+        <button class="btn" onclick="qrEvSave(true)">🎉 EVENT INDÍTÁSA</button>
+        <button class="btn" onclick="qrEvSave(false)">LEÁLLÍTÁS</button>
+      </div>
+      <p class="muted">Event alatt minden beváltás a szorzóval többet ér. Ha az „újra beválthatók” be van jelölve, eventenként minden matrica még egyszer beváltható (a térképen a kereső kör is újra megjelenik). Egy új event indításakor ez újraindul. A napi korlát event alatt is él: ha kell, emeld meg.</p></div>
+    <div class="card" style="margin-top:10px"><h3>Új matricák gyártása</h3>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <label>Darab<br><input id="qr-count" type="number" min="1" max="500" value="24" style="width:80px"></label>
+        <label>Címke / hely (pl. „Budapest, kávézók”)<br><input id="qr-label" maxlength="40" style="width:240px"></label>
+        <label>Jutalom $<br><input id="qr-money" type="number" min="0" value="150" style="width:80px"></label>
+        <label>Jutalom XP<br><input id="qr-xp" type="number" min="0" value="150" style="width:80px"></label>
+        <button class="btn" onclick="qrCreate()">LEGYÁRTÁS</button>
+      </div>
+      <p class="muted">Minden matrica egyedi kódot kap. A meglévő játékos matricánként egyszer kapja meg a jutalmat (naponta legfeljebb <span id="qr-daily">5</span> matricát válthat be), az új játékos a regisztrációval rögtön megkapja. A kód a QR alatt betűkkel is ott van, a játékban Menü → „QR-matrica kódjának beírása”.</p>
+    </div>
+    <div class="card" style="margin-top:10px"><h3>Sorozatok</h3><div id="qr-list" style="overflow-x:auto"></div></div>
   </section>
 
   <!-- GAZDASÁG -->
@@ -334,6 +404,7 @@ body.embed header h1 { font-size: 15px; }
 <script src="/js/shop.js"></script>
 <script src="/js/wheel.js"></script>
 <script src="/js/skills.js"></script>
+<script src="/js/qr.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const TOKEN_KEY = 'survival_go_token';
@@ -390,8 +461,10 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   if (curTab === 'staff') renderStaff();
   if (curTab === 'prem') { loadPrem(); loadLedger(); }
   if (curTab === 'win') loadWinter();
-  if (curTab === 'prog') { loadProgress(); loadSeasonAdmin(); }
+  if (curTab === 'prog') { loadProgress(); loadSeasonAdmin(); loadGamePrices(); }
   if (curTab === 'teams') loadTeams();
+  if (curTab === 'qr') loadQr();
+  if (curTab === 'pvp') loadPvp();
 });
 function showTab(t) { const b = document.querySelector(`#tabs button[data-t="${t}"]`); if (b && !b.classList.contains('hidden')) b.click(); }
 
@@ -838,6 +911,19 @@ async function loadSeasonAdmin() {
   $('prog-season').innerHTML = `<p class="muted">${esc(d.monthName)} · ${d.rewarded ? 'jutalmazott szezon' : 'próbaszezon'}</p>` + (d.top.length ? '<table>' + d.top.map(r => `<tr><td>${r.rank}.</td><td><b>${esc(r.name)}</b></td><td>${fmt(r.xp)} pont</td><td>${String(r.km).replace('.', ',')} km · ${fmt(r.cells)} ter. · ${fmt(r.quests)} kül.</td></tr>`).join('') + '</table>' : '<p class="muted">Még üres.</p>');
   $('prog-closed').innerHTML = d.closed.length ? d.closed.map(c => `<h3 style="margin-top:6px">${esc(c._id)} · ${new Date(c.at).toLocaleString('hu-HU')}</h3><table>` + (c.winners || []).slice(0, 10).map(w => `<tr><td>${w.rank}.</td><td><b>${esc(w.name)}</b></td><td>${fmt(w.xp)}</td><td>${w.items.length} tárgy</td></tr>`).join('') + `</table><p class="muted">${(c.winners || []).length} jutalmazott összesen</p>`).join('') : '<p class="muted">Még nincs lezárt szezon.</p>';
 }
+async function loadGamePrices() {
+  const d = await api('/api/admin/game-prices', { quiet: true }); if (!d || !d.success) return;
+  const from = { bank: 'csapatkassza', player: 'játékos' };
+  $('gp-table').innerHTML = '<table><tr><th>Mi</th><th>$</th><th>💎</th><th>1× ingyen</th><th>Ki fizeti</th></tr>' + Object.entries(d.prices).map(([k, p]) => `<tr data-k="${esc(k)}">
+    <td>${esc(p.icon || '')} ${esc(p.name)}</td><td><input type="number" min="0" class="gp-m" value="${p.money}" style="width:80px"></td><td><input type="number" min="0" class="gp-c" value="${p.crystals}" style="width:64px"></td>
+    <td style="text-align:center"><input type="checkbox" class="gp-f" ${p.free ? 'checked' : ''}></td><td class="muted">${from[p.from] || p.from}</td></tr>`).join('') + '</table>';
+}
+async function saveGamePrices() {
+  const body = {};
+  document.querySelectorAll('#gp-table tr[data-k]').forEach(tr => { body[tr.dataset.k] = { money: +tr.querySelector('.gp-m').value || 0, crystals: +tr.querySelector('.gp-c').value || 0, free: tr.querySelector('.gp-f').checked }; });
+  const d = await api('/api/admin/game-prices', { method: 'POST', body });
+  toast(d.message); loadGamePrices();
+}
 async function seasonClose() {
   if (!confirm('Lezárod az előző hónap szezonját és kiosztod a jutalmakat? (Csak egyszer fut le hónaponként.)')) return;
   const d = await api('/api/admin/season-close', { method: 'POST', body: {} });
@@ -850,6 +936,130 @@ function spExample() {
 async function saveSkillPrices() {
   const d = await api('/api/admin/skill-prices', { method: 'POST', body: { moneyPerLevel: +$('sp-money').value, crystalBase: +$('sp-cb').value, crystalPerLevel: +$('sp-cl').value } });
   toast(d.message); loadProgress();
+}
+
+// ---------- PvP (v0.1.26) ----------
+let PVP_ZONES = [];
+async function loadPvp() {
+  const d = await api('/api/admin/pvp', { quiet: true }); if (!d || !d.success) return;
+  $('pvp-on').checked = !!d.settings.enabled; { const sq = d.settings.squares || { on: true, r: 100 }; $('pvp-sq-on').checked = !!sq.on; $('pvp-sq-r').value = sq.r; } PVP_ZONES = d.settings.safeZones.map(z => ({ ...z })); pvpZonesRender();
+  const L = d.logs || [], day = Date.now() - 86400000, res = { kill: 'halál', fled: 'menekülés', surrender: 'megadás', draw: 'döntetlen' };
+  const k = (label, v, sub) => `<div class="card kpi"><h3>${label}</h3><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+  $('pvp-kpis').innerHTML = [k('Állapot', d.settings.enabled ? 'BE' : 'KI', `${d.settings.safeZones.length} biztonságos zóna`), k('Harc 24 óra', fmt(L.filter(x => x.t > day).length), `halál: ${L.filter(x => x.t > day && x.result === 'kill').length}`),
+    k('Most harcol', fmt(d.fights.length), ''), k('Zsák a földön', fmt(d.bags || 0), '30 percig marad'), k('Bandita online', fmt(d.bandits.length), '')].join('');
+  $('pvp-live').innerHTML = d.fights.length ? '<table>' + d.fights.map(f => `<tr><td><b>${esc(f.a)}</b> → ${esc(f.d)}</td><td>${f.round}. kör</td><td>${f.phase === 'pick' ? 'megadás' : 'harc'}</td><td class="muted">${new Date(f.startedAt).toLocaleTimeString('hu-HU')}</td></tr>`).join('') + '</table>' : '<p class="muted">Most nincs harc.</p>';
+  $('pvp-bandits').innerHTML = d.bandits.length ? d.bandits.map(b => `<span class="chip" style="margin:2px">💀 ${esc(b.name)} · ${Math.ceil((b.until - Date.now()) / 60000)} perc</span>`).join('') : '<p class="muted">Nincs.</p>';
+  $('pvp-log').innerHTML = L.length ? '<table><tr><th>Mikor</th><th>Támadó</th><th>Megtámadott</th><th>Vége</th><th>Győztes</th><th>Kör</th><th></th></tr>' + L.map(x => `<tr><td class="muted">${new Date(x.t).toLocaleString('hu-HU')}</td><td>${esc(x.a)}</td><td>${esc(x.d)}</td><td>${res[x.result] || x.result}</td><td>${esc(x.winner || '–')}</td><td>${x.rounds}</td>
+    <td>${x.lat ? `<a href="https://www.google.com/maps?q=${x.lat},${x.lng}" target="_blank" rel="noopener">📍</a>` : ''}</td></tr>`).join('') + '</table>' : '<p class="muted">Még nem volt PvP-harc.</p>';
+}
+function pvpZonesRender() {
+  $('pvp-zones').innerHTML = PVP_ZONES.length ? '<table><tr><th>Név</th><th>Szélesség (lat)</th><th>Hosszúság (lng)</th><th>Sugár (m)</th><th></th></tr>' + PVP_ZONES.map((z, i) => `<tr>
+    <td><input value="${esc(z.name)}" oninput="PVP_ZONES[${i}].name=this.value" style="width:160px"></td><td><input value="${z.lat}" oninput="PVP_ZONES[${i}].lat=this.value" style="width:110px"></td>
+    <td><input value="${z.lng}" oninput="PVP_ZONES[${i}].lng=this.value" style="width:110px"></td><td><input type="number" value="${z.r}" oninput="PVP_ZONES[${i}].r=this.value" style="width:70px"></td>
+    <td><button class="btn red" style="padding:2px 8px" onclick="PVP_ZONES.splice(${i},1);pvpZonesRender()">✕</button></td></tr>`).join('') + '</table>' : '<p class="muted">Még nincs biztonságos zóna.</p>';
+}
+function pvpZoneAdd() {
+  const c = prompt('Koordináta (pl. 47.4979, 19.0402):', ''); if (!c) return;
+  const m = c.split(',').map(x => parseFloat(x)); if (m.length < 2 || !isFinite(m[0]) || !isFinite(m[1])) { toast('Hibás koordináta.'); return; }
+  const name = prompt('A zóna neve (pl. „Vámos kereskedése”):', 'Biztonságos zóna') || 'Biztonságos zóna';
+  PVP_ZONES.push({ name, lat: m[0], lng: m[1], r: 75 }); pvpZonesRender();
+}
+async function pvpSave() {
+  const d = await api('/api/admin/pvp', { method: 'POST', body: { enabled: $('pvp-on').checked, safeZones: PVP_ZONES, squares: { on: $('pvp-sq-on').checked, r: +$('pvp-sq-r').value } } });
+  toast(d.message); loadPvp();
+}
+
+// ---------- QR-MATRICÁK (v0.1.24) ----------
+let QR_DATA = null, QR_OPEN = null;
+async function loadQr() {
+  const d = await api('/api/admin/qr', { quiet: true }); if (!d || !d.success) return;
+  QR_DATA = d; $('qr-daily').textContent = d.dailyMax || 5; $('qr-daily-in').value = d.dailyMax || 5;
+  const ev = (d.hint && d.hint.ev) || {};
+  $('qr-ev-state').innerHTML = d.evActive ? `🟢 Most fut: <b>${esc(ev.name || 'QR-event')}</b> · ×${ev.mult}${ev.repeat ? ' · újra beváltható' : ''}${ev.until ? ' · vége: ' + new Date(ev.until).toLocaleString('hu-HU') : ' · amíg ki nem kapcsolod'}` : (ev.on && ev.until ? '⚪ Az event lejárt.' : '⚪ Most nincs QR-event.');
+  if (ev.name !== undefined && !$('qr-ev-name').value) { $('qr-ev-name').value = ev.name || ''; $('qr-ev-mult').value = String(ev.mult || 2); $('qr-ev-repeat').checked = !!ev.repeat; }
+  if (d.hint) { $('qr-hint-on').checked = !!d.hint.on; $('qr-hint-dist').value = d.hint.dist; $('qr-hint-r').value = d.hint.radius; }
+  const t = d.total || {}, k = (label, v, sub) => `<div class="card kpi"><h3>${label}</h3><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+  $('qr-kpis').innerHTML = [k('Matricák', fmt(t.codes || 0), `${d.batches.length} sorozat`), k('Beolvasás', fmt(t.scans || 0), 'hányszor nyitották meg a linket'),
+    k('Regisztráció', fmt(t.regs || 0), 'új játékos matricáról'), k('Beváltás', fmt(t.claims || 0), 'kiosztott jutalom'),
+    k('Kiragasztva', fmt(d.batches.reduce((a, b) => a + (b.placed || 0), 0)), 'helyhez kötött matrica')].join('');
+  $('qr-list').innerHTML = d.batches.length ? '<table><tr><th>Készült</th><th>Címke</th><th>Db (aktív)</th><th>Jutalom</th><th>Beolvasás</th><th>Regisztráció</th><th>Beváltás</th><th>Utolsó beolvasás</th><th></th></tr>' + d.batches.map(b => `<tr>
+    <td>${new Date(b.t).toLocaleDateString('hu-HU')}</td><td><b>${esc(b.label || '–')}</b></td><td>${b.count} (${b.active})</td><td>${b.money} $ · ${b.xp} XP</td>
+    <td>${fmt(b.scans)}</td><td>${fmt(b.regs)}</td><td>${fmt(b.claims)}</td><td>${b.lastScan ? new Date(b.lastScan).toLocaleString('hu-HU') : '–'}</td>
+    <td style="white-space:nowrap"><button class="btn" style="padding:3px 8px" onclick="qrPrint('${esc(b.batch)}')">🖨 NYOMTATÁS</button>
+      <button class="btn ghost" style="padding:3px 8px" onclick="qrToggleOpen('${esc(b.batch)}')">${QR_OPEN === b.batch ? '▲' : '▼'} KÓDOK</button>
+      <button class="btn ${b.active ? 'red' : 'ghost'}" style="padding:3px 8px" onclick="qrBatchActive('${esc(b.batch)}', ${b.active ? 'false' : 'true'})">${b.active ? 'KIKAPCSOL' : 'BEKAPCSOL'}</button></td></tr>
+    ${QR_OPEN === b.batch ? `<tr><td colspan="9"><div style="overflow-x:auto"><table><tr><th>Kód</th><th>Hely</th><th>Beolv.</th><th>Reg.</th><th>Bevált.</th><th></th></tr>${b.codes.map(c => `<tr style="${c.active ? '' : 'opacity:.45'}">
+        <td style="font:13px var(--mono)"><b>${c.code}</b></td>
+        <td>${c.lat !== null ? `<a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" rel="noopener">📍 ${esc(c.place || 'térkép')}</a><br><span class="muted">${new Date(c.placedAt).toLocaleDateString('hu-HU')}</span>` : '<span class="muted">nincs kiragasztva</span>'}</td>
+        <td>${c.scans}</td><td>${c.regs}</td><td>${c.claims}</td>
+        <td style="white-space:nowrap"><button class="btn" style="padding:2px 7px" onclick="qrPlaceHere('${c.code}')" title="A telefonod mostani helye">📍 ITT</button>
+          <button class="btn ghost" style="padding:2px 7px" onclick="qrPlaceManual('${c.code}')" title="Koordináta kézzel">✏️</button>
+          ${c.lat !== null ? `<button class="btn ghost" style="padding:2px 7px" onclick="qrPlaceClear('${c.code}')" title="Hely törlése">✕</button>` : ''}
+          <button class="btn ghost" style="padding:2px 7px" onclick="qrCodeActive('${c.code}', ${c.active ? 'false' : 'true'})" title="${c.active ? 'Kikapcsolás' : 'Bekapcsolás'}">${c.active ? '⏸' : '▶'}</button></td></tr>`).join('')}</table></div>
+      <p class="muted">📍 ITT: a telefonod mostani helye. ✏️: koordináta kézzel (Google Térkép, jobb klikk). ⏸: a matrica kikapcsolása (pl. ha valaki kiposztolta a netre).</p></td></tr>` : ''}`).join('') + '</table>' : '<p class="muted">Még nincs matrica. Gyárts egy sorozatot fent!</p>';
+}
+async function qrCreate() {
+  const body = { action: 'create', count: +$('qr-count').value, label: $('qr-label').value, money: +$('qr-money').value, xp: +$('qr-xp').value };
+  if (!confirm(`Legyártasz ${body.count} matricát (${body.money} $ + ${body.xp} XP jutalommal)?`)) return;
+  const d = await api('/api/admin/qr', { method: 'POST', body });
+  toast(d.message); await loadQr(); if (d.batch) qrPrint(d.batch);
+}
+function qrGeo() {
+  return new Promise((ok, no) => {
+    if (!navigator.geolocation) return no(new Error('Ez a böngésző nem ad helyadatot.'));
+    navigator.geolocation.getCurrentPosition(p => ok(p.coords), e => no(new Error('Nem kaptam helyadatot: engedélyezd a helyhozzáférést.')), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  });
+}
+async function qrPlaceHere(code) {
+  code = (code || $('qr-place-code').value || '').trim().toUpperCase();
+  if (!/^[A-Z2-9]{7}$/.test(code)) { toast('Írd be a matrica 7 betűs kódját!'); return; }
+  let c; try { c = await qrGeo(); } catch (e) { toast(e.message); return; }
+  const note = code === ($('qr-place-code').value || '').trim().toUpperCase() ? $('qr-place-note').value : undefined;
+  const d = await api('/api/admin/qr', { method: 'POST', body: { code, lat: c.latitude, lng: c.longitude, place: note } });
+  toast(d.success ? `📍 ${code} kiragasztva ide (±${Math.round(c.accuracy)} m pontossággal).` : d.message);
+  $('qr-place-code').value = ''; $('qr-place-note').value = ''; loadQr();
+}
+async function qrPlaceManual(code) {
+  const v = prompt(`${code} helye – koordináta (pl. 47.4979, 19.0402):`, ''); if (!v) return;
+  const m = v.split(',').map(x => parseFloat(x)); if (m.length < 2 || !isFinite(m[0]) || !isFinite(m[1])) { toast('Hibás koordináta.'); return; }
+  const place = prompt('Hol van? (pl. „Fő utca, pékség ajtaja”)', '') || '';
+  const d = await api('/api/admin/qr', { method: 'POST', body: { code, lat: m[0], lng: m[1], place } }); toast(d.message); loadQr();
+}
+async function qrPlaceClear(code) { if (!confirm(`Törlöd ${code} helyét? (A matrica működik tovább, csak nem jelenik meg a kereső körben.)`)) return; const d = await api('/api/admin/qr', { method: 'POST', body: { code, lat: null } }); toast(d.message); loadQr(); }
+async function qrDailySave() {
+  const d = await api('/api/admin/qr', { method: 'POST', body: { action: 'hint', daily: +$('qr-daily-in').value } }); toast(d.message); loadQr();
+}
+async function qrEvSave(on) {
+  const u = $('qr-ev-until').value, until = u ? new Date(u).getTime() : null;
+  if (on && until && until < Date.now()) { toast('A vége már elmúlt.'); return; }
+  const d = await api('/api/admin/qr', { method: 'POST', body: { action: 'hint', ev: { on, name: $('qr-ev-name').value, mult: +$('qr-ev-mult').value, repeat: $('qr-ev-repeat').checked, until } } });
+  toast(d.message); loadQr();
+}
+async function qrHintSave() {
+  const d = await api('/api/admin/qr', { method: 'POST', body: { action: 'hint', on: $('qr-hint-on').checked, dist: +$('qr-hint-dist').value, radius: +$('qr-hint-r').value } });
+  toast(d.message); loadQr();
+}
+function qrToggleOpen(b) { QR_OPEN = QR_OPEN === b ? null : b; loadQr(); }
+async function qrBatchActive(batch, active) { if (!confirm(active ? 'Bekapcsolod a sorozat összes matricáját?' : 'Kikapcsolod a sorozat összes matricáját? Utána nem lehet beváltani őket.')) return; const d = await api('/api/admin/qr', { method: 'POST', body: { batch, active } }); toast(d.message); loadQr(); }
+async function qrCodeActive(code, active) { const d = await api('/api/admin/qr', { method: 'POST', body: { code, active } }); toast(d.message); loadQr(); }
+// nyomtatható A4-es ív: 3 × 4 matrica (kb. 6,3 × 7 cm); a böngésző nyomtatás ablakából PDF-be is menthető
+function qrPrint(batch) {
+  const b = QR_DATA && QR_DATA.batches.find(x => x.batch === batch); if (!b) return;
+  const origin = location.origin, per = 12, codes = b.codes.map(c => c.code).sort();
+  const sticker = (c) => `<div class="st"><div class="top">☢ SURVIVAL GO</div>${SurvivalQR.svg(origin + '/q/' + c, { quiet: 2 })}<div class="cta">TÚLÉLŐ VAGY? OLVASD BE!</div><div class="sub">📮 Jutalom vár · ${esc(origin.replace(/^https?:\/\//, ''))}</div><div class="code">${c}</div></div>`;
+  let pages = '';
+  for (let i = 0; i < codes.length; i += per) pages += `<div class="page">${codes.slice(i, i + per).map(sticker).join('')}</div>`;
+  const w = window.open('', '_blank'); if (!w) { toast('Engedélyezd a felugró ablakot a nyomtatáshoz.'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="hu"><head><meta charset="utf-8"><title>QR-matricák – ${esc(b.label || batch)}</title><style>
+    @page { size: A4; margin: 8mm; } * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #ddd; }
+    .page { width: 194mm; height: 281mm; margin: 0 auto 8mm; background: #fff; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 2mm; page-break-after: always; }
+    .st { border: 0.6mm dashed #999; border-radius: 3mm; padding: 2.5mm 3mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; }
+    .top { width: 100%; padding: 1mm 0; background: #2a2e20; color: #e8c35a; font-weight: 900; font-size: 3.6mm; letter-spacing: .6mm; border-radius: 1.5mm; }
+    .st svg { width: 40mm; height: 40mm; } .cta { font-weight: 900; font-size: 3.4mm; color: #2a2e20; } .sub { font-size: 2.6mm; color: #555; }
+    .code { font: 700 3.2mm 'Courier New', monospace; letter-spacing: .8mm; color: #000; }
+    .bar { text-align: center; padding: 10px; font-size: 14px; } @media print { body { background: #fff; } .bar { display: none; } .page { margin: 0; } }
+  </style></head><body><div class="bar">${codes.length} matrica · ${esc(b.label || '')} · <button onclick="print()">🖨 Nyomtatás / mentés PDF-be</button> (vágd körbe a szaggatott vonal mentén, vagy rendeld meg öntapadós matricára)</div>${pages}</body></html>`);
+  w.document.close();
 }
 
 // ---------- CSAPATOK (v0.1.22) ----------
@@ -871,9 +1081,9 @@ async function loadTeams() {
     k('Közös km', fmt(T.reduce((a, t) => a + (t.stats.km || 0), 0)), 'összesen'),
     k('Függő jelentkezés', fmt(T.reduce((a, t) => a + t.requests, 0)), '')
   ].join('');
-  $('teams-list').innerHTML = T.length ? `<table><tr><th></th><th>Csapat</th><th>Vezető</th><th>Tagok</th><th>Aktív 7 nap</th><th>Mód</th><th>Pont</th><th>E heti küldetések</th><th>Csevegés</th></tr>` + T.map(t => `<tr style="cursor:pointer" onclick="openTeam('${esc(t.id)}')">
+  $('teams-list').innerHTML = T.length ? `<table><tr><th></th><th>Csapat</th><th>Vezető</th><th>Tagok</th><th>Aktív 7 nap</th><th>Mód</th><th>Pont</th><th>Kassza</th><th>E heti küldetések</th><th>Csevegés</th></tr>` + T.map(t => `<tr style="cursor:pointer" onclick="openTeam('${esc(t.id)}')">
       <td>${tEmb(t.emblem)}</td><td><b>[${esc(t.tag)}] ${esc(t.name)}</b><br><span class="muted">${esc(t.desc || '')}</span></td><td>${esc(t.owner)}</td><td>${t.members} / ${t.max}${t.online ? ` · <span style="color:var(--green)">${t.online} online</span>` : ''}</td>
-      <td>${t.active7}</td><td>${tMode[t.mode] || t.mode}${t.minLevel > 1 ? ` · ${t.minLevel}.+` : ''}${t.requests ? ` · <b>${t.requests} jelentkező</b>` : ''}</td><td>${fmt(t.points)}</td><td>${tQ(t.quests)}</td><td>${t.chat} üz. · ${tAgo(t.lastChat)}</td></tr>`).join('') + '</table>'
+      <td>${t.active7}</td><td>${tMode[t.mode] || t.mode}${t.minLevel > 1 ? ` · ${t.minLevel}.+` : ''}${t.requests ? ` · <b>${t.requests} jelentkező</b>` : ''}</td><td>${fmt(t.points)}</td><td>${fmt(t.bank)} $</td><td>${tQ(t.quests)}</td><td>${t.chat} üz. · ${tAgo(t.lastChat)}</td></tr>`).join('') + '</table>'
     : '<p class="muted">Még nincs csapat.</p>';
   if (TEAM_OPEN) openTeam(TEAM_OPEN, true);
 }
@@ -898,10 +1108,41 @@ async function openTeam(id, quiet) {
       <div class="card"><h3>E heti csapatküldetések (${esc(t.week)})</h3>${t.quests.map(q => hbar(`${q.icon} ${esc(q.title)}`, q.progress, q.target, `${q.div > 1 ? (q.progress / q.div).toFixed(1) : q.progress} / ${q.div > 1 ? q.target / q.div : q.target}${q.done ? ' ✓' : ''}`, q.done ? 'var(--green)' : 'var(--gold)')).join('')}
         <h3 style="margin-top:10px">Jelentkezők (${t.requests.length})</h3>${t.requests.length ? '<table>' + t.requests.map(r => `<tr><td><b>${esc(r.name)}</b></td><td>${r.level}. szint</td><td>${tAgo(r.t)}</td><td>${esc(r.msg || '')}</td></tr>`).join('') + '</table>' : '<p class="muted">nincs</p>'}
         ${t.invites.length ? `<p class="muted">Meghívottak: ${t.invites.map(esc).join(', ')}</p>` : ''}</div>
-      <div class="card"><h3>Csevegés (utolsó ${t.chat.length})</h3><div style="max-height:360px;overflow-y:auto">${t.chat.length ? t.chat.slice().reverse().map(m => `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span class="muted">${new Date(m.t).toLocaleString('hu-HU')}</span> <b>${esc(m.from)}:</b> ${esc(m.text)} ${act('chat_del', { msg: m.id }, '🗑', 'Törlöd ezt az üzenetet?')}</div>`).join('') : '<p class="muted">Még nincs üzenet.</p>'}</div></div>
+      <div class="card"><h3>Csapatkassza: ${fmt(t.bank)} $</h3>${mod ? `<div class="row" style="gap:6px;margin-bottom:6px"><input id="tb-amt" type="number" placeholder="± összeg" style="width:110px"><button class="btn ghost" style="padding:3px 8px" onclick="teamBank('${esc(id)}')">JÓVÁÍRÁS / LEVONÁS</button></div>` : ''}
+        <div style="max-height:220px;overflow-y:auto">${(t.bankLog || []).length ? t.bankLog.map(l => `<div style="padding:2px 0"><span class="muted">${new Date(l.t).toLocaleString('hu-HU')}</span> <b style="color:${l.amount >= 0 ? 'var(--green)' : '#e3a27a'}">${l.amount >= 0 ? '+' : ''}${fmt(l.amount)} $</b> ${esc(l.what)}${l.who ? ' · ' + esc(l.who) : ''}</div>`).join('') : '<p class="muted">Még nem volt mozgás.</p>'}</div>
+        <p class="muted">Ingyenes első alkalmak felhasználva: ${Object.keys(t.free || {}).filter(k => t.free[k]).join(', ') || 'egyik sem'} · e heti küldetéscsere: ${t.rerolls || 0}</p></div>
+      <div class="card" style="grid-column:1/-1"><h3>Csevegés (összesen ${fmt(t.chatTotal || t.chat.length)} üzenet)</h3>
+        <div class="row" style="gap:6px;margin-bottom:6px"><input id="tc-find" placeholder="Keresés a betöltött üzenetekben (név vagy szöveg)" oninput="teamChatRender()" style="flex:1;min-width:0"></div>
+        <div id="tc-list" style="max-height:520px;overflow-y:auto"></div>
+        <div id="tc-more" style="margin-top:6px"></div></div>
       <div class="card"><h3>Csapatnapló</h3><div style="max-height:360px;overflow-y:auto">${t.log.map(l => `<div style="padding:2px 0"><span class="muted">${new Date(l.t).toLocaleString('hu-HU')}</span> ${esc(l.text)}</div>`).join('')}</div></div>
     </div></div>`;
+  TC = { id, list: t.chat || [], more: !!t.chatMore, act }; teamChatRender();
   if (!quiet) $('team-detail').scrollIntoView({ behavior: 'smooth' });
+}
+async function teamBank(id) {
+  const v = Math.round(+$('tb-amt').value || 0); if (!v) return;
+  if (!confirm(`${v > 0 ? 'Jóváírsz' : 'Levonsz'} ${Math.abs(v)} $-t a csapatkasszában?`)) return;
+  const d = await api('/api/admin/team/' + encodeURIComponent(id), { method: 'POST', body: { action: 'bank_add', amount: v } });
+  toast(d.message); loadTeams();
+}
+// csapat-csevegés az adminban: a legújabb felül, „Régebbiek” gombbal visszafelé lapozható (v0.1.26.5)
+let TC = { id: null, list: [], more: false, act: null };
+function teamChatRender() {
+  const box = $('tc-list'); if (!box) return;
+  const f = (($('tc-find') || {}).value || '').trim().toLowerCase();
+  const rows = TC.list.slice().reverse().filter(m => !f || (m.from + ' ' + m.text).toLowerCase().includes(f));
+  let lastDay = '';
+  box.innerHTML = rows.length ? rows.map(m => { const day = new Date(m.t).toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    const sep = day !== lastDay ? `<div style="margin:8px 0 2px;font-weight:700;color:var(--gold)">${day}</div>` : ''; lastDay = day;
+    return `${sep}<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span class="muted">${new Date(m.t).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</span> <b>${esc(m.from)}:</b> ${esc(m.text)} ${TC.act ? TC.act('chat_del', { msg: m.id }, '🗑', 'Törlöd ezt az üzenetet?') : ''}</div>`; }).join('')
+    : `<p class="muted">${f ? 'Nincs találat a betöltött üzenetek között' + (TC.more ? ' – tölts be régebbieket!' : '.') : 'Még nincs üzenet.'}</p>`;
+  $('tc-more').innerHTML = TC.more ? `<button class="btn ghost" onclick="teamChatOlder()">▼ RÉGEBBI ÜZENETEK</button> <span class="muted">${TC.list.length} betöltve</span>` : (TC.list.length ? `<span class="muted">Ez a csevegés eleje (${TC.list.length} üzenet).</span>` : '');
+}
+async function teamChatOlder() {
+  if (!TC.id || !TC.list.length) return;
+  const d = await api('/api/admin/team/' + encodeURIComponent(TC.id) + '/chat?before=' + TC.list[0].t, { quiet: true }); if (!d || !d.success) return;
+  TC.list = d.chat.concat(TC.list); TC.more = d.chatMore; teamChatRender();
 }
 async function teamAct(id, body, confirmText) {
   if (confirmText && !confirm(confirmText)) return;

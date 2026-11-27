@@ -27,6 +27,7 @@
     };
     const POOL = ['loot', 'win', 'cells', 'craft', 'quests'];
     const ALL_BONUS = { money: 200, xp: 300 };
+    const BANK_QUEST = 50, BANK_ALL = 100; // ennyi kerül a csapatkasszába egy kész csapatküldetésért / mind a háromért
 
     function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
     function questKinds(teamId, week) {
@@ -51,7 +52,7 @@
         };
     }
 
-    const api = { MAX, MIN_LEVEL, ICONS, COLORS, SHAPES, MODES, ROLES, QUESTS, POOL, ALL_BONUS, MIN_SIZE, MAX_SIZE, questKinds, target, helpersNeeded, normEmblem, hash };
+    const api = { MAX, MIN_LEVEL, ICONS, COLORS, SHAPES, MODES, ROLES, QUESTS, POOL, ALL_BONUS, BANK_QUEST, BANK_ALL, MIN_SIZE, MAX_SIZE, questKinds, target, helpersNeeded, normEmblem, hash };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.SurvivalTeams = api;
 })(typeof window !== 'undefined' ? window : globalThis);

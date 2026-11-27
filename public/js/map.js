@@ -691,9 +691,10 @@ function otherPlayerIcon(pData) {
         className: 'other-player-icon',
         // Hímzett folt rozsdabarna peremmel; a sarkában a játékos rangja (v0.1.11)
         html: `
-            <div class="sg-marker sg-marker-other${st.cls}${window.sgFriendSet && window.sgFriendSet.has(pData.username) ? ' sg-marker-friend' : window.sgTeamSet && window.sgTeamSet.has(pData.username) ? ' sg-marker-team' : ''}"${st.style}><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
+            <div class="sg-marker sg-marker-other${st.cls}${window.sgFriendSet && window.sgFriendSet.has(pData.username) ? ' sg-marker-friend' : window.sgTeamSet && window.sgTeamSet.has(pData.username) ? ' sg-marker-team' : ''}${pData.bandit ? ' sg-marker-bandit' : ''}"${st.style}><img src="/images/avatars/${avatarFile}" alt="" onerror="this.src='/images/avatars/avatar1.png'">
                 ${typeof rankPatchSvg === 'function' ? `<span class="sg-marker-rank">${rankPatchSvg(rankIndexForLevel(Number(pData.level) || 1))}</span>` : ''}
                 ${st.tag}
+                ${pData.bandit ? '<span class="sg-marker-bandit-tag" title="Bandita: nemrég megtámadott valakit">BANDITA</span>' : ''}
                 ${pData.early === true ? '<span class="early-badge" style="position: absolute; left: -6px; bottom: -4px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 2px #000);">🎖️</span>' : ''}
             </div>
         `,
@@ -718,13 +719,15 @@ function initOtherPlayersListener() {
             const existing = otherPlayerMarkers[name];
             if (existing) {
                 existing.marker.setLatLng([pData.lat, pData.lng]);
-                if ((existing.data.role || '') !== (pData.role || '') || existing.data.level !== pData.level || JSON.stringify(existing.data.cosmetic || null) !== JSON.stringify(pData.cosmetic || null)) existing.marker.setIcon(otherPlayerIcon(pData));
+                if ((existing.data.role || '') !== (pData.role || '') || existing.data.level !== pData.level || !!existing.data.bandit !== !!pData.bandit || JSON.stringify(existing.data.cosmetic || null) !== JSON.stringify(pData.cosmetic || null)) existing.marker.setIcon(otherPlayerIcon(pData));
                 existing.data = pData;
             } else {
                 const marker = L.marker([pData.lat, pData.lng], { icon: otherPlayerIcon(pData) }).addTo(map);
                 const entry = { marker, data: pData };
                 // Kattintásra a játékos neve és szintje (később innen indulhat a PvP)
                 marker.on('click', () => showOtherPlayer(entry.data));
+                // hosszan nyomva: körmenü (üzenet, profil, barát, csapat… – v0.1.25)
+                if (typeof attachLongPress === 'function') attachLongPress(marker, () => entry.data);
                 otherPlayerMarkers[name] = entry;
             }
         });

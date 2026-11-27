@@ -29,6 +29,8 @@ const Premium = require('./premium'); // prémium credit, bolt, ládák (v0.1.16
 let adminHooks = null;           // a fájl végén áll össze (Admin.setup)
 let pushHooks = null;            // telefonos értesítések (push.js, v0.1.19)
 let socialHooks = null;          // barátok, csapatok, meghívás (social.js, v0.1.21)
+let qrHooks = null;              // QR-matricák (qrstickers.js, v0.1.24)
+let pvpHooks = null;             // TÁMADÁS / PvP (pvp.js, v0.1.26)
 let premiumHooks = null;         // a fájl végén áll össze (Premium.setup)
 const SurvivalShelter = require('./public/js/shelter'); // menedék: építmények, raktár (v0.1.12)
 
@@ -87,6 +89,14 @@ const userSchema = new mongoose.Schema({
     team: { type: String, default: null },
     teamInvites: { type: [String], default: [] },
     teamApps: { type: [String], default: [] },   // csapatjelentkezések (v0.1.22)
+    profile: { type: mongoose.Schema.Types.Mixed, default: null }, // játékosprofil: szín, minta, jelvény, bemutatkozás (v0.1.25, profile.js)
+    banditUntil: { type: Number, default: 0 },   // PvP: eddig bandita (v0.1.26, pvp.js)
+    dmBlocks: { type: [String], default: [] },   // privát üzenet: letiltott játékosok (v0.1.25, dm.js)
+    dmFriendsOnly: { type: Boolean, default: false }, // csak a barátok írhatnak
+    qrClaimed: { type: [String], default: [] },  // beváltott QR-matricák (v0.1.24, qrstickers.js)
+    qrFrom: { type: String, default: null },     // melyik matricáról regisztrált
+    qrDay: { type: mongoose.Schema.Types.Mixed, default: null }, // napi beváltási korlát
+    qrEv: { type: mongoose.Schema.Types.Mixed, default: null },  // QR-event: ebben az eventben beváltott matricák (v0.1.26.3)
     socialClaimed: { type: [String], default: [] },
     shareDay: { type: String, default: null },
     premium: { type: mongoose.Schema.Types.Mixed, default: null }, // credit, megvett kinézetek, ládák (v0.1.16, premium.js)               // stáb rang (public/js/roles.js); a tulajdonos az ADMIN_USERS-ből jön (v0.1.14)
@@ -241,7 +251,7 @@ app.get('/api/registration', async (req, res) => {
 // --- REGISZTRÁCIÓS VÉGPONT ---
 app.post('/api/register', async (req, res) => {
     try {
-        const { username, email, password, avatar, inviteCode, ageConfirmed, privacyAccepted, ref } = req.body || {};
+        const { username, email, password, avatar, inviteCode, ageConfirmed, privacyAccepted, ref, qr } = req.body || {};
         // Zárt teszt: meghívókód nélkül nem lehet regisztrálni (a találgatást a belépési korlát fogja meg)
         if (config.REGISTRATION_CODE) {
             const ip = req.ip || 'unknown';
@@ -288,6 +298,7 @@ app.post('/api/register', async (req, res) => {
         await newUser.save();
         Admin.logEvent('register', username, { early, ref: ref ? String(ref).slice(0, 12) : undefined });
         if (ref && socialHooks) await socialHooks.onRegister(username, ref).catch(() => null); // "Hozd a barátod" (v0.1.21)
+        if (qr && qrHooks) await qrHooks.onRegister(username, qr).catch(() => null); // QR-matricáról jött (v0.1.24)
         res.json({ success: true, message: early ? 'Sikeres regisztráció! 🎖️ Korai túlélő vagy: extra felszereléssel indulsz.' : 'Sikeres regisztráció!' });
     } catch (e) {
         console.error("Hiba regisztrációnál:", e);
@@ -408,7 +419,8 @@ function nearbyPlayers(viewerName) {
         const p = activePlayers[name];
         if (p.lat === null) continue;
         if (SurvivalBuildings.haversine(viewer.lat, viewer.lng, p.lat, p.lng) > radius) continue;
-        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, early: !!p.earlySurvivor, role: p.role || '', cosmetic: p.cosmetic || null, lat: p.lat, lng: p.lng };
+        result[name] = { username: p.username, avatar: p.avatar, level: p.level || 1, early: !!p.earlySurvivor, role: p.role || '', cosmetic: p.cosmetic || null, lat: p.lat, lng: p.lng,
+            bandit: (p.banditUntil || 0) > Date.now() }; // PvP: a kezdeményező egy ideig bandita (v0.1.26)
     }
     return result;
 }
@@ -646,7 +658,7 @@ function normalizeQuickbar(raw) {
 
 // ===================== STATISZTIKA (v0.1.10) =====================
 // Egyelőre csak gyűjtjük (nincs kijelezve): később ebből lesznek az eredmények és a profil statisztikája.
-const STAT_NUMBERS = ['walkedMeters', 'buildingsLooted', 'itemsCrafted', 'combatsWon', 'killsTotal', 'deaths', 'longestLifeMs'];
+const STAT_NUMBERS = ['walkedMeters', 'buildingsLooted', 'itemsCrafted', 'combatsWon', 'killsTotal', 'deaths', 'longestLifeMs', 'xpTotal', 'pvpWins', 'pvpDeaths'];
 function normalizeStats(raw) {
     const s = raw && typeof raw === 'object' ? raw : {};
     const out = {};
@@ -685,19 +697,26 @@ let boardCache = { t: 0, month: null, rows: null };
 async function leaderboardRows(month) {
     const now = Date.now();
     if (boardCache.rows && boardCache.month === month && now - boardCache.t < 60000) return boardCache.rows;
-    const users = await PlayerModel.find({}, { username: 1, premium: 1, earlySurvivor: 1, bannedUntil: 1, 'playerData.season': 1, 'playerData.level': 1, 'playerData.dead': 1 }).lean();
+    const users = await PlayerModel.find({}, { username: 1, premium: 1, earlySurvivor: 1, bannedUntil: 1, 'playerData.season': 1, 'playerData.level': 1, 'playerData.xp': 1, 'playerData.dead': 1, 'playerData.stats': 1, 'playerData.quests.cells': 1 }).lean();
     const rows = users.filter(u => !Admin.isStaffName(u.username) && !(u.bannedUntil && u.bannedUntil > now)).map(u => {
         const pd = u.playerData || {};
         const se = pd.season && pd.season.month === month ? pd.season : {};
-        const pr = u.premium || {};
-        return { name: u.username, xp: se.xp || 0, meters: se.meters || 0, cells: se.cells || 0, quests: se.quests || 0, level: pd.level || 1,
-            frame: pr.frame || '', title: pr.title || '', early: !!u.earlySurvivor };
+        const pr = u.premium || {}, st = pd.stats || {};
+        return { name: u.username, xp: se.xp || 0, meters: se.meters || 0, cells: se.cells || 0, quests: se.quests || 0, pvp: se.pvp || 0, level: pd.level || 1,
+            frame: pr.frame || '', title: pr.title || '', early: !!u.earlySurvivor,
+            // összesített (v0.1.24): a játék kezdete óta, a halál sem nullázza
+            all: { xp: Math.max(st.xpTotal || 0, SurvivalSeason.xpForLevel(pd.level) + (pd.xp || 0)), meters: st.walkedMeters || 0,
+                cells: (pd.quests && Array.isArray(pd.quests.cells) ? pd.quests.cells.length : 0), loot: st.buildingsLooted || 0, wins: st.combatsWon || 0, pvp: st.pvpWins || 0, level: pd.level || 1 } };
     });
     boardCache = { t: now, month, rows };
     return rows;
 }
 function rankBoard(rows, key) {
     return rows.filter(r => (r[key] || 0) > 0).sort((a, b) => (b[key] - a[key]) || (b.xp - a.xp) || a.name.localeCompare(b.name));
+}
+// a teljes lista (v0.1.24): mindenki szerepel, a 0 pontosok is (a végén)
+function rankAll(rows, get) {
+    return rows.slice().sort((a, b) => (get(b) - get(a)) || (b.level - a.level) || a.name.localeCompare(b.name));
 }
 // Hónapváltás után a lezárt szezon jutalmai (Rozsdás szett). Egyszer fut hónaponként (SettingModel-ben jelölve).
 const SeasonDoneModel = mongoose.models.SurvivalSeasonDone || mongoose.model('SurvivalSeasonDone', new mongoose.Schema({ _id: String, at: Number, winners: mongoose.Schema.Types.Mixed }));
@@ -861,6 +880,7 @@ function normalizeShelter(raw) {
         lat: raw.lat, lng: raw.lng,
         bounds: SurvivalBuildings.cleanBounds(raw.bounds),
         claimedAt: num(raw.claimedAt, Date.now()),
+        movedFree: !!raw.movedFree, // az ingyenes első költözést már felhasználta (v0.1.23)
         levels, build,
         stash: normalizeItemList(raw.stash)
     };
@@ -1098,6 +1118,9 @@ const CAPACITY_MESSAGES = {
 function grantXp(p, amount, raw) {
     // event (pl. dupla XP hétvége): az admin oldalon állítható szorzó; az admin ajándéka (raw) nem szorzódik
     if (!raw) amount = Math.round(amount * Admin.xpMultiplier());
+    if (!raw && p.stats) { // összes valaha szerzett XP (v0.1.24); a régieknél a jelenlegi szintből indul
+        p.stats.xpTotal = Math.max(p.stats.xpTotal || 0, SurvivalSeason.xpForLevel(p.level) + (p.xp || 0)) + amount;
+    }
     p.xp += amount;
     if (!raw) seasonAdd(p, 'xp', amount); // a szezonpont = a hónapban szerzett XP (az admin ajándéka nem számít)
     let levels = 0;
@@ -1325,6 +1348,17 @@ async function treesNear(lat, lng) {
     const list = [];
     for (const cell of cells) list.push(...await TreeModel.find({ cell }).lean());
     return list.filter(t => SurvivalBuildings.distanceToBuilding({ lat, lng }, t) <= km * 1000);
+}
+// PvP: a település főtere (a karácsonyfa helye, OSM place pont) r méteren belül? – biztonságos zóna (v0.1.26.3)
+async function pvpSquareAt(pos, r) {
+    const dLat = r / 111320, dLng = r / (111320 * Math.cos(pos.lat * Math.PI / 180));
+    const cells = new Set();
+    for (const y of [pos.lat - dLat, pos.lat + dLat]) for (const x of [pos.lng - dLng, pos.lng + dLng]) cells.add(treeCellOf(y, x));
+    await Promise.all([...cells].map(c => treeCellLoad(c).catch(() => { })));
+    const list = await TreeModel.find({ cell: { $in: [...cells] } }, { name: 1, lat: 1, lng: 1 }).lean();
+    let best = null, bd = Infinity;
+    for (const t of list) { const d = SurvivalBuildings.haversine(pos.lat, pos.lng, t.lat, t.lng); if (d <= r && d < bd) { best = t; bd = d; } }
+    return best;
 }
 function treePublic(t, username) {
     // a stáb (tesztelés) nem kerül a nyilvános toplistába
@@ -1765,6 +1799,8 @@ io.on('connection', (socket) => {
     console.log(`🔌 Új kliens csatlakozott: ${socket.id} (${username})`);
     if (pushHooks) pushHooks.attach(socket); // telefonos értesítés fel/leiratkozás (v0.1.19)
     if (socialHooks) socialHooks.attach(socket); // barátok, csapat, meghívás (v0.1.21)
+    if (qrHooks) qrHooks.attach(socket); // QR-matricák beváltása (v0.1.24)
+    if (pvpHooks) pvpHooks.attach(socket); // támadás, zsákok (v0.1.26)
 
     // Egy fiókhoz egyszerre egy munkamenet tartozhat: az újabb kapcsolat kidobja a régit.
     // A játékos a csatlakozás pillanatától online, így minden válasz és státuszfrissítés eljut hozzá;
@@ -2330,6 +2366,7 @@ io.on('connection', (socket) => {
         if (!data || !SurvivalBuildings.parseBuildingId(data.buildingId)) return;
         const buildingId = data.buildingId;
         const requestedAt = Date.now();
+        if (pvpHooks && pvpHooks.inFight(username)) { io.to(socket.id).emit('loot_result', { success: false, message: '🔫 Harcban vagy egy túlélővel! Előbb fejezd be.' }); return; }
         if (requestedAt - lastLootRequestAt < config.LOOT_COOLDOWN_MS) {
             io.to(socket.id).emit('loot_result', { success: false, message: 'Lassabban! Egyszerre csak egy épületet kutathatsz át.' });
             return;
@@ -2754,22 +2791,33 @@ io.on('connection', (socket) => {
 
     // ----- Ranglista (v0.1.20) -----
     socket.on('leaderboard', (data) => {
-        const board = data && SurvivalSeason.BOARDS.some(b => b.key === data.board) ? data.board : 'xp';
+        const allTime = !!(data && data.period === 'all');
+        const list = allTime ? SurvivalSeason.ALL_BOARDS : SurvivalSeason.BOARDS;
+        const board = data && list.some(b => b.key === data.board) ? data.board : 'xp';
         (async () => {
             const now = Date.now(), month = SurvivalSeason.monthKey(now);
+            if (allTime) { // összesített: mindenki, a játék kezdete óta
+                const rows = await leaderboardRows(month);
+                const get = (r) => r.all[board] || 0;
+                const ranked = rankAll(rows, get), meIdx = ranked.findIndex(r => r.name === username);
+                const pick = (r, i) => ({ rank: i + 1, name: r.name, value: board === 'meters' ? Math.round(get(r) / 100) / 10 : get(r), level: r.level, frame: r.frame, title: r.title, early: r.early });
+                return io.to(socket.id).emit('leaderboard', { period: 'all', board, total: ranked.length, top: ranked.slice(0, 1000).map(pick),
+                    me: meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null, staff: Admin.isStaffName(username) });
+            }
             if (board === 'teams') { // csapatok: a tagok szezonpontjainak összege
                 const teams = socialHooks ? await socialHooks.teamBoard(await leaderboardRows(month)) : [];
                 const mi = teams.findIndex(t => t.memberNames.includes(username));
                 const pick = (t, i) => ({ rank: i + 1, name: t.name, value: t.xp, level: t.members, team: true, emblem: t.emblem });
                 return io.to(socket.id).emit('leaderboard', { board, month, monthName: SurvivalSeason.monthName(month), rewarded: SurvivalSeason.rewarded(month), msLeft: SurvivalSeason.msLeft(now),
-                    total: teams.length, top: teams.slice(0, 50).map(pick), me: mi >= 0 ? pick(teams[mi], mi) : null, staff: false, hasTeam: !!(socialHooks && await socialHooks.teams.myTeamId(username)) });
+                    period: 'month', total: teams.length, top: teams.slice(0, 1000).map(pick), me: mi >= 0 ? pick(teams[mi], mi) : null, staff: false, hasTeam: !!(socialHooks && await socialHooks.teams.myTeamId(username)) });
             }
-            const ranked = rankBoard(await leaderboardRows(month), board);
+            // a teljes lista: aki még nem szerzett pontot a hónapban, az is szerepel (0-val, a végén)
+            const ranked = rankAll(await leaderboardRows(month), (r) => (board === 'level' ? r.level : r[board] || 0));
             const meIdx = ranked.findIndex(r => r.name === username);
             const pick = (r, i) => ({ rank: i + 1, name: r.name, value: SurvivalSeason.valueOf(r, board), level: r.level, frame: r.frame, title: r.title, early: r.early });
             io.to(socket.id).emit('leaderboard', {
-                board, month, monthName: SurvivalSeason.monthName(month), rewarded: SurvivalSeason.rewarded(month), msLeft: SurvivalSeason.msLeft(now),
-                total: ranked.length, top: ranked.slice(0, 50).map(pick),
+                period: 'month', board, month, monthName: SurvivalSeason.monthName(month), rewarded: SurvivalSeason.rewarded(month), msLeft: SurvivalSeason.msLeft(now),
+                total: ranked.length, top: ranked.slice(0, 1000).map(pick),
                 me: meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null, staff: Admin.isStaffName(username)
             });
         })().catch(logError('Hiba a ranglistánál:'));
@@ -3049,7 +3097,8 @@ io.on('connection', (socket) => {
     socket.on('shelter_claim', (data) => {
         if (!data || !SurvivalBuildings.parseBuildingId(data.buildingId)) return;
         const buildingId = data.buildingId;
-        withPlayer(username, freeOnly(async (p) => {
+        // költözés ára (v0.1.23): az első ingyenes, utána pénz vagy kristály (admin oldalon állítható)
+        const tryClaim = (crystalsPaid) => withPlayer(username, freeOnly(async (p) => {
             const now = Date.now();
             if (p.shelter && p.shelter.buildingId === buildingId) return { save: false, error: 'Ez már a menedéked.' };
             if (p.shelter) {
@@ -3074,14 +3123,39 @@ io.on('connection', (socket) => {
             if (distance > SurvivalShelter.RANGE_METERS) return { save: false, error: `Menj közelebb az épülethez! (${Math.round(distance)} m)` };
             // Az elfoglaláshoz kell egy Menedékalapító Csomag (elfogy)
             if (countItem(p, SurvivalShelter.CLAIM_ITEM) < 1) return { save: false, error: `Ehhez kell egy ${itemDatabase[SurvivalShelter.CLAIM_ITEM].name} a hátizsákodban.` };
+            let paidNote = '';
+            if (p.shelter) {
+                const P = Admin.gamePrices().shelter_move, free = P.free && !p.shelter.movedFree;
+                if (free) paidNote = ' (első költözés: ingyenes)';
+                else if (data.pay === 'crystal') {
+                    if (!crystalsPaid) return { save: false, needCrystals: P.crystals };
+                    paidNote = ` (${P.crystals} 💎)`;
+                } else if (P.money > 0) {
+                    if (p.money < P.money) return { save: false, error: `A költözés ${P.money.toLocaleString('hu-HU')} $, neked ${p.money.toLocaleString('hu-HU')} $ van.` };
+                    p.money -= P.money; paidNote = ` (${P.money.toLocaleString('hu-HU')} $)`;
+                }
+            }
             removeItem(p, SurvivalShelter.CLAIM_ITEM, 1);
             const moving = !!p.shelter;
             const old = p.shelter || { levels: {}, stash: [], build: null };
             p.shelter = normalizeShelter({ ...old, buildingId, name: building.name,
-                lat: building.lat, lng: building.lng, bounds: building.bounds, claimedAt: now });
+                lat: building.lat, lng: building.lng, bounds: building.bounds, claimedAt: now, movedFree: !!old.movedFree || moving });
             updateShelterIndex(username, p.shelter);
-            return { message: moving ? `Átköltöztél: ${building.name}. A raktárad és az építményeid veled jöttek.` : `Mostantól ez a menedéked: ${building.name}.`, payload: { shelter: true } };
-        })).then(reply('shelter_result')).catch(logError('Hiba a menedék elfoglalásakor:'));
+            return { message: moving ? `Átköltöztél: ${building.name}${paidNote}. A raktárad és az építményeid veled jöttek.` : `Mostantól ez a menedéked: ${building.name}.`, payload: { shelter: true } };
+        }));
+        (async () => {
+            let r = await tryClaim(false);
+            if (r && r.result && r.result.needCrystals) {
+                const price = r.result.needCrystals;
+                if (!crystalsOn() || !price) return reply('shelter_result')({ p: r.p, result: { error: 'Kristállyal most nem lehet fizetni.' } });
+                const paid = await premiumHooks.spendCredits(username, price, 'Menedék költöztetése');
+                if (!paid || paid.error) return reply('shelter_result')({ p: r.p, result: { error: (paid && paid.error) || 'Nem sikerült a fizetés.' } });
+                r = await tryClaim(true);
+                // ha közben mégsem sikerült (vagy ingyenes lett), visszaadjuk a kristályt
+                if (!r || r.result.error || !/💎/.test(r.result.message || '')) await premiumHooks.grantCredits(username, price, 'Visszatérítés: sikertelen költözés');
+            }
+            reply('shelter_result')(r);
+        })().catch(logError('Hiba a menedék elfoglalásakor:'));
     });
 
     // Betevés a raktárba: a leltár egy helyéről (stackelhetőnél count darab, alapból mind)
@@ -3219,6 +3293,8 @@ adminHooks = Admin.setup({
         stats: () => (pushHooks ? pushHooks.stats() : Promise.resolve({ subs: 0, users: 0 }))
     },
     teams: () => (socialHooks ? socialHooks.teams : null), // csapatok admin nézete (v0.1.22)
+    pvp: () => pvpHooks, // PvP beállítások és napló (v0.1.26)
+    qr: () => qrHooks, // QR-matricák (v0.1.24)
     usernameValid: (n) => USERNAME_RE.test(n),
     season: {
         close: seasonCloseIfNeeded,
@@ -3236,7 +3312,8 @@ adminHooks = Admin.setup({
             () => BuildingModel.updateMany({ lastLootedBy: from }, { lastLootedBy: to }),
             () => Premium.models.OrderModel.updateMany({ user: from }, { user: to }),
             () => Premium.models.TxModel.updateMany({ user: from }, { user: to }),
-            () => (socialHooks ? socialHooks.teams.renameUser(from, to) : null)
+            () => (socialHooks ? socialHooks.teams.renameUser(from, to) : null),
+            () => (socialHooks ? socialHooks.dm.renameUser(from, to) : null)
         ];
         for (const step of steps) { try { await step(); } catch (e) { /* folytatjuk */ } }
     },
@@ -3261,6 +3338,18 @@ socialHooks = require('./social').setup({
 });
 
 if (process.env.SG_TEST) global.__socialHooks = socialHooks; // a tesztekhez
+qrHooks = require('./qrstickers').setup({ app, PlayerModel, Admin, reward: socialHooks.reward, activePlayers, haversine: SurvivalBuildings.haversine,
+    emitTo: (n, ev, d) => { const e = activePlayers[n]; if (e) io.to(e.socketId).emit(ev, d); } });
+pvpHooks = require('./pvp').setup({
+    io, PlayerModel, activePlayers, Admin, itemDatabase, withPlayer, sendPlayerState, playerStats, grantXp, seasonAdd, pushItem, canAddItem,
+    CombatEngine: Combat, SurvivalStats, Skills: SurvivalSkills, haversine: SurvivalBuildings.haversine, distanceToBuilding: SurvivalBuildings.distanceToBuilding,
+    shelterRange: SurvivalShelter.RANGE_METERS, positionMaxAgeMs: config.POSITION_MAX_AGE_SECONDS * 1000,
+    notify: (n, title, body) => { if (pushHooks && !activePlayers[n]) pushHooks.notifyUser(n, { title, body, url: '/', tag: 'pvp' }).catch(() => { }); },
+    myTeamId: (n) => socialHooks.teams.myTeamId(n),
+    squareAt: pvpSquareAt,
+    random: process.env.SG_TEST ? () => (global.__pvpRandom ? global.__pvpRandom() : Math.random()) : Math.random
+});
+if (process.env.SG_TEST) global.__pvpHooks = pvpHooks;
 
 // Nyilvános fa-lista (bejelentkezés nélkül, megosztható): a stáb díszei nem számítanak bele
 app.get('/api/public/trees', async (req, res) => {
