@@ -50,9 +50,9 @@ function lbRender(loading) {
     const b = lbBoards().find(x => x.key === lbBoard);
     let html = `<div class="sg-lb-period"><button class="${lbPeriod === 'month' ? 'on' : ''}" onclick="lbSetPeriod('month')">📅 E HÓNAP</button><button class="${lbPeriod === 'all' ? 'on' : ''}" onclick="lbSetPeriod('all')">♾️ ÖSSZESÍTETT</button></div>`;
     html += `<div class="sg-lb-tabs">${lbBoards().map(x => `<button class="${x.key === lbBoard ? 'on' : ''}" onclick="lbLoad('${x.key}')">${x.icon}<span>${x.name}</span></button>`).join('')}</div>`;
-    if (d && lbPeriod === 'all') html += `<div class="sg-lb-season"><div><b>ÖSSZESÍTETT</b> · a játék kezdete óta</div><div>${d.me ? `<button class="sg-lb-me" onclick="lbJumpMe()">📍 ${d.me.rank}. vagy</button>` : ''}</div></div>`;
+    if (d && lbPeriod === 'all') html += `<div class="sg-lb-season"><div><b>ÖSSZESÍTETT</b> · a játék kezdete óta</div><div>${d.me && !d.me.shadow ? `<button class="sg-lb-me" onclick="lbJumpMe()">📍 ${d.me.rank}. vagy</button>` : ''}</div></div>`;
     else if (d) {
-        html += `<div class="sg-lb-season"><div><b>${d.monthName.toUpperCase()}</b> · ${d.rewarded ? 'SZEZON' : 'PRÓBASZEZON'}</div><div>${lbLeft(d.msLeft)}${d.me && lbBoard !== 'teams' ? ` <button class="sg-lb-me" onclick="lbJumpMe()">📍 ${d.me.rank}.</button>` : ''}</div></div>`;
+        html += `<div class="sg-lb-season"><div><b>${d.monthName.toUpperCase()}</b> · ${d.rewarded ? 'SZEZON' : 'PRÓBASZEZON'}</div><div>${lbLeft(d.msLeft)}${d.me && !d.me.shadow && lbBoard !== 'teams' ? ` <button class="sg-lb-me" onclick="lbJumpMe()">📍 ${d.me.rank}.</button>` : ''}</div></div>`;
         if (lbBoard === 'xp') {
             html += d.rewarded
                 ? `<div class="sg-lb-reward"><div class="sg-lb-rh">🟫 ROZSDÁS SZETT · a hónap végén</div>${S.REWARDS.map(r => `<div><b>${r.from}–${r.to}.</b> ${escapeAttr(r.label)}</div>`).join('')}<small>Legalább ${S.MIN_XP_FOR_REWARD} szezonpont kell.</small></div>`
@@ -64,16 +64,18 @@ function lbRender(loading) {
     else if (!d.top.length) html += `<div class="sg-lb-empty">Ebben a hónapban még senki nincs a listán. Légy te az első!</div>`;
     else {
         // a saját helyezés mindig látszik: a lista fölé ragad, görgetés közben is (v0.1.24)
-        if (d.me) html += `<div class="sg-lb-mine" onclick="lbJumpMe()"><div class="sg-lb-mh">📍 ${lbBoard === 'teams' ? 'A CSAPATOD' : 'A TE HELYED'} · ${d.me.rank}. / ${d.total}</div>${lbRowHtml(d.me, lbBoard, true)}</div>`;
-        html += d.top.map(r => lbRowHtml(r, lbBoard, d.me && r.name === d.me.name)).join('');
-        if (d.me && d.me.rank > d.top.length) html += `<div class="sg-lb-gap">⋯</div>` + lbRowHtml(d.me, lbBoard, true);
+        // stábtag: nem versenyez, de látja, hányadik lenne (a listában nem szerepel)
+        if (d.me && d.me.shadow) html += `<div class="sg-lb-mine"><div class="sg-lb-mh">📍 A TE HELYED · ${d.me.rank}. lennél (stáb, nem versenyzel)</div>${lbRowHtml(d.me, lbBoard, true)}</div>`;
+        else if (d.me) html += `<div class="sg-lb-mine" onclick="lbJumpMe()"><div class="sg-lb-mh">📍 ${lbBoard === 'teams' ? 'A CSAPATOD' : 'A TE HELYED'} · ${d.me.rank}. / ${d.total}</div>${lbRowHtml(d.me, lbBoard, true)}</div>`;
+        html += d.top.map(r => lbRowHtml(r, lbBoard, d.me && !d.me.shadow && r.name === d.me.name)).join('');
+        if (d.me && !d.me.shadow && d.me.rank > d.top.length) html += `<div class="sg-lb-gap">⋯</div>` + lbRowHtml(d.me, lbBoard, true);
     }
     if (d && lbBoard === 'teams') {
         if (!d.me) html += `<div class="sg-lb-empty">${d.hasTeam ? 'A csapatod még nincs a listán: gyűjtsetek szezonpontot!' : 'Még nincs csapatod. <button class="sg-lb-join" onclick="closeLeaderboard();openSocial(\'team\')">🏕️ CSAPATOT KERESEK</button>'}</div>`;
         html += `<div class="sg-lb-foot">${d.total} csapat a listán · a stáb pontja nem számít</div>`;
     } else {
         if (d && !d.me && !d.staff && lbPeriod === 'month') html += `<div class="sg-lb-empty">Még nem vagy a listán: indulj el, és gyűjts pontot!</div>`;
-        if (d && d.staff) html += `<div class="sg-lb-empty">Stábtagként nem kerülsz a ranglistára.</div>`;
+        if (d && d.staff) html += `<div class="sg-lb-empty">Stábtagként nem versenyzel: fent látod, hányadik lennél, de a listán nem szerepelsz.</div>`;
         if (d) html += `<div class="sg-lb-foot">${d.total} túlélő a listán · a stáb nem szerepel${lbPeriod === 'all' ? ' · a halál nem nullázza (a szint kivételével)' : ''}</div>`;
     }
     body.innerHTML = html;

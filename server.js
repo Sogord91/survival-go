@@ -697,8 +697,18 @@ let boardCache = { t: 0, month: null, rows: null };
 async function leaderboardRows(month) {
     const now = Date.now();
     if (boardCache.rows && boardCache.month === month && now - boardCache.t < 60000) return boardCache.rows;
-    const users = await PlayerModel.find({}, { username: 1, premium: 1, earlySurvivor: 1, bannedUntil: 1, 'playerData.season': 1, 'playerData.level': 1, 'playerData.xp': 1, 'playerData.dead': 1, 'playerData.stats': 1, 'playerData.quests.cells': 1 }).lean();
-    const rows = users.filter(u => !Admin.isStaffName(u.username) && !(u.bannedUntil && u.bannedUntil > now)).map(u => {
+    const users = await PlayerModel.find({}, LB_FIELDS).lean();
+    const rows = users.filter(u => !Admin.isStaffName(u.username) && !(u.bannedUntil && u.bannedUntil > now)).map(u => lbRowOf(u, month));
+    boardCache = { t: now, month, rows };
+    return rows;
+}
+const LB_FIELDS = { username: 1, premium: 1, earlySurvivor: 1, bannedUntil: 1, 'playerData.season': 1, 'playerData.level': 1, 'playerData.xp': 1, 'playerData.dead': 1, 'playerData.stats': 1, 'playerData.quests.cells': 1 };
+// a stábtag nem versenyez, de a saját helyét látja: hányadik lenne (v0.1.26.9)
+async function lbStaffRow(username, month) {
+    const u = await PlayerModel.findOne({ username }, LB_FIELDS).lean();
+    return u ? lbRowOf(u, month) : null;
+}
+function lbRowOf(u, month) {
         const pd = u.playerData || {};
         const se = pd.season && pd.season.month === month ? pd.season : {};
         const pr = u.premium || {}, st = pd.stats || {};
@@ -707,9 +717,11 @@ async function leaderboardRows(month) {
             // összesített (v0.1.24): a játék kezdete óta, a halál sem nullázza
             all: { xp: Math.max(st.xpTotal || 0, SurvivalSeason.xpForLevel(pd.level) + (pd.xp || 0)), meters: st.walkedMeters || 0,
                 cells: (pd.quests && Array.isArray(pd.quests.cells) ? pd.quests.cells.length : 0), loot: st.buildingsLooted || 0, wins: st.combatsWon || 0, pvp: st.pvpWins || 0, level: pd.level || 1 } };
-    });
-    boardCache = { t: now, month, rows };
-    return rows;
+}
+// hányadik lenne a listán (a stábtagnak): ennyien előzik meg + 1
+function lbShadowRank(ranked, row, get) {
+    let i = 0; while (i < ranked.length && ((get(ranked[i]) - get(row)) || (ranked[i].level - row.level) || row.name.localeCompare(ranked[i].name)) > 0) i++;
+    return i;
 }
 function rankBoard(rows, key) {
     return rows.filter(r => (r[key] || 0) > 0).sort((a, b) => (b[key] - a[key]) || (b.xp - a.xp) || a.name.localeCompare(b.name));
@@ -2801,8 +2813,10 @@ io.on('connection', (socket) => {
                 const get = (r) => r.all[board] || 0;
                 const ranked = rankAll(rows, get), meIdx = ranked.findIndex(r => r.name === username);
                 const pick = (r, i) => ({ rank: i + 1, name: r.name, value: board === 'meters' ? Math.round(get(r) / 100) / 10 : get(r), level: r.level, frame: r.frame, title: r.title, early: r.early });
+                let me = meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null;
+                if (!me && Admin.isStaffName(username)) { const sr = await lbStaffRow(username, month); if (sr) me = { ...pick(sr, lbShadowRank(ranked, sr, get)), shadow: true }; }
                 return io.to(socket.id).emit('leaderboard', { period: 'all', board, total: ranked.length, top: ranked.slice(0, 1000).map(pick),
-                    me: meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null, staff: Admin.isStaffName(username) });
+                    me, staff: Admin.isStaffName(username) });
             }
             if (board === 'teams') { // csapatok: a tagok szezonpontjainak összege
                 const teams = socialHooks ? await socialHooks.teamBoard(await leaderboardRows(month)) : [];
@@ -2812,13 +2826,16 @@ io.on('connection', (socket) => {
                     period: 'month', total: teams.length, top: teams.slice(0, 1000).map(pick), me: mi >= 0 ? pick(teams[mi], mi) : null, staff: false, hasTeam: !!(socialHooks && await socialHooks.teams.myTeamId(username)) });
             }
             // a teljes lista: aki még nem szerzett pontot a hónapban, az is szerepel (0-val, a végén)
-            const ranked = rankAll(await leaderboardRows(month), (r) => (board === 'level' ? r.level : r[board] || 0));
+            const getM = (r) => (board === 'level' ? r.level : r[board] || 0);
+            const ranked = rankAll(await leaderboardRows(month), getM);
             const meIdx = ranked.findIndex(r => r.name === username);
             const pick = (r, i) => ({ rank: i + 1, name: r.name, value: SurvivalSeason.valueOf(r, board), level: r.level, frame: r.frame, title: r.title, early: r.early });
+            let me = meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null;
+            if (!me && Admin.isStaffName(username)) { const sr = await lbStaffRow(username, month); if (sr) me = { ...pick(sr, lbShadowRank(ranked, sr, getM)), shadow: true }; }
             io.to(socket.id).emit('leaderboard', {
                 period: 'month', board, month, monthName: SurvivalSeason.monthName(month), rewarded: SurvivalSeason.rewarded(month), msLeft: SurvivalSeason.msLeft(now),
                 total: ranked.length, top: ranked.slice(0, 1000).map(pick),
-                me: meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null, staff: Admin.isStaffName(username)
+                me, staff: Admin.isStaffName(username)
             });
         })().catch(logError('Hiba a ranglistánál:'));
     });

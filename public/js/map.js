@@ -724,10 +724,8 @@ function initOtherPlayersListener() {
             } else {
                 const marker = L.marker([pData.lat, pData.lng], { icon: otherPlayerIcon(pData) }).addTo(map);
                 const entry = { marker, data: pData };
-                // Kattintásra a játékos neve és szintje (később innen indulhat a PvP)
-                marker.on('click', () => showOtherPlayer(entry.data));
-                // hosszan nyomva: körmenü (üzenet, profil, barát, csapat… – v0.1.25)
-                if (typeof attachLongPress === 'function') attachLongPress(marker, () => entry.data);
+                // koppintásra: körmenü a játékos körül (üzenet, profil, barát, csapat, támadás – v0.1.26.10)
+                marker.on('click', () => showOtherPlayer(entry.data, entry.marker));
                 otherPlayerMarkers[name] = entry;
             }
         });
@@ -740,8 +738,15 @@ function initOtherPlayersListener() {
     });
 }
 
-function showOtherPlayer(pData) {
+function showOtherPlayer(pData, marker) {
     const r = window.SurvivalRoles && SurvivalRoles.info(pData.role);
+    // körmenü a jelölő közepén (a régi kis ablak helyett)
+    if (typeof radialOpen === 'function') {
+        const el = marker && marker.getElement && marker.getElement();
+        const rc = el ? el.getBoundingClientRect() : null;
+        radialOpen(pData, rc ? rc.left + rc.width / 2 : window.innerWidth / 2, rc ? rc.top + rc.height / 2 : window.innerHeight / 2);
+        return;
+    }
     logMessage(`👤 ${pData.username} – ${pData.level || 1}. szintű túlélő${r ? ' · ' + r.name + ' (a játék stábja)' : ''}${pData.early === true ? ' · 🎖️ Korai túlélő' : ''}`);
     if (typeof socialPlayerCard === 'function') socialPlayerCard(pData); // barátnak jelölés, csapatmeghívó (v0.1.21)
 }

@@ -125,7 +125,7 @@ function profSave() {
     socket.emit('profile_set', profEdit);
 }
 
-// ---------- KÖRMENÜ: hosszan nyomva egy játékoson a térképen ----------
+// ---------- KÖRMENÜ: koppintásra egy játékoson a térképen (v0.1.26.10) ----------
 let radialFor = null;
 function radialOpen(pData, x, y) {
     if (!pData || !pData.username || (player && pData.username === player.username)) return;
