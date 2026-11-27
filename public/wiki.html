@@ -749,7 +749,7 @@ function route() {
   else if (p1 === 'epulet') { html = buildingPage(p2); active = '#/epuletek'; }
   else if (p1 === 'kereses') html = searchPage(p2 || '');
   else html = notFound();
-  $('main').innerHTML = html + `<div class="foot">A wiki a játék saját adataiból készül, ezért mindig naprakész. Hibát találtál? Írj nekünk a játékban (Menü → Üzenet a stábnak) vagy az <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre.<br>A játék kis ikonjai a <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> készletéből származnak (CC BY 3.0, készítők: Lorc, Delapouite és mások).</div>`;
+  $('main').innerHTML = html + `<div class="foot">A wiki a játék saját adataiból készül, ezért mindig naprakész. Hibát találtál? Írj nekünk a játékban (Menü → Üzenet a stábnak) vagy az <a href="mailto:info@survivalgo.hu">info@survivalgo.hu</a> címre.</div>`;
   renderNav(active);
   document.body.classList.remove('nav-open');
   if (p1 !== 'kereses') window.scrollTo(0, 0);
@@ -761,5 +761,7 @@ $('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() =>
 window.addEventListener('hashchange', route);
 fetch('/api/wiki').then(r => r.json()).then(d => { W = d; route(); }).catch(() => { $('main').innerHTML = '<h1>Nem sikerült betölteni</h1><p>Ellenőrizd az internetkapcsolatot, és frissítsd az oldalt.</p>'; });
 </script>
+<style>svg.gi,img.gi{display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.25em;fill:currentColor;object-fit:contain}</style>
+<script src="/js/icons.js"></script>
 </body>
 </html>

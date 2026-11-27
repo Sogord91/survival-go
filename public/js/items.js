@@ -336,11 +336,11 @@ const itemDatabase = {
     'iron_banded_chest': { name: 'Vasalt Láda', type: 'material', icon: '🧰', img: 'SURV-2202_iron_banded_chest', desc: 'Erős láda a raktár második bővítéséhez', weight: 8, stackable: true, loot: { military: 0.3 } },
 
     // --- LŐSZER ---
-    'ammo_9mm': { name: '9x19mm Parabellum', type: 'ammo', icon: '🎯', img: 'drawn_ammo_9mm', desc: 'Pisztoly lőszer', ammoType: 'ammo_9mm', weight: 0.02, stackable: true, lootCount: [5, 15], loot: { police: 5, military: 3 } },
-    'ammo_762': { name: '7.62x39mm Katonai Lőszer', type: 'ammo', icon: '🎯', img: 'drawn_ammo_762', desc: 'AK lőszer', ammoType: 'ammo_762', weight: 0.03, stackable: true, lootCount: [5, 15], loot: { military: 4, police: 0.5 } },
-    'ammo_556': { name: '5.56x45mm NATO', type: 'ammo', icon: '🎯', img: 'drawn_ammo_556', desc: 'M4 lőszer', ammoType: 'ammo_556', weight: 0.03, stackable: true, lootCount: [5, 15], loot: { military: 1.5 } },
-    'ammo_buckshot': { name: '12 Gauge Sörét', type: 'ammo', icon: '🎯', img: 'drawn_ammo_buckshot', desc: 'Sörétes töltény', ammoType: 'ammo_buckshot', weight: 0.05, stackable: true, lootCount: [4, 10], loot: { police: 2, farm: 2 } },
-    'ammo_sniper': { name: '7.62x54mmR Mesterlövész', type: 'ammo', icon: '🎯', img: 'drawn_ammo_sniper', desc: 'SVD / Vadászpuska lőszer', ammoType: 'ammo_sniper', weight: 0.04, stackable: true, lootCount: [3, 8], loot: { military: 1, farm: 0.5 } },
+    'ammo_9mm': { name: '9x19mm Parabellum', type: 'ammo', icon: '🔸', img: 'drawn_ammo_9mm', desc: 'Pisztoly lőszer', ammoType: 'ammo_9mm', weight: 0.02, stackable: true, lootCount: [5, 15], loot: { police: 5, military: 3 } },
+    'ammo_762': { name: '7.62x39mm Katonai Lőszer', type: 'ammo', icon: '🔸', img: 'drawn_ammo_762', desc: 'AK lőszer', ammoType: 'ammo_762', weight: 0.03, stackable: true, lootCount: [5, 15], loot: { military: 4, police: 0.5 } },
+    'ammo_556': { name: '5.56x45mm NATO', type: 'ammo', icon: '🔸', img: 'drawn_ammo_556', desc: 'M4 lőszer', ammoType: 'ammo_556', weight: 0.03, stackable: true, lootCount: [5, 15], loot: { military: 1.5 } },
+    'ammo_buckshot': { name: '12 Gauge Sörét', type: 'ammo', icon: '🔸', img: 'drawn_ammo_buckshot', desc: 'Sörétes töltény', ammoType: 'ammo_buckshot', weight: 0.05, stackable: true, lootCount: [4, 10], loot: { police: 2, farm: 2 } },
+    'ammo_sniper': { name: '7.62x54mmR Mesterlövész', type: 'ammo', icon: '🔸', img: 'drawn_ammo_sniper', desc: 'SVD / Vadászpuska lőszer', ammoType: 'ammo_sniper', weight: 0.04, stackable: true, lootCount: [3, 8], loot: { military: 1, farm: 0.5 } },
     'arrow': { name: 'Nyílvessző', type: 'ammo', icon: '➶', img: 'SURV-1620_bodkin_arrow', desc: 'Íjhoz. Lövés után gyakran visszaszedhető', ammoType: 'arrow', recover: { key: 'arrow', chance: 0.5 }, weight: 0.05, stackable: true, lootCount: [3, 8], loot: { sport: 2, farm: 1 } },
     'empty_casing': { name: 'Üres Hüvely', type: 'material', icon: '🥉', img: 'drawn_empty_casing', desc: 'Lövés után összeszedett hüvely, újratöltéshez', weight: 0.01, stackable: true, lootCount: [3, 8], loot: { police: 2, military: 3 } }
 };
