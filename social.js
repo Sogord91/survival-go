@@ -137,7 +137,7 @@ function setup(ctx) {
     async function friendList(username) {
         const list = await friendsOf(username);
         const names = list.map(f => f.other);
-        const users = names.length ? await PlayerModel.find({ username: { $in: names } }, { username: 1, team: 1, 'playerData.level': 1, 'playerData.lastSeen': 1, 'playerData.season': 1, 'playerData.dead': 1 }).lean() : [];
+        const users = names.length ? await PlayerModel.find({ username: { $in: names } }, { username: 1, team: 1, avatar: 1, 'playerData.level': 1, 'playerData.lastSeen': 1, 'playerData.season': 1, 'playerData.dead': 1 }).lean() : [];
         const byName = {}; users.forEach(u => { byName[u.username] = u; });
         const today = DAY(Date.now()), month = seasonMonth();
         const out = list.map(f => {
@@ -145,7 +145,7 @@ function setup(ctx) {
             const se = pd.season && pd.season.month === month ? pd.season : {};
             const sentToday = f.gifts && f.gifts[username] === today;
             return { name: f.other, status: f.status, incoming: f.status === 'pending' && f.from !== username, outgoing: f.status === 'pending' && f.from === username,
-                online: !!activePlayers[f.other], level: pd.level || 1, km: Math.round((se.meters || 0) / 100) / 10, points: se.xp || 0, lastSeen: pd.lastSeen || null, canGift: f.status === 'ok' && !sentToday };
+                online: !!activePlayers[f.other], avatar: /^avatar\d+\.png$/.test(u.avatar || '') ? u.avatar : 'avatar1.png', level: pd.level || 1, km: Math.round((se.meters || 0) / 100) / 10, points: se.xp || 0, lastSeen: pd.lastSeen || null, canGift: f.status === 'ok' && !sentToday };
         });
         out.sort((p, q) => (q.incoming - p.incoming) || (q.online - p.online) || (q.points - p.points));
         return out;

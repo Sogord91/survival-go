@@ -871,7 +871,7 @@ function togglePin(key) {
 function quickbarTap(i) {
     const key = quickbarList()[i];
     if (!key) {
-        logMessage('📌 Tűzz ki ide egy tárgyat: Készlet → koppints a tárgyra → „📌 Gyorssáv”.');
+        logMessage('📌 Tűzz ki ide egy tárgyat: avatar → Készlet → koppints a tárgyra → „📌 Gyorssáv”.');
         return;
     }
     if (player.combat) { logMessage('Harc közben a harci ablakból gyógyíthatsz.'); return; }

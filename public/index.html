@@ -228,14 +228,14 @@
         .toast-item.leaving { opacity: 0; transform: translateY(-6px); }
 
         /* Alsó menüsor: teljes szélességű vászoncsík, varrással */
-        .nav-bar { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(7, 1fr);
+        .nav-bar { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr);
             padding: 8px 2px calc(var(--sg-safe-b) + 6px); border-top: 2px solid var(--sg-dark); box-shadow: 0 -4px 12px rgba(0,0,0,.5); }
         .nav-bar:before { content: ''; position: absolute; left: 0; right: 0; top: 4px; border-top: 1px dashed rgba(233,227,207,.32); pointer-events: none; }
         .nav-btn { position: relative; background: transparent; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px 0;
             transition: transform 0.1s; -webkit-tap-highlight-color: transparent; }
-        .nav-btn img { width: 28px; height: 28px; filter: grayscale(1) sepia(.35) brightness(1.25) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); pointer-events: none; }
+        .nav-btn img { width: 30px; height: 30px; filter: grayscale(1) sepia(.35) brightness(1.25) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); pointer-events: none; }
         .nav-btn { min-width: 0; }
-        .nav-btn span { max-width: 100%; overflow: hidden; text-overflow: clip; font: 700 9.5px var(--sg-font); letter-spacing: .05em; color: #cfc9b6; text-transform: uppercase; white-space: nowrap; }
+        .nav-btn span { max-width: 100%; overflow: hidden; text-overflow: clip; font: 700 10.5px var(--sg-font); letter-spacing: .05em; color: #cfc9b6; text-transform: uppercase; white-space: nowrap; }
         .nav-btn:active { transform: scale(0.92); }
         .nav-btn.soon img { opacity: 0.45; }
         .nav-btn.soon span { color: rgba(207, 201, 182, 0.45); }
@@ -580,6 +580,65 @@
         .sg-tm-log small { color: #8f8a7a; margin-right: 4px; }
         .sg-so-camp { border-color: var(--sg-gold, #d9c58a) !important; }
         .sg-so-camp-img { display: block; width: 100%; max-width: 320px; margin: 6px auto; border: 1px solid rgba(0,0,0,.6); box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+
+        /* ===== KARAKTER-KÖZPONT (v0.1.27) ===== */
+        .sg-id { pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .sg-id:active .sg-ava { transform: scale(.95); }
+        .sg-ava-badge { position: absolute; top: -4px; left: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #a8321e; color: #fff; border: 2px solid var(--sg-dark);
+            font: 800 11px/16px var(--sg-font); text-align: center; z-index: 3; box-shadow: 0 2px 3px rgba(0,0,0,.6); }
+        .sg-ava-badge.hidden { display: none; }
+        .sg-id.sg-hint .sg-ava::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--sg-gold); animation: sgHubPulse 1.6s ease-out infinite; pointer-events: none; }
+        @keyframes sgHubPulse { 0% { opacity: .9; transform: scale(.92); } 100% { opacity: 0; transform: scale(1.25); } }
+        #sg-hub { position: fixed; left: 0; right: 0; top: 0; z-index: 2450; padding: calc(var(--sg-safe-t) + 8px) 10px 0; color: var(--sg-thread);
+            background-color: var(--sg-canvas); background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px);
+            border-bottom: 2px solid var(--sg-dark); box-shadow: 0 4px 10px rgba(0,0,0,.6); }
+        #sg-hub.hidden { display: none; }
+        .sg-hub-head { display: flex; align-items: center; gap: 10px; padding: 0 2px 8px; }
+        .sg-hub-ava { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 2px solid var(--sg-gold); flex: none; background: #0d0f0a; }
+        .sg-hub-ava img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(.45) sepia(.2) contrast(1.08); }
+        .sg-hub-id { min-width: 0; flex: 1; }
+        .sg-hub-id b { display: block; font: 800 16px var(--sg-font); letter-spacing: .2em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sg-hub-id small { display: block; font: 700 11px var(--sg-font); letter-spacing: .12em; color: var(--sg-muted); text-transform: uppercase; }
+        .sg-hub-x { width: 40px; height: 40px; flex: none; border: 2px solid var(--sg-dark); background: rgba(0,0,0,.35); color: var(--sg-thread); font: 800 18px var(--sg-font); }
+        .sg-hub-tabs { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0 -10px; border-top: 1px dashed rgba(233,227,207,.25); }
+        .sg-hub-tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 6px; background: transparent; border: 0; border-bottom: 3px solid transparent; color: var(--sg-muted); }
+        .sg-hub-tabs button img { width: 26px; height: 26px; filter: grayscale(1) sepia(.35) brightness(1.05) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); opacity: .7; }
+        .sg-hub-tabs button span { font: 800 10px var(--sg-font); letter-spacing: .06em; text-transform: uppercase; }
+        .sg-hub-tabs button.on { background: rgba(0,0,0,.32); border-bottom-color: var(--sg-gold); color: var(--sg-thread); }
+        .sg-hub-tabs button.on img { opacity: 1; filter: grayscale(1) sepia(.35) brightness(1.35) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); }
+        .sg-hub-tabs .nav-badge { top: 2px; }
+        /* a központba „dokkolt” ablak: a fülsor alatt, teljes szélességben */
+        .modal.in-hub { position: fixed !important; top: var(--sg-hub-h, 120px) !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 2400 !important;
+            padding: 0 !important; align-items: stretch !important; justify-content: stretch !important; background: #14160f !important; backdrop-filter: none !important; }
+        .modal.in-hub > .hud-panel, .modal.in-hub > .sg-pf-card { width: 100% !important; max-width: none !important; max-height: none !important; height: 100% !important; margin: 0 !important;
+            border-radius: 0 !important; outline: none !important; box-shadow: none !important; clip-path: none !important; padding-bottom: calc(var(--sg-safe-b) + 14px) !important; }
+        .modal.in-hub > .sg-pf-card { overflow-y: auto; }
+        .modal.in-hub > .hud-panel > div:first-child:not([id]) { display: none !important; }
+        .modal.in-hub .sg-pf-x, .modal.in-hub #btn-close-equipment { display: none !important; }
+        .modal.in-hub .sg-so-tabs.hub-hide { display: none; }
+        /* barátlista (v0.1.27) */
+        .sg-fr-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px; margin-bottom: 5px; background: rgba(0,0,0,.28); border: 1px solid rgba(21,23,15,.8); border-left: 3px solid rgba(217,197,138,.35); }
+        .sg-fr-row.dim { opacity: .7; }
+        .sg-fr-ava { position: relative; width: 40px; height: 40px; flex: none; border-radius: 50%; border: 2px solid #4a4f3c; background: #0d0f0a; }
+        .sg-fr-ava img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; filter: grayscale(.45) sepia(.2); }
+        .sg-fr-ava.on { border-color: #8fa84a; }
+        .sg-fr-ava.on::after { content: ''; position: absolute; right: -2px; bottom: -2px; width: 11px; height: 11px; border-radius: 50%; background: #8fd14a; border: 2px solid #15170f; }
+        .sg-fr-who { flex: 1; min-width: 0; cursor: pointer; }
+        .sg-fr-who b { display: block; font: 800 14px var(--sg-font); letter-spacing: .04em; color: var(--sg-thread); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sg-fr-who b em { font: 800 9px var(--sg-font); letter-spacing: .1em; font-style: normal; color: var(--sg-muted); margin-left: 4px; }
+        .sg-fr-who b em.on { color: #8fd14a; }
+        .sg-fr-who small { display: block; font: 600 11.5px var(--sg-font); color: var(--sg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sg-fr-btn { width: 38px; height: 38px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--sg-thread); background: rgba(0,0,0,.35); border: 1px solid rgba(217,197,138,.45); }
+        .sg-fr-btn.ok { background: #5a6b2c; border-color: #8fa84a; font-weight: 800; }
+        .sg-fr-btn.gift:not(:disabled) { background: #6b4a20; border-color: #c99a4a; }
+        .sg-fr-btn:disabled { opacity: .4; }
+        .sg-fr-req { margin-bottom: 10px; padding: 6px 8px 2px; border: 1px dashed var(--sg-gold); background: rgba(217,197,138,.06); }
+        .sg-fr-req .sg-so-h { margin-top: 0; }
+        .sg-fr-foot { margin-top: 10px; font-size: 11px; }
+        .modal.in-hub .sg-so-tabs { grid-gap: 0; border-bottom: 1px dashed rgba(233,227,207,.25); margin: -4px -4px 10px; }
+        .modal.in-hub .sg-so-tabs button { background: transparent; border: 0; border-bottom: 3px solid transparent; font-size: 0; padding: 8px 2px 6px; }
+        .modal.in-hub .sg-so-tabs button span { font-size: 11px; margin: 0; }
+        .modal.in-hub .sg-so-tabs button.on { border-bottom-color: var(--sg-gold); background: rgba(0,0,0,.25); }
         .sg-tm-older { align-self: center; margin: 2px 0 4px; padding: 5px 12px; font: 700 11px var(--sg-font, inherit); letter-spacing: .08em; color: var(--sg-gold, #d8b45a); background: rgba(0,0,0,.4); border: 1px dashed var(--sg-thread, #8a7d5a); cursor: pointer; }
         .sg-tm-older:disabled { opacity: .6; }
         .sg-tm-chat { height: min(48vh, 360px); overflow-y: auto; padding: 6px; margin-bottom: 6px; background: rgba(0,0,0,.35); border: 1px solid rgba(21,23,15,.9); display: flex; flex-direction: column; gap: 5px; }
@@ -1431,7 +1490,7 @@
         <div class="sg-shade-bottom" aria-hidden="true"></div>
 
         <div id="top-hud" class="sg-top">
-            <div class="sg-id">
+            <div class="sg-id" id="hud-id" onclick="hubOpen()" role="button" aria-label="Karakter: készlet, képességek, profil, barátok, üzenetek">
                 <!-- Avatar hímzett foltban; a körülötte lévő öltés-gyűrű az XP, a sarkában a rang felvarrója -->
                 <div class="sg-ava">
                     <svg class="sg-ava-ring" viewBox="0 0 64 64" aria-hidden="true">
@@ -1444,6 +1503,7 @@
                     <div id="hud-avatar" class="sg-ava-img"></div>
                     <span id="hud-rank-patch" class="sg-rank-patch" title="Rang"></span>
                     <span id="hud-staff" class="sg-staff hidden"></span>
+                    <b id="hud-ava-badge" class="sg-ava-badge hidden">0</b>
                 </div>
                 <div class="sg-idtext">
                     <div class="sg-nameline"><span id="hud-name" class="sg-tape">Túlélő</span><span id="hud-badge" class="hidden sg-early" title="Korai túlélő">🎖️</span></div>
@@ -1512,11 +1572,10 @@
 
     <!-- ALSÓ MENÜSOR: vászoncsík, cérnaszínű ikonok (képek: public/images/ui/nav-*.svg) -->
         <nav id="nav-bar" class="nav-bar sg-canvas">
-            <button id="btn-open-equipment" class="nav-btn"><img src="/images/ui/nav-backpack.svg" alt=""><span>Készlet</span></button>
+            <!-- v0.1.27: a Készlet, Képességek, Profil, Barátok és Üzenetek az avatarra koppintva nyílnak (js/hub.js) -->
+            <button id="btn-open-team" class="nav-btn" onclick="openSocial('team')"><img src="/images/ui/nav-team.svg" alt=""><span>Csapat</span><b id="nav-team-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Barkács</span></button>
-            <button id="btn-open-skills" class="nav-btn"><img src="/images/ui/nav-skills.svg" alt=""><span>Képesség</span><b id="nav-skill-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-leaderboard" class="nav-btn"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
-            <button id="btn-open-chat" class="nav-btn"><img src="/images/ui/nav-friends.svg" alt=""><span>Barátok</span><b id="nav-social-badge" class="nav-badge hidden">0</b><b id="nav-chat-badge" class="nav-badge hidden" style="display:none">0</b></button>
             <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
             <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span><b id="nav-menu-badge" class="nav-badge hidden">0</b></button>
         </nav>
@@ -1741,6 +1800,8 @@
     <div id="pvp-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3400]"><div class="hud-panel sg-pv-card"><div id="pvp-body"></div></div></div>
     <div id="bag-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-3 z-[3300]" onclick="if(event.target===this){pvpBagView=null;pvpBagRender()}"><div class="hud-panel sg-pv-card"><div id="bag-body"></div></div></div>
     <!-- KÖRMENÜ: hosszan nyomva egy játékoson (v0.1.25) -->
+    <!-- KARAKTER-KÖZPONT (v0.1.27, js/hub.js): avatarra koppintva – Készlet, Képességek, Profil, Barátok, Üzenetek -->
+    <div id="sg-hub" class="hidden"></div>
     <div id="sg-radial" class="hidden" onclick="if(event.target===this)radialClose()"></div>
     <!-- QR-MATRICA beváltása (v0.1.24, js/qr-ui.js) -->
     <div id="qr-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3500]" onclick="if(event.target===this)qrHide()">
@@ -1913,6 +1974,7 @@
     <script src="js/shop.js"></script>
     <script src="js/premium-ui.js"></script>
     <script src="js/shelter-ui.js"></script>
+    <script src="js/hub.js"></script>
     <script src="/js/auth.js"></script>
 </body>
 </html>

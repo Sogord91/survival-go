@@ -329,7 +329,7 @@ const GUIDES = [
   { slug: 'kepessegek', title: 'Képességek', group: 'Útmutatók', render: () => {
     const S = window.SurvivalSkills;
     return `<h1>⭐ Képességek</h1>
-    <p class="lead">Szintlépéskor képességpontot kapsz: <b>szintenként 1, minden 10. szinten +1</b> (100. szinten összesen ${S.pointsForLevel(100)}). A Képesség gombbal osztod el őket négy ágban.</p>
+    <p class="lead">Szintlépéskor képességpontot kapsz: <b>szintenként 1, minden 10. szinten +1</b> (100. szinten összesen ${S.pointsForLevel(100)}). Az avatarodra koppintva, a <b>Képesség</b> fülön osztod el őket négy ágban.</p>
     <ul><li>Minden ágban ${S.SKILLS.filter(x => x.branch === 'harcos').length} képesség van, <b>két ösvényen</b> (bal és jobb) és középen két csúcsképességgel. Egy sor akkor nyílik meg, ha az ágban már elköltöttél <b>${S.TIERS.join(' / ')}</b> pontot.</li>
       <li><b>Elágazás:</b> egy képességet csak akkor tanulhatsz, ha az ösvényen alatta lévő legalább a <b>3. rangon</b> van. A csúcsképességhez az egyik ösvényen el kell jutnod alá.</li>
       <li>A legtöbb képesség 5 rangú; a ${S.TIERS[3]}. és a ${S.TIERS[6]}. pontnál <b>csúcsképesség</b> vár.</li>
@@ -366,7 +366,7 @@ const GUIDES = [
   } },
   { slug: 'kozosseg', title: 'Barátok, csapatok, meghívás', group: 'Útmutatók', render: () => `
     <h1>👥 Barátok, csapatok, meghívás</h1>
-    <p class="lead">Lent a menüsorban a <b>Barátok</b> gomb alatt négy fül vár: Barátok, Csapat, Meghívás és Megosztás.</p>
+    <p class="lead">Az <b>avatarodra koppintva</b> nyílik a karakter-központ: Készlet, Képesség, Profil, Barátok és Üzenetek. A Barátok fülön a Meghívás és a Megosztás is ott van. A <b>Csapat</b> lent, a menüsor első gombja.</p>
     <h2>👥 Barátok</h2>
     <ul><li>Barátot a nevével jelölhetsz, vagy koppints rá egy játékosra a térképen → <b>Barátnak jelölöm</b>. Ha elfogadja, a barátod lesz.</li>
       <li>Látod, ki van online, hányadik szinten jár, és hány km-t gyalogolt, hány szezonpontot gyűjtött a hónapban.</li>
@@ -411,7 +411,7 @@ const GUIDES = [
     <h2>⭕ Körmenü</h2>
     <ul><li>A térképen egy játékosra <b>koppintva</b> körmenü nyílik: ✉️ üzenet, 👤 profil, ➕ barátnak jelölés, 🏕️ csapatba hívás, ⚔️ támadás. A 🤝 kereskedés gomb is itt lesz, amint elkészül.</li></ul>
     <h2>💬 Privát üzenetek</h2>
-    <ul><li>Barátok gomb → 💬 <b>Üzenetek</b>: beszélgetés két játékos között. Írni a barátlistáról (✉), a térképen egy játékosra koppintva (✉ ÜZENET) vagy név alapján lehet.</li>
+    <ul><li>Avatar → 💬 <b>Üzenetek</b>: beszélgetés két játékos között. Írni a barátlistáról (✉), a térképen egy játékosra koppintva (✉ ÜZENET) vagy név alapján lehet.</li>
       <li>A barátaidnak bármikor írhatsz. <b>Ismeretlennek a 3. szinttől</b> lehet írni, és naponta legfeljebb 15 új beszélgetést kezdhetsz.</li>
       <li>Ha nem vagy a játékban, értesítést kapsz az új üzenetről.</li>
       <li><b>Védelem:</b> a „Csak a barátaim írhatnak” beállítással ismeretlen nem kezdhet veled beszélgetést. A beszélgetésben a ⋯ gombbal <b>letilthatod</b> vagy <b>jelentheted</b> a játékost. A jelentéssel a stáb a beszélgetés utolsó üzeneteit látja, más beszélgetésbe nem lát bele.</li>

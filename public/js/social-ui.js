@@ -11,7 +11,7 @@ function openSocial(tab) {
     socket.emit('social_state');
     renderSocial();
 }
-function closeSocial() { document.getElementById('social-modal').classList.add('hidden'); }
+function closeSocial() { document.getElementById('social-modal').classList.add('hidden'); if (window.sgSocialMode === 'team') window.sgSocialMode = 'all'; }
 function socialSetTab(t) { socialTab = t; if (t === 'dm' && typeof dmThread !== 'undefined') { dmThread = null; socket.emit('dm_list'); } renderSocial(); const b = document.getElementById('social-body'); if (b) b.scrollTop = 0; }
 const sEsc = (s) => (typeof escapeAttr === 'function' ? escapeAttr(String(s)) : String(s));
 const sJs = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -27,9 +27,16 @@ function renderSocial() {
     const body = document.getElementById('social-body');
     if (!body) return;
     const st = socialState;
-    const tabs = [['friends', '👥', 'Barátok'], ['dm', '💬', 'Üzenetek'], ['team', '🏕️', 'Csapat'], ['invite', '🤝', 'Meghívás'], ['share', '📸', 'Megosztás']];
+    // v0.1.27: a Barátok és az Üzenetek a karakter-központban (hub.js), a Csapat külön ablak – mindegyik csak a saját füleit mutatja
+    const mode = window.sgSocialMode || 'all';
+    const ALL = [['friends', '👥', 'Barátok'], ['dm', '💬', 'Üzenetek'], ['team', '🏕️', 'Csapat'], ['invite', '🤝', 'Meghívás'], ['share', '📸', 'Megosztás']];
+    const tabs = mode === 'friends' ? ALL.filter(t => ['friends', 'invite', 'share'].includes(t[0])) : mode === 'dm' || mode === 'team' ? [] : ALL;
+    if (mode === 'friends' && !['friends', 'invite', 'share'].includes(socialTab)) socialTab = 'friends';
+    if (mode === 'dm') socialTab = 'dm';
+    if (mode === 'team') socialTab = 'team';
+    const ttl = document.querySelector('#social-modal h2'); if (ttl) ttl.textContent = mode === 'team' ? '🏕️ CSAPAT' : '👥 KÖZÖSSÉG';
     const badge = (k) => { if (!st) return 0; if (k === 'friends') return (st.friends || []).filter(f => f.incoming).length; if (k === 'team' && typeof teamAlerts === 'function') return teamAlerts(st); if (k === 'dm' && typeof dmUnread !== 'undefined') return dmUnread; return 0; };
-    let html = `<div class="sg-so-tabs">${tabs.map(([k, ic, n]) => { const b = badge(k); return `<button class="${k === socialTab ? 'on' : ''}" onclick="socialSetTab('${k}')">${ic}<span>${n}</span>${b ? `<i class="sg-tm-dot">${b}</i>` : ''}</button>`; }).join('')}</div>`;
+    let html = !tabs.length ? '' : `<div class="sg-so-tabs" style="grid-template-columns:repeat(${tabs.length},1fr)">${tabs.map(([k, ic, n]) => { const b = badge(k); return `<button class="${k === socialTab ? 'on' : ''}" onclick="socialSetTab('${k}')">${ic}<span>${n}</span>${b ? `<i class="sg-tm-dot">${b}</i>` : ''}</button>`; }).join('')}</div>`;
     if (!st) { body.innerHTML = html + '<p class="sg-so-muted">Betöltés…</p>'; return; }
     if (socialTab === 'friends') html += friendsHtml(st);
     else if (socialTab === 'team') html += teamHtml(st);
@@ -47,19 +54,25 @@ function renderSocial() {
 
 // ---------- Barátok ----------
 function friendsHtml(st) {
+    // v0.1.27: rendezettebb lista – kérések felül kártyán, barátok avatarral, ikon-gombokkal
     const fr = st.friends || [];
     const req = fr.filter(f => f.incoming), ok = fr.filter(f => f.status === 'ok'), out = fr.filter(f => f.outgoing);
-    let h = `<div class="sg-so-add"><input id="so-friend-name" maxlength="24" placeholder="Kezdd el írni a nevét…" autocomplete="off" oninput="socialSearchInput(this.value)" onkeydown="if(event.key==='Enter')socialAddFriend()" value="${sEsc(socialSearchQ)}"><button onclick="socialAddFriend()">+ BARÁT</button></div>
+    const on = ok.filter(f => f.online).length;
+    const ava = (f) => `<span class="sg-fr-ava${f.online ? ' on' : ''}"><img src="/images/avatars/${sEsc(f.avatar || 'avatar1.png')}" alt="" onerror="this.src='/images/avatars/avatar1.png'"></span>`;
+    const seen = (f) => { if (f.online) return '<em class="on">ONLINE</em>'; if (!f.lastSeen) return ''; const h = Math.floor((Date.now() - f.lastSeen) / 36e5); return `<em>${h < 1 ? 'nemrég' : h < 24 ? h + ' órája' : Math.floor(h / 24) + ' napja'}</em>`; };
+    let h = '';
+    if (req.length) h += `<div class="sg-fr-req"><div class="sg-so-h">🔔 BARÁTKÉRÉS (${req.length})</div>` + req.map(f => `<div class="sg-fr-row">${ava(f)}<div class="sg-fr-who" onclick="openProfile('${sJs(f.name)}')"><b>${sEsc(f.name)}</b><small>${f.level}. szint · szeretne a barátod lenni</small></div>
+        <button class="sg-fr-btn ok" onclick="socket.emit('friend_accept',{name:'${sJs(f.name)}'})">✓</button><button class="sg-fr-btn" onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('') + '</div>';
+    h += `<div class="sg-so-h">BARÁTAIM <small>${ok.length} fő · ${on} online · ma még ${st.giftsLeft} ajándék</small></div>`;
+    h += ok.length ? ok.map(f => `<div class="sg-fr-row">${ava(f)}<div class="sg-fr-who" onclick="openProfile('${sJs(f.name)}')"><b>${sEsc(f.name)} ${seen(f)}</b><small>${f.level}. szint · ${String(f.km).replace('.', ',')} km · ${f.points} pont</small></div>
+        <button class="sg-fr-btn" title="Üzenet" onclick="openDm('${sJs(f.name)}')">✉</button>
+        <button class="sg-fr-btn gift" title="${f.canGift ? 'Ajándék küldése' : 'Ma már küldtél'}" ${f.canGift && st.giftsLeft > 0 ? '' : 'disabled'} onclick="socket.emit('friend_gift',{name:'${sJs(f.name)}'})">${f.canGift ? '🎁' : '✓'}</button></div>`).join('')
+        : `<p class="sg-so-muted">Még nincs barátod. Keress rá a nevére lent, koppints rá a térképen, vagy hívd meg a barátaidat a <b>Meghívás</b> fülön.</p>`;
+    h += `<div class="sg-so-h" style="margin-top:14px">BARÁT HOZZÁADÁSA</div>
+        <div class="sg-so-add"><input id="so-friend-name" maxlength="24" placeholder="Kezdd el írni a nevét…" autocomplete="off" oninput="socialSearchInput(this.value)" onkeydown="if(event.key==='Enter')socialAddFriend()" value="${sEsc(socialSearchQ)}"><button onclick="socialAddFriend()">+ JELÖLÖM</button></div>
         <div id="so-search">${socialSearchHtml()}</div><div id="so-msg" class="sg-so-msg ${socialMsg && !socialMsg.ok ? 'bad' : ''}">${socialMsg ? sEsc(socialMsg.text) : ''}</div>`;
-    if (out.length) h += `<div class="sg-so-h">ELKÜLDÖTT KÉRÉSEK</div>` + out.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><small class="sg-so-muted">várja, hogy elfogadja</small><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
-    if (req.length) h += `<div class="sg-so-h">BARÁTKÉRÉSEK</div>` + req.map(f => `<div class="sg-so-row"><b>${sEsc(f.name)}</b><span class="sg-so-sp"></span><button class="ok" onclick="socket.emit('friend_accept',{name:'${sJs(f.name)}'})">ELFOGADOM</button><button onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
-    h += `<div class="sg-so-h">BARÁTAIM (${ok.length}) <small>· ma még ${st.giftsLeft} ajándékot küldhetsz</small></div>`;
-    h += ok.length ? ok.map(f => `<div class="sg-so-row"><span class="sg-so-dot ${f.online ? 'on' : ''}"></span><div class="sg-so-who" onclick="openProfile('${sJs(f.name)}')" style="cursor:pointer"><b>${sEsc(f.name)}</b><small>${f.level}. szint · ${String(f.km).replace('.', ',')} km és ${f.points} pont a hónapban${f.online ? ' · online' : ''}</small></div>
-        <button class="msg" title="Üzenet" onclick="openDm('${sJs(f.name)}')">✉</button>
-        <button class="gift" ${f.canGift && st.giftsLeft > 0 ? '' : 'disabled'} onclick="socket.emit('friend_gift',{name:'${sJs(f.name)}'})">${f.canGift ? '🎁 AJÁNDÉK' : '✓ MA KÜLDTÉL'}</button>
-        <button class="x" onclick="socialRemoveFriend('${sJs(f.name)}')">✕</button></div>`).join('')
-        : `<p class="sg-so-muted">Még nincs barátod. Írd be egy játékos nevét, koppints rá a térképen, vagy hívd meg a barátaidat a Meghívás fülön – aki a linkeddel regisztrál, automatikusan a barátod lesz.</p>`;
-    h += `<p class="sg-so-muted" style="margin-top:10px">A barátaid jelölője a térképen arany keretet kap, ha a közeledben járnak. Az ajándék egy véletlen apróság (kötszer, konzerv, víz, elem, rongy), naponta barátonként egy.</p>`;
+    if (out.length) h += `<div class="sg-so-h">ELKÜLDÖTT KÉRÉSEK</div>` + out.map(f => `<div class="sg-fr-row dim">${ava(f)}<div class="sg-fr-who"><b>${sEsc(f.name)}</b><small>várja, hogy elfogadja</small></div><button class="sg-fr-btn" title="Visszavonom" onclick="socket.emit('friend_remove',{name:'${sJs(f.name)}'})">✕</button></div>`).join('');
+    h += `<p class="sg-so-muted sg-fr-foot">Koppints egy barátodra a profiljáért (ott tudod törölni is). Ajándék: naponta barátonként egy véletlen apróság.</p>`;
     return h;
 }
 // névkereső: gépelés közben listázza a hasonló nevű játékosokat, koppintásra mehet a kérés
