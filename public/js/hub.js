@@ -6,13 +6,13 @@
 // A Csapat külön, a menüsorban maradt (openSocial('team')).
 
 const HUB_TABS = [
-    { key: 'inv', name: 'Készlet', icon: 'nav-backpack', modal: 'equipment-modal',
+    { key: 'inv', name: 'Készlet', icon: 'icon-backpack', modal: 'equipment-modal',
         open: () => { document.getElementById('equipment-modal').classList.remove('hidden'); if (typeof updateUI === 'function') updateUI(); },
         close: () => { const b = document.getElementById('btn-close-equipment'); if (b) b.click(); else document.getElementById('equipment-modal').classList.add('hidden'); } },
-    { key: 'skills', name: 'Képesség', icon: 'nav-skills', modal: 'skills-modal', open: () => hubRaw.openSkills(), close: () => closeSkills() },
-    { key: 'profile', name: 'Profil', icon: 'nav-profile', modal: 'profile-modal', open: () => { if (player && player.username) hubRaw.openProfile(player.username); }, close: () => closeProfile() },
-    { key: 'friends', name: 'Barátok', icon: 'nav-friends', modal: 'social-modal', open: () => hubRaw.openSocial('friends'), close: () => closeSocial() },
-    { key: 'dm', name: 'Üzenetek', icon: 'nav-mail', modal: 'social-modal', open: () => hubRaw.openSocial('dm'), close: () => closeSocial() }
+    { key: 'skills', name: 'Képesség', icon: 'icon-skills', modal: 'skills-modal', open: () => hubRaw.openSkills(), close: () => closeSkills() },
+    { key: 'profile', name: 'Profil', icon: 'icon-profile', modal: 'profile-modal', open: () => { if (player && player.username) hubRaw.openProfile(player.username); }, close: () => closeProfile() },
+    { key: 'friends', name: 'Barátok', icon: 'icon-friends', modal: 'social-modal', open: () => hubRaw.openSocial('friends'), close: () => closeSocial() },
+    { key: 'dm', name: 'Üzenetek', icon: 'icon-mail', modal: 'social-modal', open: () => hubRaw.openSocial('dm'), close: () => closeSocial() }
 ];
 const hubRaw = { openSkills, openProfile, openSocial };
 let hubTab = null, hubSwitching = false, hubWatch = null;
@@ -29,7 +29,7 @@ function hubRenderShell() {
             <div class="sg-hub-ava">${ava ? `<img src="${ava.getAttribute('src')}" alt="">` : ''}</div>
             <div class="sg-hub-id"><b>${typeof escapeAttr === 'function' ? escapeAttr(player.username || '') : ''}</b><small>${rank} · ${lvl}. szint</small></div>
             <button class="sg-hub-x" onclick="hubClose()" aria-label="Bezár">✕</button></div>
-        <div class="sg-hub-tabs">${HUB_TABS.map(t => `<button class="${t.key === hubTab ? 'on' : ''}" onclick="hubOpen('${t.key}')"><img src="/images/ui/${t.icon}.svg" alt=""><span>${t.name}</span><b id="hub-badge-${t.key}" class="nav-badge hidden">0</b></button>`).join('')}</div>`;
+        <div class="sg-hub-tabs">${HUB_TABS.map(t => `<button class="${t.key === hubTab ? 'on' : ''}" onclick="hubOpen('${t.key}')"><img src="/images/ui/${t.icon}.webp" alt=""><span>${t.name}</span><b id="hub-badge-${t.key}" class="nav-badge hidden">0</b></button>`).join('')}</div>`;
     hubBadges();
     // a dokkolt ablak a fülsor alatt kezdődik
     requestAnimationFrame(() => document.documentElement.style.setProperty('--sg-hub-h', h.offsetHeight + 'px'));
@@ -121,5 +121,5 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hubIsOpe
 setTimeout(() => {
     if (localStorageGet('sg_hub_seen')) return;
     const id = document.getElementById('hud-id'); if (id) id.classList.add('sg-hint');
-    if (typeof logMessage === 'function') logMessage('🎒 Új: a Készlet, a Képességek, a Profil, a Barátok és az Üzenetek az avatarodra koppintva nyílnak. A Csapat lent, a menüsorban van.');
+    if (typeof logMessage === 'function') logMessage('👤 Új: a Képességek, a Profil, a Barátok és az Üzenetek az avatarodra koppintva nyílnak. A Készlet a nagy kerek gomb lent, a Menü jobb fent az óra alatt.');
 }, 4000);

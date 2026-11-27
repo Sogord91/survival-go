@@ -56,7 +56,7 @@
         craft:     { scope: 'daily', move: false, icon: '🔨', targets: [2, 3, 4], xp: 40, money: 25,
                      title: (q) => `Barkácsolj ${q.target} tárgyat`, hint: 'Bármelyik recept számít.' },
         use:       { scope: 'daily', move: false, icon: '🥫', targets: [3, 4, 5], xp: 40, money: 25,
-                     title: (q) => `Használj el ${q.target} ételt, italt vagy kötszert`, hint: 'Avatar → Készlet → koppints a tárgyra → Használ.' },
+                     title: (q) => `Használj el ${q.target} ételt, italt vagy kötszert`, hint: 'Készlet → koppints a tárgyra → Használ.' },
         d_fgift:   { scope: 'daily', move: false, icon: '🎁', targets: [1, 1, 2], xp: 40, money: 25,
                      title: (q) => `Küldj ajándékot ${q.target > 1 ? q.target + ' barátodnak' : 'egy barátodnak'}`, hint: 'Avatar → Barátok → a barátod mellett az AJÁNDÉK gomb. Ha még nincs barátod, hívj meg valakit!' },
         repair:    { scope: 'daily', move: false, icon: '🔧', targets: [1, 1, 2], xp: 40, money: 25,

@@ -118,7 +118,7 @@
             background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 4px); }
         .sg-shade-top, .sg-shade-bottom { position: absolute; left: 0; right: 0; pointer-events: none; z-index: 900; }
         .sg-shade-top { top: 0; height: calc(var(--sg-safe-t) + 120px); background: linear-gradient(180deg, rgba(0,0,0,.75), rgba(0,0,0,0)); }
-        .sg-shade-bottom { bottom: 0; height: calc(var(--sg-safe-b) + 230px); background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0)); }
+        .sg-shade-bottom { bottom: 0; height: calc(var(--sg-safe-b) + 246px); background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0)); }
 
         .sg-top { position: absolute; z-index: 1000; left: 12px; right: 12px; top: calc(var(--sg-safe-t) + 12px); display: flex; align-items: flex-start; gap: 10px; pointer-events: none; }
         .sg-id { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; }
@@ -159,7 +159,7 @@
         .sg-night { position: absolute; right: 2px; top: calc(100% + 6px); padding: 2px 7px; background: rgba(21,23,15,.92); border: 1px solid #3f4433;
             font: 700 10px var(--sg-font); letter-spacing: .1em; color: var(--sg-thread); white-space: nowrap; }
 
-        .sg-bottom { position: absolute; z-index: 1000; left: 14px; right: 14px; bottom: calc(var(--sg-safe-b) + 84px); pointer-events: none; }
+        .sg-bottom { position: absolute; z-index: 1000; left: 14px; right: 14px; bottom: calc(var(--sg-safe-b) + 100px); pointer-events: none; }
         .sg-chips { display: flex; gap: 14px; margin-bottom: 8px; font: 700 11px var(--sg-font); letter-spacing: .14em; color: #bdb8a8; text-shadow: 0 1px 2px #000; }
         .sg-chips b { color: #f5f5f4; }
         .sg-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -171,26 +171,26 @@
         .sg-stat.crit .sg-line i { animation: sg-blink .8s steps(2) infinite; }
         .sg-stat.crit .sg-k span:last-child { color: #ff8a7a; }
 
-        .sg-quickbar { position: absolute; z-index: 1000; left: 14px; bottom: calc(var(--sg-safe-b) + 146px); display: flex; gap: 8px; }
-        .sg-recenter { position: absolute; z-index: 1000; right: 14px; bottom: calc(var(--sg-safe-b) + 146px); width: 50px; height: 50px; border-radius: 50%;
+        .sg-quickbar { position: absolute; z-index: 1000; left: 14px; bottom: calc(var(--sg-safe-b) + 162px); display: flex; gap: 8px; }
+        .sg-recenter { position: absolute; z-index: 1000; right: 14px; bottom: calc(var(--sg-safe-b) + 162px); width: 50px; height: 50px; border-radius: 50%;
             border: 2px solid var(--sg-dark); box-shadow: 0 3px 6px rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .sg-recenter:active { transform: scale(.93); }
-        .sg-loading { position: absolute; z-index: 1000; left: 50%; transform: translateX(-50%); bottom: calc(var(--sg-safe-b) + 158px); padding: 5px 10px; border: 2px solid var(--sg-dark);
+        .sg-loading { position: absolute; z-index: 1000; left: 50%; transform: translateX(-50%); bottom: calc(var(--sg-safe-b) + 174px); padding: 5px 10px; border: 2px solid var(--sg-dark);
             font: 800 10px var(--sg-font); letter-spacing: .18em; color: var(--sg-thread); pointer-events: none; animation: sg-blink 1.6s steps(2) infinite; }
-        .sg-log { position: absolute; z-index: 950; left: 14px; right: 80px; bottom: calc(var(--sg-safe-b) + 206px); max-height: 56px; overflow: hidden; pointer-events: none;
+        .sg-log { position: absolute; z-index: 950; left: 14px; right: 80px; bottom: calc(var(--sg-safe-b) + 222px); max-height: 56px; overflow: hidden; pointer-events: none;
             display: flex; flex-direction: column; justify-content: flex-end; font: 400 11.5px/1.5 var(--sg-mono); color: #d8d2bd; text-shadow: 0 1px 2px #000, 0 0 2px #000; }
         .sg-log > div { flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sg-log > div:nth-last-child(3) { opacity: .45; } .sg-log > div:nth-last-child(2) { opacity: .72; }
         .sg-log > div:nth-last-child(n+4) { display: none; }
         body:has(#search-panel:not(.hidden)) .sg-log { visibility: hidden; }
-        .sg-gps { position: absolute; z-index: 1100; left: 12px; right: 12px; bottom: calc(var(--sg-safe-b) + 206px); padding: 12px; border: 2px solid var(--sg-dark);
+        .sg-gps { position: absolute; z-index: 1100; left: 12px; right: 12px; bottom: calc(var(--sg-safe-b) + 222px); padding: 12px; border: 2px solid var(--sg-dark);
             box-shadow: 0 8px 20px rgba(0,0,0,.7); font: 600 12px/1.4 var(--sg-font); letter-spacing: .03em; color: var(--sg-thread); }
         .sg-gps-title { font-weight: 800; letter-spacing: .12em; color: #e9c45a; margin-bottom: 4px; }
         .sg-btn { display: block; width: 100%; margin-top: 8px; padding: 9px 6px; border: 2px solid var(--sg-dark); font: 800 11px var(--sg-font); letter-spacing: .2em; color: var(--sg-thread);
             background: var(--sg-pocket); box-shadow: 0 2px 3px rgba(0,0,0,.5); cursor: pointer; }
         .sg-btn-amber { background: #6b4a1c; }
 
-        .sg-search { position: fixed; z-index: 2500; left: 12px; right: 12px; bottom: calc(var(--sg-safe-b) + 206px); padding: 10px 12px 8px; border: 2px solid var(--sg-dark);
+        .sg-search { position: fixed; z-index: 2500; left: 12px; right: 12px; bottom: calc(var(--sg-safe-b) + 222px); padding: 10px 12px 8px; border: 2px solid var(--sg-dark);
             box-shadow: 0 6px 14px rgba(0,0,0,.6); outline: 1px dashed rgba(233,227,207,.35); outline-offset: -6px; }
         .sg-search-head { display: flex; justify-content: space-between; gap: 8px; font: 800 12px var(--sg-font); letter-spacing: .16em; text-transform: uppercase; color: var(--sg-thread); }
         .sg-search-head span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -228,12 +228,12 @@
         .toast-item.leaving { opacity: 0; transform: translateY(-6px); }
 
         /* Alsó menüsor: teljes szélességű vászoncsík, varrással */
-        .nav-bar { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr);
+        .nav-bar { position: absolute; z-index: 1000; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr;
             padding: 8px 2px calc(var(--sg-safe-b) + 6px); border-top: 2px solid var(--sg-dark); box-shadow: 0 -4px 12px rgba(0,0,0,.5); }
         .nav-bar:before { content: ''; position: absolute; left: 0; right: 0; top: 4px; border-top: 1px dashed rgba(233,227,207,.32); pointer-events: none; }
         .nav-btn { position: relative; background: transparent; border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px 0;
             transition: transform 0.1s; -webkit-tap-highlight-color: transparent; }
-        .nav-btn img { width: 30px; height: 30px; filter: grayscale(1) sepia(.35) brightness(1.25) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); pointer-events: none; }
+        .nav-btn img { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,.75)); pointer-events: none; } /* v0.1.27.5: színes festett ikonok */
         .nav-btn { min-width: 0; }
         .nav-btn span { max-width: 100%; overflow: hidden; text-overflow: clip; font: 700 10.5px var(--sg-font); letter-spacing: .05em; color: #cfc9b6; text-transform: uppercase; white-space: nowrap; }
         .nav-btn:active { transform: scale(0.92); }
@@ -250,7 +250,7 @@
         .sg-marker-other { background: #6b2a1f; }
         .sg-marker-rank { position: absolute; right: -7px; bottom: -8px; width: 17px; height: 20px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.8)); }
         .sg-marker-rank svg { width: 100%; height: 100%; display: block; }
-        @media (max-width: 370px) { .nav-btn img { width: 24px; height: 24px; } .nav-btn span { font-size: 8px; letter-spacing: .02em; } .sg-watch { width: 136px; } .sg-lcd-time { font-size: 22px; } .sg-wd { display: none; } }
+        @media (max-width: 370px) { .nav-btn img { width: 30px; height: 30px; } .nav-btn span { font-size: 8px; letter-spacing: .02em; } .sg-watch { width: 136px; } .sg-lcd-time { font-size: 22px; } .sg-wd { display: none; } }
         /* ===== ABLAKOK (v0.1.11): ugyanaz a vászon anyag, mint a HUD. A régi zöld Tailwind-színeket itt képezzük át,
            így a JS-ben generált tartalom is egységes lesz anélkül, hogy minden sort át kellene írni. ===== */
         .hud-panel { background-color: var(--sg-canvas) !important; backdrop-filter: none;
@@ -581,6 +581,22 @@
         .sg-so-camp { border-color: var(--sg-gold, #d9c58a) !important; }
         .sg-so-camp-img { display: block; width: 100%; max-width: 320px; margin: 6px auto; border: 1px solid rgba(0,0,0,.6); box-shadow: 0 2px 6px rgba(0,0,0,.5); }
 
+
+        /* ===== Menüsor: nagy kerek Készlet középen, Menü az óra alatt (v0.1.27.4) ===== */
+        .sg-nav-orb { position: relative; overflow: visible; }
+        .sg-orb { position: relative; display: flex; align-items: center; justify-content: center; width: 74px; height: 74px; margin-top: -34px; border-radius: 50%;
+            background-color: var(--sg-canvas); background-image: radial-gradient(circle at 50% 35%, rgba(255,255,255,.08), rgba(0,0,0,.25) 70%), repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px);
+            border: 3px solid var(--sg-dark); box-shadow: 0 0 0 2px var(--sg-gold), 0 -3px 10px rgba(0,0,0,.6), inset 0 0 0 3px rgba(21,23,15,.6); }
+        .sg-orb::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; border: 1px dashed rgba(233,227,207,.4); pointer-events: none; }
+        .nav-btn .sg-orb img { width: 58px; height: 58px; filter: drop-shadow(0 3px 3px rgba(0,0,0,.75)); }
+        .sg-nav-orb span { margin-top: 1px; color: var(--sg-gold) !important; }
+        .sg-nav-orb:active .sg-orb { transform: scale(.94); }
+        .sg-nav-orb:active { transform: none; }
+        .sg-menu-btn { position: absolute; right: 2px; top: calc(100% + 6px); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; pointer-events: auto;
+            background-color: var(--sg-canvas); background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px); border: 2px solid var(--sg-dark); box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+        .sg-menu-btn img { width: 30px; height: 30px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
+        .sg-menu-btn .nav-badge { top: -6px; right: -6px; }
+        .sg-watch .sg-night { right: 46px; }
         /* ===== KARAKTER-KÖZPONT (v0.1.27) ===== */
         .sg-id { pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .sg-id:active .sg-ava { transform: scale(.95); }
@@ -602,10 +618,10 @@
         .sg-hub-x { width: 40px; height: 40px; flex: none; border: 2px solid var(--sg-dark); background: rgba(0,0,0,.35); color: var(--sg-thread); font: 800 18px var(--sg-font); }
         .sg-hub-tabs { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0 -10px; border-top: 1px dashed rgba(233,227,207,.25); }
         .sg-hub-tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 6px; background: transparent; border: 0; border-bottom: 3px solid transparent; color: var(--sg-muted); }
-        .sg-hub-tabs button img { width: 26px; height: 26px; filter: grayscale(1) sepia(.35) brightness(1.05) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); opacity: .7; }
+        .sg-hub-tabs button img { width: 32px; height: 32px; object-fit: contain; filter: saturate(.55) brightness(.8) drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
         .sg-hub-tabs button span { font: 800 10px var(--sg-font); letter-spacing: .06em; text-transform: uppercase; }
         .sg-hub-tabs button.on { background: rgba(0,0,0,.32); border-bottom-color: var(--sg-gold); color: var(--sg-thread); }
-        .sg-hub-tabs button.on img { opacity: 1; filter: grayscale(1) sepia(.35) brightness(1.35) contrast(.9) drop-shadow(0 1px 1px rgba(0,0,0,.6)); }
+        .sg-hub-tabs button.on img { filter: drop-shadow(0 2px 2px rgba(0,0,0,.7)); transform: scale(1.08); }
         .sg-hub-tabs .nav-badge { top: 2px; }
         /* a központba „dokkolt” ablak: a fülsor alatt, teljes szélességben */
         .modal.in-hub { position: fixed !important; top: var(--sg-hub-h, 120px) !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 2400 !important;
@@ -1523,6 +1539,7 @@
                     <div class="sg-lcd-row"><span id="hud-date">--</span><span id="hud-weight">0/30 kg</span></div>
                 </div>
                 <span id="night-indicator" class="hidden sg-night"></span>
+                <button id="btn-open-settings" class="sg-menu-btn" aria-label="Menü"><img src="/images/ui/icon-gear.webp" alt=""><b id="nav-menu-badge" class="nav-badge hidden">0</b></button>
             </div>
         </div>
 
@@ -1575,11 +1592,12 @@
     <!-- ALSÓ MENÜSOR: vászoncsík, cérnaszínű ikonok (képek: public/images/ui/nav-*.svg) -->
         <nav id="nav-bar" class="nav-bar sg-canvas">
             <!-- v0.1.27: a Készlet, Képességek, Profil, Barátok és Üzenetek az avatarra koppintva nyílnak (js/hub.js) -->
-            <button id="btn-open-team" class="nav-btn" onclick="openSocial('team')"><img src="/images/ui/nav-team.svg" alt=""><span>Csapat</span><b id="nav-team-badge" class="nav-badge hidden">0</b></button>
-            <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/nav-craft.svg" alt=""><span>Barkács</span></button>
-            <button id="btn-open-leaderboard" class="nav-btn"><img src="/images/ui/nav-trophy.svg" alt=""><span>Ranglista</span></button>
-            <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/nav-quests.svg" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
-            <button id="btn-open-settings" class="nav-btn"><img src="/images/ui/nav-gear.svg" alt=""><span>Menü</span><b id="nav-menu-badge" class="nav-badge hidden">0</b></button>
+            <button id="btn-open-team" class="nav-btn" onclick="openSocial('team')"><img src="/images/ui/icon-team.webp" alt=""><span>Csapat</span><b id="nav-team-badge" class="nav-badge hidden">0</b></button>
+            <button id="btn-open-crafting" class="nav-btn"><img src="/images/ui/icon-craft.webp" alt=""><span>Barkács</span></button>
+            <!-- v0.1.27.4: a Készlet nagy, kerek gomb középen -->
+            <button id="btn-open-inv" class="nav-btn sg-nav-orb" onclick="hubOpen('inv')"><i class="sg-orb"><img src="/images/ui/icon-backpack.webp" alt=""></i><span>Készlet</span></button>
+            <button id="btn-open-leaderboard" class="nav-btn"><img src="/images/ui/icon-trophy.webp" alt=""><span>Ranglista</span></button>
+            <button id="btn-open-quests" class="nav-btn"><img src="/images/ui/icon-quests.webp" alt=""><span>Küldetés</span><b id="nav-quest-badge" class="nav-badge hidden">0</b></button>
         </nav>
 
     <!-- ÁTKUTATÁS FOLYAMATBAN (map.js: startSearchProgress) -->
