@@ -97,6 +97,7 @@ ol li, ul li { margin: 4px 0; }
 <script src="/js/advent.js"></script>
 <script src="/js/wheel.js"></script>
 <script src="/js/winter.js"></script>
+<script src="/js/newyear.js"></script>
 <script src="/js/gifts.js"></script>
 <script src="/js/quests.js"></script>
 <script src="/js/skills.js"></script>
@@ -113,9 +114,9 @@ let W = null; // szerver adatai
 const pct = (x) => Math.round(x * 100) + '%';
 const num = (x) => (Math.round(x * 100) / 100).toLocaleString('hu-HU');
 
-const TYPE_HU = { food: 'Étel', drink: 'Ital', medicine: 'Gyógyszer', weapon: 'Fegyver', helmet: 'Sisak', torso: 'Felső', armor: 'Mellény / páncél', legs: 'Nadrág', shoes: 'Cipő', backpack: 'Hátizsák',
+const TYPE_HU = { food: 'Étel', drink: 'Ital', medicine: 'Gyógyszer', weapon: 'Fegyver', helmet: 'Sisak', torso: 'Felső', armor: 'Mellény / páncél', legs: 'Nadrág', shoes: 'Cipő', backpack: 'Hátizsák', gloves: 'Kesztyű', throwable: 'Dobható fegyver', attachment: 'Fegyverkiegészítő', blueprint: 'Tervrajz', curio: 'Érdekesség', event: 'Szilveszter',
   material: 'Alapanyag', tool: 'Eszköz', mod: 'Fegyvermódosító', ammo: 'Lőszer', valuable: 'Értéktárgy', collectible: 'Gyűjthető', artifact: 'Műtárgy' };
-const SLOT_HU = { weapon: 'elsődleges fegyver', secondary: 'másodlagos fegyver (pisztoly)', melee: 'közelharci fegyver', helmet: 'sisak', torso: 'felső', armor: 'mellény', legs: 'nadrág', shoes: 'cipő', backpack: 'hátizsák' };
+const SLOT_HU = { weapon: 'elsődleges fegyver', secondary: 'másodlagos fegyver (pisztoly)', melee: 'közelharci fegyver', helmet: 'sisak', torso: 'felső', armor: 'mellény', legs: 'nadrág', shoes: 'cipő', backpack: 'hátizsák', gloves: 'kesztyű' };
 const GROUP_HU = { grocery: 'élelmiszer', drinks: 'italok', smallgoods: 'apróáru', hardware: 'barkácsáru', tools: 'szerszámok', kitchen: 'konyha', auto: 'autós holmi', medical: 'orvosi', hospital: 'kórházi', police: 'rendőrségi',
   office: 'irodai', fire: 'tűzoltó', military: 'katonai', hazmat: 'vegyvédelmi', household: 'háztartási', culture: 'kulturális', valuables: 'értéktárgyak', sport: 'sport', farm: 'mezőgazdasági', warehouse: 'raktári',
   industrial: 'ipari', scrap: 'roncs és hulladék', utility: 'közmű', cemetery: 'temetői' };
@@ -233,6 +234,7 @@ const GUIDES = [
     <h2>A lehetőségeid minden körben</h2>
     <ul><li><b>Támadás</b> a felvett fegyvereid egyikével (elsődleges, másodlagos vagy közelharci). A fegyverváltás nem vesz el kört.</li>
       <li><b>Gyógyulás</b> egy orvosi szerrel a hátizsákodból.</li>
+      <li><b>Dobás</b>: molotov, gránát, füst- vagy villanógránát (a Gyógyul gomb alatt). Részletek: <a href="#/oldal/harci-eszkozok">Harci eszközök</a>.</li>
       <li><b>Menekülés</b>: alapesetben ${pct(W.combat.FLEE_CHANCE)} eséllyel sikerül (fáradtan kevesebb). Sikeres menekülésnél nincs zsákmány, és az épület ${R().fleeLockMinutes} percig neked zárva.</li></ul>
     <h2>Sebzés</h2>
     <ul><li>Fegyver nélkül ${W.combat.UNARMED_DMG}, lőfegyverrel lőszer nélkül ${W.combat.NO_AMMO_DMG} a sebzés (puskatussal ütsz).</li>
@@ -244,6 +246,41 @@ const GUIDES = [
     <p>XP (15 + 10 × az ellenfél szintje), pénz, ${pct(W.combat.DROP_CHANCE)} eséllyel egy tárgy az ellenféltől, és az épület átkutatása. A harc +${R().fatigueCombat}% fáradtság.</p>
     <p>Az ellenfelek listája: <a href="#/ellenfelek">Ellenfelek</a>.</p>
     <div class="box tip">💡 A felszerelés kopik a harcban. A tönkrement felszerelés rajtad marad, de nem ad bónuszt – <a href="#/oldal/felszereles">javítsd meg</a> időben!</div>` },
+  { slug: 'harci-eszkozok', title: 'Harci eszközök és tervrajzok', group: 'Útmutatók', render: () => {
+    const list = (f) => `<div class="grid">${Object.entries(ITEMS).filter(([k, it]) => f(it, k)).map(([k, it]) => card(k, it, '')).join('')}</div>`;
+    return `<h1>Harci eszközök és tervrajzok</h1>
+    <h2>Dobható fegyverek</h2>
+    <p>Harcban a <b>Gyógyul</b> gomb alatt találod őket (játékos elleni harcban külön gombként). Egy dobás egy kör.</p>
+    <ul><li><b>Molotov</b>: sebez, és az ellenfél még 2 körön át ég.</li>
+      <li><b>Repeszgránát</b>: nagy sebzés, a védelem felén átüt.</li>
+      <li><b>Füstgránát</b>: biztos menekülés.</li>
+      <li><b>Villanógránát</b>: kis sebzés, az ellenfél kimarad a következő körből.</li></ul>
+    <p>A robbanás hangos: a közelben mások is hallják.</p>${list(it => it.type === 'throwable')}
+    <h2>Fegyverkiegészítők</h2>
+    <p>Lőfegyverre szerelhetők: koppints a kiegészítőre a hátizsákban, és válaszd ki a fegyvert. Levenni a fegyver lapján lehet. Egy fegyveren egy kiegészítő lehet.</p>
+    <ul><li><b>Hangtompító</b>: a lövéseidet nem hallják a közelben.</li>
+      <li><b>Céltávcső</b>: gyakrabban találsz, és több a kritikus találat.</li>
+      <li><b>Bővített tár</b>: minden harmadik lövés nem visz el lőszert.</li></ul>${list(it => it.type === 'attachment')}
+    <h2>Kesztyűk</h2><p>Új felszerelési hely. A kesztyű gyorsítja a kutatást, a jobbak védelmet is adnak.</p>${list(it => it.type === 'gloves')}
+    <h2>Álcaruha, rádió, adó-vevő</h2>
+    <ul><li><b>Álcaruha</b>: a többi játékos csak közelről lát a térképen, és csak onnan támadhat meg. A csapattársaid mindig látnak.</li>
+      <li><b>Tábori rádió</b>: a lövéseket messzebbről is hallod.</li>
+      <li><b>Adó-vevő</b>: ha neked és egy csapattársadnak is van, nagy távolságból is látjátok egymást a térképen.</li></ul>
+    ${list((it, k) => it.camo || ['field_radio', 'walkie_talkie'].includes(k))}
+    <h2>Tervrajzok</h2>
+    <p>Ritka zsákmány. Koppints rá, és nyomd meg az <b>Elolvasom</b> gombot: a tervrajz elfogy, a tudás a tiéd marad, a halál után is. Utána a recept megjelenik a Barkácsban (Harci eszközök), a menedék-tervrajzoknál pedig az építmény a menedékben. Amit már ismersz, azt a tervrajzot odaadhatod másnak.</p>
+    ${list(it => it.type === 'blueprint')}`; } },
+  { slug: 'szilveszter', title: 'Szilveszter', group: 'Útmutatók', render: () => {
+    const N = window.SurvivalNewYear, list = (f) => `<div class="grid">${Object.entries(ITEMS).filter(([k, it]) => f(it, k)).map(([k, it]) => card(k, it, '')).join('')}</div>`;
+    return `<h1>✨ Szilveszter – az év zárása</h1>
+    <p class="lead">December 31-én és január 1-jén (magyar idő szerint) a Zóna ünnepel. A Fagyos Csend és a karácsonyfák január 6-ig maradnak.</p>
+    <ul><li><b>Szilveszteri csomag:</b> aki ilyenkor belép, egyszer kap ${N.GIFT.map(g => `${g.count > 1 ? g.count + ' ' : ''}${itemLink(g.key)}`).join(', ')}.</li>
+      <li><b>Tűzijáték:</b> a rakétát a Készletben koppintva lőheted fel. A közelben (${N.FIREWORK_RANGE_M / 1000} km) mindenki látja a térképen. A Tűzijáték Telep nagyobb sorozat.</li>
+      <li><b>Éjfélkor</b> mindenkinél nagy tűzijáték indul, és egy újévi köszöntő a csapattól.</li>
+      <li>Az épületekben szilveszteri holmi is akad: pezsgő, csillagszóró, szerencsemalac persely (törd fel: aprópénz van benne), kéményseprő figura (szerencsét hoz: ha nálad van, ritkábban üres az épület).</li>
+      <li>Barkácsolható is: házi rakéta (Barkács → Szilveszter).</li></ul>
+    ${list((it, k) => it.type === 'event' || it.eventLoot || it._pendingEvent || ['champagne', 'chimney_sweep', 'party_hat'].includes(k))}
+    <div class="box tip">💡 Újévkor egy tál lencse szerencsét hoz – a Lencsefőzelék Konzerv egész évben esik.</div>`; } },
   { slug: 'ejszaka', title: 'Éjszaka és fény', group: 'Útmutatók', render: () => `
     <h1>Éjszaka és fény</h1><p class="lead">Az éjszaka a valódi napnyugtától a napkeltéig tart, a helyedhez igazítva.</p>
     <ul><li>Nappal ${R().viewMeters} méterre látod a többi játékost (<a href="#/targy/binoculars">távcsővel</a> ${R().viewBinocularsMeters} m-re).</li>
@@ -258,18 +295,20 @@ const GUIDES = [
     <ul><li>Az <b>alapanyagok</b> elfogynak.</li>
       <li>A <b>szerszámok</b> nem fogynak el, de minden barkácsolásnál kopnak 1-et. A ${itemLink('toolbox')} bármelyik alapszerszámot pótolja.</li>
       <li>Ahol <b>tűz</b> kell, ott 1 gyufásdoboz fogy el, vagy a tűzgyújtó rúd kopik (előbb a gyufát használja).</li>
-      <li>A <b>szétszerelés</b>sel a felesleges holmiból alapanyag lesz (rongy, fémhulladék, rézdrót…).</li></ul>
+      <li>A <b>szétszerelés</b>sel a felesleges holmiból alapanyag lesz (rongy, fémhulladék, rézdrót…).</li>
+      <li><b>Kézben vagy asztalnál:</b> a legtöbb dolog bárhol elkészíthető. A nagyobb munkákhoz (lőfegyverek, gránátok, kiegészítők, páncél) a <a href="#/oldal/menedek">menedékedben</a> <b>Barkácsasztal</b> kell, a fém- és üvegolvasztáshoz <b>Olvasztókemence</b>. Ezeknél a recept alján ott a „Hely” sor.</li>
+      <li>A <b>Kempingfőző</b> nálad: főzéshez és forraláshoz nem kell tüzet gyújtani.</li></ul>
     <p>Összesen <b>${RECIPES.length} recept</b>: <a href="#/receptek">mind megnézhető itt</a>.</p>` },
   { slug: 'felszereles', title: 'Felszerelés, kopás, javítás', group: 'Útmutatók', render: () => `
     <h1>Felszerelés, kopás és javítás</h1>
-    <p>Kilenc felszerelési helyed van: ${Object.values(SLOT_HU).join(', ')}. A Készletben a tárgyra koppintva vagy a helyére húzva veheted fel.</p>
+    <p>Tíz felszerelési helyed van: ${Object.values(SLOT_HU).join(', ')}. A Készletben a tárgyra koppintva vagy a helyére húzva veheted fel.</p>
     <ul><li>A ruha és a páncél <b>védelmet</b> ad, a hátizsák <b>helyet és teherbírást</b>, egyes cipők lassítják a fáradást.</li>
       <li>A felszerelés <b>kopik</b>: a fegyver és a páncél harcban, a cipő gyaloglással (${R().shoeWearMeters / 1000} km-enként 1). Ha tönkremegy, rajtad marad, de nem ad bónuszt.</li></ul>
     <h2>Javítás</h2>
     <ul><li>Ruha, páncél, táska: ${itemLink('sewing_kit')} + ${itemLink('rag')} → +${pct(R().repairGear)}</li>
       <li>Lőfegyver: ${itemLink('gun_cleaning_kit')} → +${pct(R().repairFirearm)}, vagy gyorsjavítás: ${itemLink('machine_oil')} + ${itemLink('rag')} → +${pct(R().repairMachineOil)}</li>
       <li>Közelharci fegyver, íj, parittya: ${itemLink('duct_tape')} + kalapács vagy fogó → +${pct(R().repairOther)}</li></ul>
-    <p>A felszerelés listája típusonként: ${['weapon', 'helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'].map(t => `<a class="pill" href="#/targyak/${t}">${TYPE_HU[t]}</a>`).join('')}</p>` },
+    <p>A felszerelés listája típusonként: ${['weapon', 'helmet', 'torso', 'armor', 'legs', 'shoes', 'gloves', 'backpack', 'throwable', 'attachment', 'blueprint'].map(t => `<a class="pill" href="#/targyak/${t}">${TYPE_HU[t]}</a>`).join('')}</p>` },
   { slug: 'suly', title: 'Súly és hátizsák', group: 'Útmutatók', render: () => `
     <h1>Súly és hátizsák</h1>
     <ul><li>Alapból <b>${R().base.slots} hely</b> és <b>${R().base.maxWeight} kg</b> teherbírás. A hátizsákok és egyes ruhák növelik.</li>
@@ -473,6 +512,7 @@ const GUIDES = [
     <p>Az esemény alatt a napi és heti <a href="#/oldal/kuldetesek">küldetések</a> között mindig van téli feladat is: díszt akasztani egy (akár másik település) fájára, hétvégén ajándékcsomagokat nyitni, kinyitni a mai adventi ablakot vagy díszt barkácsolni.</p>
     <h2>❄ Havas térkép</h2>
     <p>December 1-jétől január 6-ig finom hóesés hullik a térképre. Ha zavar, vagy kíméled az akkumulátort, a Menüben kikapcsolhatod.</p>
+    <h2>✨ Szilveszter: az év zárása</h2><p>Dec. 31-én és jan. 1-jén szilveszteri csomag, tűzijáték és éjféli műsor: <a href="#/oldal/szilveszter">Szilveszter</a>.</p>
     <h2>🧊 Fagyos szett</h2>
     <p>Jégkék, deres festések ruhákra és fegyverekre – december közepén érkezik a skinrendszerrel.</p>`; } },
   { slug: 'eventek', title: 'Eventek és naptár', group: 'Útmutatók', render: () => `
@@ -542,7 +582,7 @@ const GUIDES = [
       <div class="tbl"><table><tr><th>Tárgy</th><th>Ritkaság</th><th>Esély</th></tr>${S.crateOdds(c.key).map(o => `<tr><td>${esc(S.BY_KEY[o.key].name)}</td><td style="color:${S.RARITY[o.rarity].color}">${S.RARITY[o.rarity].name}</td><td class="n">${(o.chance * 100).toFixed(2).replace('.', ',')}%</td></tr>`).join('')}</table></div>`; }).join('')}`; } },
   { slug: 'menedek', title: 'Menedék', group: 'Útmutatók', render: () => {
     const S = window.SurvivalShelter, I = (k) => itemLink(k);
-    const rows = S.STRUCTURE_KEYS.map(k => S.STRUCTURES[k].levels.slice(1).map((l, n) => `<tr><td>${S.STRUCTURES[k].icon} ${l.name}</td><td>${Object.entries(l.req || {}).map(([a, b]) => itemLink(a, b)).join('')}</td><td>${l.minutes >= 60 ? (l.minutes / 60) + ' óra' : l.minutes + ' perc'}</td><td>${l.hp ? l.hp : '–'}</td></tr>`).join('')).join('');
+    const rows = S.STRUCTURE_KEYS.map(k => S.STRUCTURES[k].levels.slice(1).map((l, n) => `<tr><td>${S.STRUCTURES[k].icon} ${l.name}${l.bp ? ' <small class="muted">(tervrajz kell)</small>' : ''}<br><small class="muted">${l.desc || ''}</small></td><td>${Object.entries(l.req || {}).map(([a, b]) => itemLink(a, b)).join('')}</td><td>${l.minutes >= 60 ? (l.minutes / 60) + ' óra' : l.minutes + ' perc'}</td><td>${l.hp ? l.hp : '–'}</td></tr>`).join('')).join('');
     return `<h1>🏚️ Menedék</h1>
     <p>Egy valódi épületet a térképen a saját menedékeddé tehetsz. Mindenki látja a térképen, és a <b>raktára a halál után is megmarad</b>.</p>
     <h2>Elfoglalás</h2>

@@ -197,6 +197,7 @@ body.embed header h1 { font-size: 15px; }
         <h3>Új bejelentés (mindenki egyszer kapja meg: a már regisztráltak a következő belépéskor, az újak az első belépéskor)</h3>
         <label>Cím</label><input id="ann-title" style="width:100%" maxlength="80" placeholder="Üdv a Zónában, túlélő!">
         <label>Szöveg</label><textarea id="ann-body" maxlength="3000" placeholder="Írd ide az üdvözlő üzenetet…"></textarea>
+        <label class="row" style="margin-top:8px;gap:6px;align-items:center"><input type="checkbox" id="ann-midnight" style="width:auto"> Éjfélkor jelenjen meg (a frissítéssel együtt)</label>
         <div class="row" style="margin-top:8px"><button class="btn" onclick="postAnn()">KÖZZÉTÉTEL</button><span class="muted">Előnézet: lent</span></div>
         <label>Előnézet</label><div class="paper" id="ann-prev"></div>
       </div>
@@ -658,11 +659,11 @@ async function sendPush() {
 async function loadAnn() {
   loadPushStat();
   const d = await api('/api/admin/announcements', { quiet: true });
-  $('ann-list').innerHTML = d.announcements.map(a => `<div class="card" style="margin-top:8px;background:var(--panel2)"><div class="row"><b>${esc(a.title)}</b><span class="sp" style="flex:1"></span><span class="pill ${a.active ? 'on' : ''}">${a.active ? 'aktív' : 'kikapcsolva'}</span></div>
+  $('ann-list').innerHTML = d.announcements.map(a => `<div class="card" style="margin-top:8px;background:var(--panel2)"><div class="row"><b>${esc(a.title)}</b><span class="sp" style="flex:1"></span><span class="pill ${a.active ? 'on' : ''}">${a.active ? (a.publishAt && a.publishAt > Date.now() ? 'éjfélkor jelenik meg' : 'aktív') : 'kikapcsolva'}</span></div>
     <div class="muted mono" style="font-size:12px">${dt(a.createdAt)} · olvasta: ${a.readCount} / ${d.players} játékos</div><div class="paper" style="margin:6px 0;max-height:160px;overflow:auto">${esc(a.body)}</div>
     <button class="btn ghost" onclick="toggleAnn('${a._id}')">${a.active ? 'KIKAPCSOL' : 'BEKAPCSOL'}</button></div>`).join('') || '<span class="muted">Még nincs bejelentés.</span>';
 }
-async function postAnn() { if (!confirm('Közzéteszed? Minden játékos egyszer megkapja.')) return; const d = await api('/api/admin/announcements', { method: 'POST', body: { title: $('ann-title').value, body: $('ann-body').value } }); toast(d.message); $('ann-title').value = ''; $('ann-body').value = ''; $('ann-prev').textContent = ''; loadAnn(); }
+async function postAnn() { const mid = $('ann-midnight').checked; if (!confirm(mid ? 'Időzíted éjfélre? Akkor minden játékos egyszer megkapja.' : 'Közzéteszed? Minden játékos egyszer megkapja.')) return; const d = await api('/api/admin/announcements', { method: 'POST', body: { title: $('ann-title').value, body: $('ann-body').value, atMidnight: mid } }); $('ann-midnight').checked = false; toast(d.message); $('ann-title').value = ''; $('ann-body').value = ''; $('ann-prev').textContent = ''; loadAnn(); }
 async function toggleAnn(id) { const d = await api(`/api/admin/announcements/${id}/toggle`, { method: 'POST', body: {} }); toast(d.message); loadAnn(); }
 function bcPreset(t) { $('bc-text').value = t; }
 async function broadcast() { const t = $('bc-text').value.trim(); if (!t || !confirm('Elküldöd minden online játékosnak?')) return; const d = await api('/api/admin/broadcast', { method: 'POST', body: { text: t } }); toast(d.message); $('bc-text').value = ''; }

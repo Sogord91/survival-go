@@ -376,7 +376,7 @@ function itemIconHtml(item, sizeClass) {
     if (item && item.img) {
         const alt = String(item.name || '').replace(/"/g, '&quot;');
         const sk = itemSkinInfo(item);
-        return `<img src="${sk.src}" class="${sizeClass} object-contain${sk.cls}" alt="${alt}" onerror="this.outerHTML='<span class=&quot;text-xl&quot;>${emoji}</span>'">`;
+        return `<img src="${sk.src}" class="${sizeClass} object-contain${sk.cls}" alt="${alt}" onerror="this.onerror=null;this.src='/images/icons/cardboard-box.webp'">`;
     }
     if (emoji.includes('/') || emoji.includes('.png')) return `<img src="${emoji}" class="${sizeClass} object-contain" alt="">`;
     return `<span class="text-xl">${emoji}</span>`;
@@ -391,7 +391,7 @@ function tileIconHtml(item) {
     const emoji = (item && item.icon) || '📦';
     if (item && item.img) {
         const sk = itemSkinInfo(item);
-        return `<img src="${sk.src}" class="${sk.cls.trim()}" alt="${escapeAttr(item.name)}" onerror="this.outerHTML='<span class=&quot;tile-emoji&quot;>${emoji}</span>'">`;
+        return `<img src="${sk.src}" class="${sk.cls.trim()}" alt="${escapeAttr(item.name)}" onerror="this.onerror=null;this.src='/images/icons/cardboard-box.webp'">`;
     }
     return `<span class="tile-emoji">${emoji}</span>`;
 }
@@ -600,7 +600,7 @@ if (typeof socket !== 'undefined' && socket) {
 function repairRequirement(item) {
     const have = (key) => player.inventory.filter(s => s.key === key).reduce((sum, s) => sum + s.count, 0);
     const name = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
-    const gear = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack'].includes(item.type);
+    const gear = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'gloves'].includes(item.type);
     const firearm = item.type === 'weapon' && typeof item.reqAmmo === 'string' && item.reqAmmo.startsWith('ammo_');
     if (gear) return { text: `${name('sewing_kit')} + 1 ${name('rag')}`, ok: have('sewing_kit') > 0 && have('rag') > 0, percent: 50 };
     if (firearm) {
@@ -647,8 +647,8 @@ function itemUses(key) {
     const atStation = station.filter(r => (r.req && r.req[key]) || (r.tools || []).some(entry => toolOptions(entry).includes(key)));
     const smelter = atStation.filter(r => r.station === 'smelter');
     const workshop = atStation.filter(r => r.station === 'workshop');
-    if (smelter.length) add('🔥', 'Olvasztóban (hamarosan)', list(smelter.map(r => r.name)));
-    if (workshop.length) add('🏭', 'Műhelyben (hamarosan)', list(workshop.map(r => r.name)));
+    if (smelter.length) add('🔥', 'Olvasztókemencénél (menedék)', list(smelter.map(r => r.name)));
+    if (workshop.length) add('🔨', 'Barkácsasztalnál (menedék)', list(workshop.map(r => r.name)));
     // Menedék építése (v0.1.12)
     if (window.SurvivalShelter) {
         const builds = [];
@@ -680,7 +680,7 @@ function itemUses(key) {
     if (item.passive) add('🎒', 'Passzív', 'elég, ha a leltáradban van');
 
     // Később jövő funkciók
-    if (['valuable', 'collectible', 'artifact'].includes(item.type)) add('💰', 'Értéktárgy', 'a Menedék kereskedője jó pénzt ad érte (hamarosan, v0.2)');
+    if (['valuable', 'collectible', 'artifact'].includes(item.type)) add('💰', 'Értéktárgy', 'a kereskedők jó pénzt adnak érte (hamarosan)');
     if (key === 'antirad_pills') add('☢️', 'Sugárzás ellen', 'a vörös (sugárzó) zónákkal érkezik (hamarosan)');
 
     if (uses.length === 0) {
@@ -746,7 +746,9 @@ function renderItemSheet() {
     document.getElementById('item-sheet-desc').textContent = itemFlavorText(item.desc);
 
     const weight = Math.round((item.weight || 0) * count * 100) / 100;
-    document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '');
+    const modKey = ref.source === 'eq' && player.mods && player.mods[ref.slot], modItem = modKey && itemDatabase[modKey];
+    document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '') + (modItem ? ` · Kiegészítő: ${modItem.name}` : '')
+        + (item.type === 'blueprint' && (player.blueprints || []).includes(item.learn) ? ' · Már ismered' : '');
     // Tartósság: a leltárban a slot "dur" mezője, felvett tárgynál az equipmentDur
     const durSlot = ref.source === 'inv' ? slot : { key: ref.key, dur: SurvivalStats.equipmentDur(player, ref.slot) ?? undefined };
     const broken = item.wear && durSlot && durSlot.dur !== undefined && durSlot.dur <= 0;
@@ -782,6 +784,15 @@ function renderItemSheet() {
             actions += btn(pinned ? '📌 Levesz' : '📌 Gyorssáv', 'bg-slate-700 hover:bg-slate-600', `itemSheetAction('pin')`);
         }
         else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
+        // v0.1.34: tervrajz elolvasása, kiegészítő felszerelése lőfegyverre
+        if (item.special) actions += btn({ firework: 'Fellövöm', sparkler: 'Meggyújtom', horn: 'Megfújom', bottle: 'Kinyitom', treasure: 'Követem', piggy: 'Feltöröm' }[item.special] || 'Használ', 'bg-amber-600 hover:bg-amber-500', `socket.emit('special_use',{key:'${ref.key}'});closeItemSheet()`);
+        if (item.type === 'blueprint') actions += btn('Elolvasom', 'bg-emerald-700 hover:bg-emerald-600', `socket.emit('learn_blueprint',{key:'${ref.key}'});closeItemSheet()`);
+        if (item.attach) { const guns = ['weapon', 'secondary'].filter(sl => { const w = player.equipment && itemDatabase[player.equipment[sl]]; return w && w.reqAmmo; });
+            if (!guns.length) actions += btn('Nincs felvett lőfegyver', 'bg-slate-700 opacity-50', '');
+            guns.forEach(sl => {
+            const w = itemDatabase[player.equipment[sl]];
+            actions += btn(guns.length > 1 ? `Rá: ${escapeAttr(w.name).slice(0, 18)}` : 'Fegyverre szerelem', 'bg-emerald-700 hover:bg-emerald-600', `socket.emit('mod_attach',{key:'${ref.key}',slot:'${sl}'});closeItemSheet()`);
+        }); }
         if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
         // Lámpa: elem / olaj behelyezése vagy powerbankos töltés (kézzel, v0.1.19)
         const lampSlot = player.inventory[ref.index];
@@ -798,11 +809,14 @@ function renderItemSheet() {
     } else {
         if (repairInfo) actions += btn('Javít', `bg-sky-800 hover:bg-sky-700${repairInfo.ok ? '' : ' opacity-50'}`, `itemSheetAction('repair')`);
         actions += btn('Levesz', 'bg-red-900/80 hover:bg-red-800', `itemSheetAction('unequip')`);
+        const mk = player.mods && player.mods[ref.slot], mi = mk && itemDatabase[mk];
+        if (mi) actions += btn(`${escapeAttr(mi.name).slice(0, 16)} le`, 'bg-slate-700 hover:bg-slate-600', `socket.emit('mod_detach',{slot:'${ref.slot}'});closeItemSheet()`);
     }
     document.getElementById('item-sheet-actions').innerHTML = actions;
 }
 
 function refuelLamp(index, how) { socket.emit('refuel_light', { index, with: how }); }
+socket.on('gear_result', (d) => { if (d && d.message) { logMessage((d.success ? '' : '⚠️ ') + d.message); if (!d.success && typeof showToast === 'function') showToast(d.message); else playSound('craft'); } });
 socket.on('refuel_result', (d) => {
     if (d && d.message) logMessage((d.success ? '' : '⚠️ ') + d.message);
     if (d && d.success) { playSound('craft'); setTimeout(() => { if (itemSheetRef) openItemSheet(itemSheetRef.source, itemSheetRef.source === 'inv' ? itemSheetRef.index : itemSheetRef.slot); }, 0); }
@@ -1042,8 +1056,18 @@ function updateUI() {
                 `;
             }
         });
+        // dobható fegyverek (v0.1.34)
+        player.inventory.forEach((slot, index) => {
+            const item = itemDatabase[slot.key];
+            if (item && item.type === 'throwable') combatHealList.innerHTML += `
+                    <div class="bg-gray-800 border border-amber-500/50 p-2 rounded-xl flex items-center justify-between">
+                        <div class="flex items-center gap-2">${itemIconHtml(item, 'w-7 h-7')}
+                            <div><div class="text-xs font-bold text-white">${item.name} (x${slot.count})</div><div class="text-[10px] text-amber-300">${item.desc}</div></div></div>
+                        <button onclick="useCombatThrowable(${index})" class="bg-amber-700 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px] font-bold">Eldob</button>
+                    </div>`;
+        });
         if (combatHealList.innerHTML === '') {
-            combatHealList.innerHTML = `<div class="text-xs text-gray-500 text-center py-3">Nincs nálad orvosi szer!</div>`;
+            combatHealList.innerHTML = `<div class="text-xs text-gray-500 text-center py-3">Nincs nálad orvosi szer vagy dobható fegyver!</div>`;
         }
     }
 
@@ -1092,21 +1116,32 @@ function renderCraftList() {
     const name = (key) => (itemDatabase[key] ? itemDatabase[key].name : key);
     const toolOptions = (entry) => (window.RecipeTools ? RecipeTools.toolOptions(entry) : (Array.isArray(entry) ? entry : [entry]));
     const fire = (window.RecipeTools && RecipeTools.FIRE_STARTERS) || ['matchbox', 'ferro_rod'];
-    const hasFire = (recipe) => !recipe.fire || fire.some(k => have(k) > 0);
+    const hasFire = (recipe) => !recipe.fire || fire.some(k => have(k) > 0) || have('camping_stove') > 0;
     const waters = (window.RecipeTools && RecipeTools.WATER_SOURCES) || ['dirty_water'];
     const hasWater = (recipe) => !recipe.water || waters.some(k => have(k) >= recipe.water + (recipe.req[k] || 0));
     const hasTools = (recipe) => hasFire(recipe) && (recipe.tools || []).every(entry => toolOptions(entry).some(k => have(k) > 0));
     const hasMaterials = (recipe) => Object.entries(recipe.req).every(([mat, qty]) => have(mat) >= qty);
 
-    const recipes = craftingRecipes.filter(recipe => !recipe.station && recipe.cat !== SCRAP_CAT && (!recipe.event || (typeof winterActive !== 'undefined' && winterActive))); // a szétszedés a tárgy lapján van
+    // v0.1.35: a menedék barkácsasztalánál / olvasztókemencéjénél készülő receptek is látszanak
+    const stationName = (r) => (window.SurvivalShelter && SurvivalShelter.STATION_NAMES[r.station]) || 'Műhely';
+    const atStation = (r) => {
+        if (!r.station || !window.SurvivalShelter) return true;
+        const sh = player.shelter;
+        if (!sh || SurvivalShelter.level(sh, SurvivalShelter.STATIONS[r.station]) < 1) return false;
+        const d = typeof shelterDistanceToMe === 'function' ? shelterDistanceToMe(sh) : null;
+        return d !== null && d !== undefined && d <= SurvivalShelter.RANGE_METERS;
+    };
+    const eventOn = (r) => !r.event || (r.event === 'newyear' ? (typeof newYearActive !== 'undefined' && newYearActive) : (typeof winterActive !== 'undefined' && winterActive));
+    const recipes = craftingRecipes.filter(recipe => recipe.cat !== SCRAP_CAT && eventOn(recipe)
+        && (!recipe.bp || (player.blueprints || []).includes(recipe.bp))); // tervrajzos recept csak elolvasás után (v0.1.34) // a szétszedés a tárgy lapján van
     const categories = (window.CRAFT_CATEGORIES || []).slice();
-    recipes.forEach(r => { const c = r.cat || 'Egyéb'; if (!categories.includes(c)) categories.push(c); });
+    recipes.forEach(r => { if (!r.cat && r.station) r.cat = stationName(r); const c = r.cat || 'Egyéb'; if (!categories.includes(c)) categories.push(c); });
 
     let html = '';
     categories.forEach(cat => {
         const group = recipes.filter(r => (r.cat || 'Egyéb') === cat);
         if (!group.length) return;
-        const ready = group.filter(r => hasMaterials(r) && hasTools(r) && hasWater(r)).length;
+        const ready = group.filter(r => hasMaterials(r) && hasTools(r) && hasWater(r) && atStation(r)).length;
         html += `<div class="text-[10px] font-bold tracking-wider text-emerald-500 uppercase mt-2 mb-1 flex justify-between"><span>${escapeAttr(cat)}</span>${ready ? `<span class="text-emerald-300">${ready} elkészíthető</span>` : ''}</div>`;
         group.forEach(recipe => {
             const result = itemDatabase[recipe.result || recipe.key] || {};
@@ -1119,7 +1154,7 @@ function renderCraftList() {
                 const ok = options.some(k => have(k) > 0);
                 return `<span class="${ok ? 'text-emerald-300' : 'text-red-400'}">${options.map(name).join(' / ')}</span>`;
             }).join(', ');
-            const canCraft = hasMaterials(recipe) && hasTools(recipe) && hasWater(recipe);
+            const canCraft = hasMaterials(recipe) && hasTools(recipe) && hasWater(recipe) && atStation(recipe);
             html += `
             <div class="hud-panel border border-emerald-600/40 p-3 rounded-xl flex items-center justify-between bg-emerald-950/40 ${canCraft ? '' : 'opacity-75'}">
                 <div class="flex items-center gap-3">
@@ -1131,6 +1166,7 @@ function renderCraftList() {
                         ${recipe.water ? `<div class="text-[9px] text-sky-300/80">Víz: <span class="${hasWater(recipe) ? 'text-emerald-300' : 'text-red-400'}">${recipe.water} adag, bármilyen (a szennyezett is jó)</span></div>` : ''}
                         ${recipe.fire ? `<div class="text-[9px] text-orange-300/80">Tűz: <span class="${hasFire(recipe) ? 'text-emerald-300' : 'text-red-400'}">${name(fire[0])} (fogy) / ${name(fire[1])} (kopik)</span></div>` : ''}
                         ${toolText ? `<div class="text-[9px] text-sky-300/80">Szerszám (kopik): ${toolText}</div>` : ''}
+                        ${recipe.station ? `<div class="text-[9px] text-orange-300/80">Hely: <span class="${atStation(recipe) ? 'text-emerald-300' : 'text-red-400'}">${stationName(recipe)} a menedékedben</span></div>` : ''}
                     </div>
                 </div>
                 <button onclick="craftItem({ key: '${recipe.key}' })" class="${canCraft ? '' : 'opacity-50 '}bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 px-3 py-1.5 clipped-badge text-xs font-bold text-emerald-200 transition shadow">Barkács</button>

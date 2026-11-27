@@ -50,6 +50,8 @@ function pvpRender() {
     } else if (s.myTurn) {
         const shoot = (s.slots || []).map(w => `<button class="red wpn" onclick="pvpAct('shoot','${w.slot}')">${w.key ? `<span class="sg-pv-wi">${pvpTile(w.key)}</span>` : ''}<span class="sg-pv-wt"><b>${vE(w.name)}</b><small>${w.noAmmo ? 'NINCS LŐSZER' : w.ammo !== null && w.ammo !== undefined ? `${w.dmg} SEBZÉS · ${w.ammo} LŐSZER` : `${w.dmg} SEBZÉS`}</small></span></button>`).join('');
         h += `<div class="sg-pv-acts">${shoot || `<button class="red" onclick="pvpAct('shoot')">PUSZTA KÉZ</button>`}</div>`;
+        const throws = (s.throws || []).slice(0, 4);
+        if (throws.length) h += `<div class="sg-pv-heals">${throws.map(x => `<button onclick="pvpAct('throw',null,'${vJ(x.key)}')" title="${vE(x.name)}"><span class="inv-tile">${pvpTile(x.key, '💥')}<span class="tile-count">${x.count}</span></span><small>Dob</small></button>`).join('')}</div>`;
         const heals = (s.heals || []).slice(0, 4);
         if (heals.length) h += `<div class="sg-pv-heals">${heals.map(x => `<button onclick="pvpAct('heal',null,'${vJ(x.key)}')" title="${vE(x.name)}"><span class="inv-tile">${pvpTile(x.key, '💊')}<span class="tile-count">${x.count}</span></span><small>+${x.hp}</small></button>`).join('')}</div>`;
         h += `<div class="sg-pv-acts c2"><button class="amber" onclick="pvpAct('flee')">MENEKÜLÉS<small>${s.refused ? 'NAGYOBB ESÉLLYEL' : 'NAGY ESÉLLYEL'}</small></button>${s.canSurrender ? `<button onclick="pvpSurrender()">MEGADOM MAGAM<small>3 TÁRGY + PÉNZED FELE</small></button>` : ''}</div>`;

@@ -10,6 +10,8 @@
     const CLAIM_ITEM = 'shelter_kit';   // az elfoglaláshoz (és költözéshez) elfogy egy Menedékalapító Csomag
     const STASH_SLOTS = [70, 95, 120];  // a raktár mérete szintenként (0 = alap)
     const BED_REST_MULTIPLIER = 3;      // a fekhely mellett ennyiszer gyorsabban pihensz
+    const GENERATOR_REST_MULTIPLIER = 4.5; // fekhely + generátor (v0.1.34)
+    const RAIN_EVERY_MS = 6 * 3600 * 1000, RAIN_MAX = 4, TRAP_DMG = 25;
     const RAID_WINDOW = { days: [6, 0], fromHour: 11, toHour: 18 }; // szombat, vasárnap 11–18 (a PvP-vel lép életbe)
 
     // Építmények. levels[0] = nincs megépítve; minden szint: név, alapanyag, építési idő (perc), szerkezeti pont,
@@ -46,6 +48,44 @@
                 { name: 'Fekhely', desc: `Mellette ${BED_REST_MULTIPLIER}× gyorsabban pihensz`, req: { wall_planks: 2, rag: 6 }, minutes: 20 }
             ]
         },
+        // v0.1.34: a "bp" szinthez előbb el kell olvasni a tervrajzot
+        trap: {
+            name: 'Csapdák', tab: 'defense', icon: '💥',
+            levels: [
+                { name: 'Nincs csapda' },
+                { name: 'Konzervriasztó', desc: 'A zörgő konzervek figyelmeztetnek: a menedékednél az első lövés nehezebben talál el', req: { empty_can: 4, hemp_rope: 1 }, minutes: 15, img: 'new/bear_trap' },
+                { name: 'Medvecsapda', desc: 'Aki a menedékednél rád támad, belelép: -25 élet', req: { bear_trap_part: 1, iron_chain: 1, rusty_bolts: 4 }, minutes: 60, img: 'new/bear_trap', requires: { trap: 1 }, bp: 'shelter:trap' }
+            ]
+        },
+        rain: {
+            name: 'Esővízgyűjtő', tab: 'stations', icon: '💧',
+            levels: [
+                { name: 'Nincs esővízgyűjtő' },
+                { name: 'Esővízgyűjtő hordó', desc: '6 óránként 1 palack víz kerül a raktárba (legfeljebb 4 vár)', req: { rain_barrel: 1, pipe: 1, duct_tape: 1 }, minutes: 45, img: 'new/rain_barrel', bp: 'shelter:rain' }
+            ]
+        },
+        generator: {
+            name: 'Generátor', tab: 'stations', icon: '⚡',
+            levels: [
+                { name: 'Nincs generátor' },
+                { name: 'Benzines generátor', desc: 'Áram a menedékben: a fekhely mellett még gyorsabban pihensz', req: { generator_part: 1, copper_wire: 3, gasoline_can: 1 }, minutes: 90, img: 'new/generator', requires: { bed: 1 }, bp: 'shelter:generator' }
+            ]
+        },
+        // v0.1.35: barkácsasztal és olvasztókemence – a "station" receptek csak mellettük készülnek
+        workbench: {
+            name: 'Barkácsasztal', tab: 'stations', icon: '🔨',
+            levels: [
+                { name: 'Nincs barkácsasztal' },
+                { name: 'Barkácsasztal', desc: 'Mellette a nagyobb dolgok is elkészíthetők (Barkács → Barkácsasztal)', req: { wall_planks: 4, timber_beam: 2, nails: 12, iron_sheet: 1 }, minutes: 40, img: 'SURV-2201_wooden_supply_crate' }
+            ]
+        },
+        smelter: {
+            name: 'Olvasztókemence', tab: 'stations', icon: '🔥',
+            levels: [
+                { name: 'Nincs olvasztókemence' },
+                { name: 'Olvasztókemence', desc: 'Fém és üveg olvasztása (Barkács → Olvasztókemence)', req: { concrete_mix: 3, iron_sheet: 2, pipe: 2, metal_scrap: 6 }, minutes: 120, img: 'SURV-2341_camp_cooking_hearth', requires: { workbench: 1 } }
+            ]
+        },
         hearth: {
             name: 'Tűzhely', tab: 'stations', icon: '🔥',
             levels: [
@@ -55,6 +95,8 @@
         }
     };
     const STRUCTURE_KEYS = Object.keys(STRUCTURES);
+    const STATIONS = { workshop: 'workbench', smelter: 'smelter' }; // recept "station" -> építmény
+    const STATION_NAMES = { workshop: 'Barkácsasztal', smelter: 'Olvasztókemence' };
 
     function maxLevel(key) { return STRUCTURES[key] ? STRUCTURES[key].levels.length - 1 : 0; }
 
@@ -79,12 +121,13 @@
     }
 
     // Megépíthető-e a következő szint (alapanyag nélkül): null = igen, különben az ok
-    function buildBlocker(shelter, key, now) {
+    function buildBlocker(shelter, key, now, known) {
         const def = STRUCTURES[key];
         if (!def) return 'Ismeretlen építmény.';
         if (shelter.build && shelter.build.until > now) return 'Már folyik egy építkezés. Várd meg, amíg elkészül!';
         const next = level(shelter, key) + 1;
         if (next > maxLevel(key)) return 'Ez már a legmagasabb szint.';
+        if (def.levels[next].bp && !(known || []).includes(def.levels[next].bp)) return 'Ehhez előbb el kell olvasnod a tervrajzát.';
         const reqs = def.levels[next].requires || {};
         for (const k of Object.keys(reqs)) {
             if (level(shelter, k) < reqs[k]) return `Előbb kell: ${STRUCTURES[k].levels[reqs[k]].name}.`;
@@ -98,7 +141,7 @@
         return RAID_WINDOW.days.includes(d.getDay()) && d.getHours() >= RAID_WINDOW.fromHour && d.getHours() < RAID_WINDOW.toHour;
     }
 
-    const api = { RANGE_METERS, MOVE_COOLDOWN_DAYS, CLAIM_ITEM, STASH_SLOTS, BED_REST_MULTIPLIER, RAID_WINDOW, STRUCTURES, STRUCTURE_KEYS,
+    const api = { RANGE_METERS, MOVE_COOLDOWN_DAYS, CLAIM_ITEM, STASH_SLOTS, BED_REST_MULTIPLIER, GENERATOR_REST_MULTIPLIER, RAIN_EVERY_MS, RAIN_MAX, TRAP_DMG, RAID_WINDOW, STRUCTURES, STRUCTURE_KEYS, STATIONS, STATION_NAMES,
         maxLevel, settle, level, stashSlots, structureHp, buildBlocker, isRaidTime };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api; // szerver (Node.js)

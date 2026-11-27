@@ -62,3 +62,23 @@ socket.on('kicked', (data) => {
 socket.on('session_replaced', () => {
     showAuthScreen('Ezzel a fiókkal máshol is beléptek, ez a munkamenet megszűnt. Frissítsd az oldalt, ha itt szeretnél folytatni.');
 });
+
+// ÉJFÉLI FRISSÍTÉS (v0.1.36): ha újraindulás után más verzió fut a szerveren, az oldal magától újratölt,
+// így mindenki egyszerre kapja meg az új játékot.
+let serverVersion = null;
+socket.on('server_version', (d) => {
+    const v = d && d.v;
+    if (!v) return;
+    if (serverVersion && serverVersion !== v) {
+        if (typeof showToast === 'function') showToast('Frissült a játék! Újratöltés…');
+        setTimeout(() => location.reload(), 1500);
+        return;
+    }
+    serverVersion = v;
+});
+socket.on('update_notice', (d) => {
+    const m = (d && d.minutes) || 10;
+    const text = `Éjfélkor (${m} perc múlva) frissül a játék: kb. 1 percre megszakad a kapcsolat, utána magától újratölt.`;
+    if (typeof logMessage === 'function') logMessage(text);
+    if (typeof showToast === 'function') showToast(text);
+});

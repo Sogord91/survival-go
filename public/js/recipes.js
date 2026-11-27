@@ -23,7 +23,7 @@ function toolOptions(entry) {
     if (options.some(k => TOOLBOX_REPLACES.includes(k)) && !options.includes('toolbox')) options.push('toolbox');
     return options;
 }
-const CRAFT_CATEGORIES = ['Elsősegély', 'Víz és étel', 'Fegyverek', 'Lőszer', 'Eszközök és fény', 'Ruha és táska', 'Menedék', 'Alapanyag', 'Szétszerelés'];
+const CRAFT_CATEGORIES = ['Elsősegély', 'Víz és étel', 'Fegyverek', 'Lőszer', 'Harci eszközök', 'Eszközök és fény', 'Ruha és táska', 'Menedék', 'Alapanyag', 'Szilveszter', 'Szétszerelés'];
 
 const craftingRecipes = [
     // --- ELSŐSEGÉLY ---
@@ -59,6 +59,37 @@ const craftingRecipes = [
     { key: 'reload_556', cat: 'Lőszer', result: 'ammo_556', count: 3, name: '5.56 Újratöltés', desc: '3 hüvely + lőpor + ólom = 3 töltény', req: { empty_casing: 3, gunpowder: 1, lead_pipes_scrap: 1 }, tools: [['pliers', 'multitool']] },
     { key: 'reload_buckshot', cat: 'Lőszer', result: 'ammo_buckshot', count: 3, name: 'Sörét Újratöltés', desc: '3 hüvely + lőpor + ólom = 3 töltény', req: { empty_casing: 3, gunpowder: 1, lead_pipes_scrap: 1 }, tools: [['pliers', 'multitool']] },
     { key: 'reload_sniper', cat: 'Lőszer', result: 'ammo_sniper', count: 3, name: 'Mesterlövész Újratöltés', desc: '3 hüvely + lőpor + ólom = 3 töltény', req: { empty_casing: 3, gunpowder: 2, lead_pipes_scrap: 1 }, tools: [['pliers', 'multitool']] },
+
+    // --- v0.1.35: kézben (bárhol) ---
+    { key: 'work_gloves', cat: 'Ruha és táska', name: 'Munkakesztyű', desc: 'Bőrből varrt kesztyű', req: { leather: 2, cotton_cord: 1 }, tools: ['sewing_kit'] },
+    { key: 'fingerless_gloves', cat: 'Ruha és táska', name: 'Ujjatlan Bőrkesztyű', desc: 'Cserzett bőrből, levágott ujjakkal', req: { tanned_leather: 1 }, tools: ['sewing_kit'] },
+    { key: 'winter_gloves', cat: 'Ruha és táska', name: 'Bélelt Téli Kesztyű', desc: 'Bőr kesztyű rongybéléssel', req: { tanned_leather: 1, rag: 3 }, tools: ['sewing_kit'] },
+    { key: 'camo_cloak', cat: 'Ruha és táska', name: 'Álcaponyó', desc: 'Vászon, rávarrt rongycsíkokkal', req: { canvas_roll: 2, rag: 4, hemp_rope: 1 }, tools: ['sewing_kit'] },
+    { key: 'treasure_map', cat: 'Eszközök és fény', name: 'Kincses Térkép', desc: 'A négy darab összeillesztve', req: { map_piece: 4 } },
+    { key: 'firework_rocket', cat: 'Szilveszter', event: 'newyear', name: 'Házi Tűzijáték Rakéta', desc: 'Lőpor egy papírhengerben, bottal', req: { gunpowder: 1, old_newspaper: 2, stick: 1 } },
+    // --- v0.1.35: csak a menedék barkácsasztalánál ---
+    { key: 'tactical_gloves', cat: 'Ruha és táska', station: 'workshop', name: 'Rhino Taktikai Kesztyű', desc: 'Kevlárbetét, ragasztott ütésvédő', req: { tanned_leather: 2, kevlar_fabric: 1, glue: 1 }, tools: ['sewing_kit'] },
+    { key: 'ghillie_suit', cat: 'Ruha és táska', station: 'workshop', name: 'Ghillie Lesruha', desc: 'Az álcaponyó rongyerdővé bővítve', req: { camo_cloak: 1, rag: 8, hemp_rope: 2, zip_ties: 4 }, tools: ['sewing_kit'] },
+    { key: 'szurkefarkas_rig', cat: 'Ruha és táska', station: 'workshop', name: 'Szürkefarkas Taktikai Mellény', desc: 'Vászon hevederekből, gyorskötözővel', req: { canvas_roll: 2, hemp_rope: 2, zip_ties: 4 }, tools: ['sewing_kit'] },
+    { key: 'rhino_plate', cat: 'Ruha és táska', station: 'workshop', name: 'Rhino Könnyű Lemezmellény', desc: 'Acéllemez kevlárszövetbe varrva', req: { steel_plate: 2, kevlar_fabric: 2, canvas_roll: 1 }, tools: [['hand_riveter', 'sewing_kit']] },
+    { key: 'hand_crossbow', cat: 'Fegyverek', station: 'workshop', name: 'Pisztoly-számszeríj', desc: 'Rugós ív, acélhúr', req: { stick: 2, coil_spring: 1, steel_cable: 1, duct_tape: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'crossbow', cat: 'Fegyverek', station: 'workshop', name: 'Vadász Számszeríj', desc: 'Deszkatest, két rugó, céltávcsőlencse', req: { wall_planks: 1, steel_cable: 2, coil_spring: 2, rusty_bolts: 3, scope_lens: 1 }, tools: ['claw_hammer', ['pliers', 'multitool']] },
+    { key: 'demo_hammer', cat: 'Fegyverek', station: 'workshop', name: '„Bontó Bence” Fejszekalapács', desc: 'Fémtömbből kovácsolt fej, gerendanyél', req: { pure_metal_bar: 2, timber_beam: 1, duct_tape: 2 }, tools: ['claw_hammer', ['blowtorch', 'pliers']] },
+    { key: 'bear_trap_part', cat: 'Menedék', station: 'workshop', bp: 'shelter:trap', name: 'Medvecsapda', desc: 'Fogazott acélpofák, erős rugó', req: { iron_sheet: 2, coil_spring: 2, iron_chain: 1 }, tools: ['claw_hammer'] },
+    { key: 'rain_barrel', cat: 'Menedék', station: 'workshop', bp: 'shelter:rain', name: 'Esővizes Hordó', desc: 'Összeragasztott palackokból, csővel', req: { plastic_bottle: 6, duct_tape: 2, glue: 1, pipe: 1 } },
+    { key: 'camping_stove', cat: 'Eszközök és fény', station: 'workshop', name: 'Kempingfőző', desc: 'Gázpalackra szerelt égőfej', req: { gas_canister: 1, iron_sheet: 1, pipe: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'firework_battery', cat: 'Szilveszter', event: 'newyear', station: 'workshop', name: 'Tűzijáték Telep', desc: 'Öt rakéta egy dobozba kötve', req: { firework_rocket: 5, wall_planks: 1, cotton_cord: 1 } },
+    // --- v0.1.35: szétszedés ---
+    { key: 'scrap_car_battery', cat: 'Szétszerelés', result: 'wire', count: 3, name: 'Akkumulátor Szétszedése', desc: 'Drót és fémhulladék', req: { car_battery: 1 }, tools: [['pliers', 'socket_wrench']] },
+    { key: 'scrap_solar', cat: 'Szétszerelés', result: 'copper_wire', count: 2, name: 'Napelem Szétszedése', desc: 'Rézdrót és üveg', req: { solar_panel: 1 }, tools: ['screwdriver'] },
+    // --- HARCI ESZKÖZÖK (v0.1.34) – a "bp" receptekhez előbb el kell olvasni a tervrajzot ---
+    { key: 'molotov', cat: 'Harci eszközök', name: 'Molotov-koktél', desc: 'Szesz egy palackban, rongykanóccal', req: { alcohol: 1, plastic_bottle: 1, rag: 1 } },
+    { key: 'frag_grenade', cat: 'Harci eszközök', station: 'workshop', bp: 'frag_grenade', name: 'Repeszgránát', desc: 'Konzervdoboz, lőpor és csavarok', req: { empty_can: 1, gunpowder: 2, rusty_bolts: 3, duct_tape: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'smoke_grenade', cat: 'Harci eszközök', station: 'workshop', bp: 'smoke_grenade', name: 'Füstgránát', desc: 'Vegyszeres füstpatron', req: { empty_can: 1, chemical_solvent: 1, old_newspaper: 2, gunpowder: 1 } },
+    { key: 'flashbang', cat: 'Harci eszközök', station: 'workshop', bp: 'flashbang', name: 'Villanógránát', desc: 'Lőpor, magnézium-kanóc, elemes gyújtás', req: { empty_can: 1, gunpowder: 1, aa_batteries: 1, copper_wire: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'silencer', cat: 'Harci eszközök', station: 'workshop', bp: 'silencer', name: 'Barkácsolt Hangtompító', desc: 'Cső, rétegelt fémlemezek, ragasztószalag', req: { pipe: 1, iron_sheet: 1, rag: 2, duct_tape: 2 }, tools: [['pliers', 'multitool'], 'claw_hammer'] },
+    { key: 'rifle_scope', cat: 'Harci eszközök', station: 'workshop', bp: 'rifle_scope', name: 'Céltávcső', desc: 'Lencse egy csőben, sínre szerelve', req: { scope_lens: 2, pipe: 1, rusty_bolts: 2, duct_tape: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'ext_mag', cat: 'Harci eszközök', station: 'workshop', bp: 'ext_mag', name: 'Bővített Tár', desc: 'Toldott tárház erősebb rugóval', req: { iron_sheet: 1, coil_spring: 1, rusty_bolts: 2 }, tools: [['pliers', 'multitool'], 'claw_hammer'] },
 
     // --- ESZKÖZÖK ÉS FÉNY ---
     { key: 'torch', cat: 'Eszközök és fény', name: 'Fáklya', desc: 'Éjszakai fényforrás', req: { stick: 1, rag: 1, alcohol: 1 } },

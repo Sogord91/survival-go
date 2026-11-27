@@ -124,8 +124,20 @@ function useCombatMedicine(index) {
     document.getElementById('combat-heal-modal').classList.add('hidden');
 }
 
+// Dobható fegyver harcban (v0.1.34)
+function useCombatThrowable(index) {
+    const slot = player.inventory[index];
+    if (!slot) return;
+    sendCombatAction('throw', slot.key);
+    document.getElementById('combat-heal-modal').classList.add('hidden');
+}
+
 // Egy esemény szövege a harcnaplóba
 function describeCombatEvent(ev, enemyName) {
+    if (ev.type === 'throw') return [`Eldobtad: ${ev.item} – ${ev.amount} sebzés${ev.burn ? ', lángra kapott!' : ''}${ev.stun ? ', elvakult!' : ''}`, 'text-orange-300 font-bold'];
+    if (ev.type === 'burn') return [`${enemyName} ég: -${ev.amount} élet.`, 'text-orange-300'];
+    if (ev.type === 'stunned') return [`${enemyName} elvakulva tántorog, nem tud támadni!`, 'text-sky-300'];
+    if (ev.type === 'smoke') return [`Eldobtad: ${ev.item}. A füstben sikerült elmenekülnöd!`, 'text-emerald-300'];
     if (ev.actor === 'enemy' && ev.type === 'dodge') return [`💨 Kitértél ${enemyName} ütése elől!`, 'text-sky-300'];
     if (ev.actor === 'enemy') return [`${enemyName} megsebzett: ${ev.amount} sebzés.`, 'text-red-400'];
     if (ev.type === 'notice') return [ev.text || '', 'text-orange-300 font-bold']; // kopás, tönkremenés
@@ -268,11 +280,13 @@ function arenaStep(ev) {
     }
     if (ev.type === 'heal') { arenaRestart(me, 'healed'); arenaFloat('me', `+${ev.amount}`, 'heal'); return; }
     if (ev.type === 'flee_fail') { arenaRestart(me, 'shoot'); arenaFloat('me', 'NEM SIKERÜLT!', 'miss'); return; }
-    if (ev.type === 'flee') { me.classList.add('fled'); arenaFloat('me', 'MENEKÜLÉS!', 'miss'); return; }
+    if (ev.type === 'flee' || ev.type === 'smoke') { me.classList.add('fled'); arenaFloat('me', 'MENEKÜLÉS!', 'miss'); return; }
+    if (ev.type === 'throw' || ev.type === 'burn') { arenaQuake(); arenaFloat('enemy', `-${ev.amount}`, ev.type === 'throw' ? 'crit' : ''); return; }
+    if (ev.type === 'stunned') { arenaFloat('enemy', 'ELVAKULT!', 'miss'); return; }
 }
 // Lejátssza az eseményeket; visszaadja, mennyi ideig tart (ms)
 function arenaPlay(events, outcome) {
-    const steps = events.filter(ev => ev.actor === 'enemy' || ['hit', 'crit', 'heal', 'flee', 'flee_fail'].includes(ev.type));
+    const steps = events.filter(ev => ev.actor === 'enemy' || ['hit', 'crit', 'heal', 'flee', 'flee_fail', 'throw', 'burn', 'smoke'].includes(ev.type));
     const STEP = 620;
     const start = Math.max(Date.now(), arenaBusyUntil);
     let t = start - Date.now();

@@ -7,7 +7,7 @@
     const BASE = { maxHp: 100, defense: 0, slots: 10, maxWeight: 30, fatigueRate: 1 };
 
     // weapon = elsődleges fegyver, secondary = másodlagos (pisztoly), melee = közelharci
-    const EQUIPMENT_SLOTS = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon', 'secondary', 'melee'];
+    const EQUIPMENT_SLOTS = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon', 'secondary', 'melee', 'gloves'];
 
     const HP_PER_LEVEL = 5;         // szintenként +5 max HP (v0.1.20: a többit a képességek adják)
     const OVERWEIGHT_FACTOR = 2;    // túlsúly fáradási szorzója: 10% túlsúly -> 1.2x, 50% -> 2x

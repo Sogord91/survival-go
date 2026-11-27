@@ -27,7 +27,16 @@ const metricSchema = new mongoose.Schema({ t: { type: Number, index: true }, onl
 const MetricModel = mongoose.models.SurvivalMetric || mongoose.model('SurvivalMetric', metricSchema);
 const settingSchema = new mongoose.Schema({ _id: String, value: mongoose.Schema.Types.Mixed });
 const SettingModel = mongoose.models.SurvivalSetting || mongoose.model('SurvivalSetting', settingSchema);
-const annSchema = new mongoose.Schema({ title: String, body: String, createdAt: Number, active: { type: Boolean, default: true }, author: String });
+const annSchema = new mongoose.Schema({ title: String, body: String, createdAt: Number, active: { type: Boolean, default: true }, author: String,
+    publishAt: { type: Number, default: 0 }, published: { type: Boolean, default: true } }); // publishAt: időzített (éjféli) megjelenés (v0.1.36)
+// a következő éjfél (magyar idő) időbélyege
+function nextBudapestMidnight(now) {
+    now = now || Date.now();
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now).split('-').map(Number);
+    const guess = Date.UTC(p[0], p[1] - 1, p[2] + 1);
+    const off = (t) => Date.parse(new Date(t).toLocaleString('sv-SE', { timeZone: 'Europe/Budapest' }).replace(' ', 'T') + 'Z') - t;
+    return guess - off(guess);
+}
 const AnnouncementModel = mongoose.models.SurvivalAnnouncement || mongoose.model('SurvivalAnnouncement', annSchema);
 const reportSchema = new mongoose.Schema({ t: Number, user: String, text: String, ua: String, status: { type: String, default: 'open' }, note: String, at: { type: Date, expires: 365 * 86400 } });
 const ReportModel = mongoose.models.SurvivalReport || mongoose.model('SurvivalReport', reportSchema);
@@ -491,6 +500,17 @@ function setup(c) {
         res.json({ success: true, message: `Ajándék elküldve ${ok} játékosnak.` });
     }, 'gift_all');
 
+    // időzített bejelentések: amikor eljön az idejük, az online játékosok is megkapják (v0.1.36)
+    setInterval(async () => {
+        try {
+            const due = await AnnouncementModel.find({ active: true, published: false, publishAt: { $lte: Date.now() } });
+            for (const a of due) {
+                a.published = true; await a.save();
+                for (const n of Object.keys(activePlayers)) io.to(activePlayers[n].socketId).emit('announcements', { list: [publicAnn(a)] });
+            }
+        } catch (e) { console.error('Hiba az időzített bejelentésnél:', e.message); }
+    }, 30000);
+
     // ---- bejelentések (üdvözlő üzenet és hírek) ----
     route('get', '/api/admin/announcements', async (req, res) => {
         const list = await AnnouncementModel.find({}).sort({ createdAt: -1 }).lean();
@@ -502,11 +522,13 @@ function setup(c) {
         const title = String((req.body && req.body.title) || '').trim().slice(0, 80);
         const body = String((req.body && req.body.body) || '').trim().slice(0, 3000);
         if (!title || !body) return res.status(400).json({ success: false, message: 'Cím és szöveg is kell.' });
-        const a = await AnnouncementModel.create({ title, body, createdAt: Date.now(), active: true, author: req.admin });
-        // akik most online vannak, azonnal megkapják
-        for (const n of Object.keys(activePlayers)) io.to(activePlayers[n].socketId).emit('announcements', { list: [publicAnn(a)] });
-        audit(req, 'announcement', null, { title });
-        res.json({ success: true, message: 'Bejelentés közzétéve. Mindenki egyszer látja a következő belépéskor (aki online, az most).' });
+        const atMidnight = !!(req.body && req.body.atMidnight);
+        const publishAt = atMidnight ? nextBudapestMidnight() : 0;
+        const a = await AnnouncementModel.create({ title, body, createdAt: Date.now(), active: true, author: req.admin, publishAt, published: !atMidnight });
+        // akik most online vannak, azonnal megkapják (az időzítettet csak éjfélkor)
+        if (!atMidnight) for (const n of Object.keys(activePlayers)) io.to(activePlayers[n].socketId).emit('announcements', { list: [publicAnn(a)] });
+        audit(req, 'announcement', null, { title, atMidnight });
+        res.json({ success: true, message: atMidnight ? 'Időzítve: éjfélkor jelenik meg (a frissítéssel együtt).' : 'Bejelentés közzétéve. Mindenki egyszer látja a következő belépéskor (aki online, az most).' });
     }, 'announce');
     route('post', '/api/admin/announcements/:id/toggle', async (req, res) => {
         const a = await AnnouncementModel.findById(req.params.id);
@@ -815,7 +837,7 @@ function setup(c) {
             if (ev) socket.emit('game_event', { event: ev });
             PlayerModel.findOne({ username }, { seenNotices: 1 }).lean().then(async (u) => {
                 const seen = (u && u.seenNotices) || [];
-                const list = await AnnouncementModel.find({ active: true }).sort({ createdAt: 1 }).lean();
+                const list = (await AnnouncementModel.find({ active: true }).sort({ createdAt: 1 }).lean()).filter(a => !a.publishAt || a.publishAt <= Date.now());
                 const unseen = list.filter(a => !seen.includes(String(a._id))).map(publicAnn);
                 if (unseen.length) socket.emit('announcements', { list: unseen });
             }).catch(err => console.error('Hiba a bejelentések küldésekor:', err));

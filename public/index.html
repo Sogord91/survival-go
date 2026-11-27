@@ -1348,6 +1348,15 @@
         .sg-orb::after { inset: -4px !important; }
         .nav-btn .sg-orb img { width: 46px !important; height: 46px !important; }
         .sg-nav-orb span { margin-top: 7px !important; }
+        /* SZILVESZTER (v0.1.35) */
+        .sg-ny-card { width: 100%; max-width: 360px; padding: 22px 18px 16px; border-radius: 16px; text-align: center; color: #efe6c8; background: radial-gradient(circle at 50% 0%, rgba(255,200,90,.18), transparent 60%), #1b2016; border: 1px solid rgba(255,215,94,.45); box-shadow: 0 0 40px rgba(255,190,80,.25); }
+        .sg-ny-year { font-size: 54px; font-weight: 900; letter-spacing: 6px; line-height: 1; color: #ffd75e; text-shadow: 0 0 18px rgba(255,200,80,.7), 0 3px 0 #6b4a12; }
+        .sg-ny-title { margin: 8px 0 12px; font-size: 15px; font-weight: 800; letter-spacing: 2px; color: #fff4cf; }
+        .sg-ny-card p { font-size: 12.5px; line-height: 1.5; margin: 0 0 9px; color: #dcd3b6; }
+        .sg-ny-sign { margin-top: 6px; font-size: 12px; font-style: italic; color: #ffd75e; }
+        .sg-ny-btn { margin-top: 14px; width: 100%; padding: 11px; border-radius: 10px; font-weight: 800; letter-spacing: 1px; color: #2a1d05; background: linear-gradient(#ffe08a, #e0a83a); border: 1px solid #fff0b8; }
+        .sg-ny-chip { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 92px); left: 50%; transform: translateX(-50%); z-index: 1300; padding: 5px 12px; border-radius: 999px; font-size: 11px; letter-spacing: 1px; color: #fff4cf; background: rgba(30,24,10,.85); border: 1px solid rgba(255,215,94,.6); box-shadow: 0 0 12px rgba(255,190,80,.35); }
+        .sg-ny-chip b { color: #ffd75e; font-family: monospace; font-size: 12px; }
         /* skinek (v0.1.31) */
         img.sg-skin-tint.sg-skin-rust { filter: sepia(.9) saturate(2.2) hue-rotate(-18deg) brightness(.85) contrast(1.1); }
         img.sg-skin-tint.sg-skin-frost { filter: grayscale(.4) sepia(.2) hue-rotate(170deg) saturate(1.6) brightness(1.15); }
@@ -1551,10 +1560,10 @@
     <div id="combat-heal-modal" class="fixed inset-0 modal hidden flex items-center justify-center p-4 z-[3000]">
         <div class="hud-panel border-emerald-500/80 w-full max-w-sm rounded-2xl p-5 shadow-2xl flex flex-col max-h-[70vh] clipped-panel">
             <div class="flex justify-between items-center mb-3 border-b border-emerald-500/30 pb-2">
-                <h3 class="text-sm font-bold text-emerald-400 tracking-wider">💊 VÁLASSZ ORVOSI ESZKÖZT</h3>
+                <h3 class="text-sm font-bold text-emerald-400 tracking-wider">💊 GYÓGYSZER ÉS DOBHATÓ</h3>
                 <button id="btn-combat-heal-close" class="text-emerald-500 hover:text-emerald-300 font-bold text-base">✕</button>
             </div>
-            <p class="text-[10px] text-emerald-300/80 mb-3">Kattints arra a szerre, amit fel akarsz használni a harc hevületében:</p>
+            <p class="text-[10px] text-emerald-300/80 mb-3">A gyógyszer nem vesz el kört. A dobható fegyver egy kör, utána az ellenfél jön (kivéve, ha elvakult).</p>
             <div id="combat-heal-list" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
         </div>
     </div>
@@ -1747,7 +1756,9 @@
                 <button id="eq-secondary" data-slot="secondary" data-empty="🔫" onclick="openItemSheet('eq', 'secondary')" class="eq-tile" title="Másodlagos fegyver"></button>
                 <button id="eq-melee" data-slot="melee" data-empty="🔪" onclick="openItemSheet('eq', 'melee')" class="eq-tile" title="Közelharci fegyver"></button>
                 <button id="eq-backpack" data-slot="backpack" data-empty="🎒" onclick="openItemSheet('eq', 'backpack')" class="eq-tile" title="Hátizsák"></button>
-                <div id="eq-summary" class="eq-tile eq-summary"></div>
+                <button id="eq-gloves" data-slot="gloves" data-empty="🧤" onclick="openItemSheet('eq', 'gloves')" class="eq-tile" title="Kesztyű"></button>
+            </div>
+            <div id="eq-summary" class="eq-summary" style="display:flex;justify-content:center;gap:18px;margin-top:8px">
             </div>
         </div>
 
@@ -2046,6 +2057,7 @@
     <script src="js/advent.js"></script>
     <script src="js/wheel.js"></script>
     <script src="js/winter.js"></script>
+    <script src="js/newyear.js"></script>
     <script src="js/gifts.js"></script>
     <script src="js/shelter.js"></script>
     <script src="js/combat.js"></script>
@@ -2068,6 +2080,7 @@
     <script src="js/advent-ui.js"></script>
     <script src="js/wheel-ui.js"></script>
     <script src="js/winter-ui.js"></script>
+    <script src="js/newyear-ui.js"></script>
     <script src="js/notices.js"></script>
     <script src="js/staff.js"></script>
     <script src="js/shop.js"></script>

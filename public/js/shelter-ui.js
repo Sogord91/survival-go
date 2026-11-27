@@ -272,12 +272,12 @@ function shelterStructureCard(key, sh, near) {
     const building = sh.build && sh.build.key === key;
     const pips = Array.from({ length: max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('');
     const icon = (next && next.img) || (cur && cur.img);
-    const iconHtml = icon ? `<img src="/images/items/${icon}.webp" alt="">` : `<span>${def.icon}</span>`;
+    const iconHtml = icon ? `<img src="/images/items/${icon}.webp" alt="" onerror="this.onerror=null;this.src='/images/icons/cardboard-box.webp'">` : `<span>${def.icon}</span>`;
     let action = '';
     if (building) {
         action = `<span class="sg-sh-btn time">${fmtDuration(sh.build.until - shelterNow())}</span>`;
     } else if (next) {
-        const blocker = SurvivalShelter.buildBlocker(sh, key, shelterNow());
+        const blocker = SurvivalShelter.buildBlocker(sh, key, shelterNow(), player.blueprints);
         const missing = Object.entries(next.req || {}).some(([k, n]) => invCountClient(k) + stashCountClient(sh, k) < n);
         const disabled = !near || blocker || missing;
         action = `<button class="sg-sh-btn${disabled ? ' dim' : ''}" ${disabled ? 'disabled' : ''} onclick="buildShelter('${key}')">${lvl === 0 ? 'ÉPÍT' : 'FEJLESZT'}</button>`;
@@ -288,7 +288,7 @@ function shelterStructureCard(key, sh, near) {
     const nextInfo = next
         ? `<div class="sg-sh-next">${building ? 'Épül' : 'Következő'}: <b>${escapeAttr(next.name)}</b> · ${escapeAttr(next.desc || '')} · ${fmtMinutes(next.minutes)}${next.hp ? ` · +${next.hp} pont` : ''}</div>
            ${building ? '' : `<div class="sg-sh-costs">${shelterCostHtml(next.req, sh)}</div>`}
-           ${!building && SurvivalShelter.buildBlocker(sh, key, shelterNow()) && !(sh.build && sh.build.until > shelterNow()) ? `<div class="sg-sh-warn">${escapeAttr(SurvivalShelter.buildBlocker(sh, key, shelterNow()))}</div>` : ''}`
+           ${!building && SurvivalShelter.buildBlocker(sh, key, shelterNow(), player.blueprints) && !(sh.build && sh.build.until > shelterNow()) ? `<div class="sg-sh-warn">${escapeAttr(SurvivalShelter.buildBlocker(sh, key, shelterNow(), player.blueprints))}</div>` : ''}`
         : `<div class="sg-sh-next">${escapeAttr(cur.desc || 'Elkészült.')}</div>`;
     return `<div class="sg-sh-card"><div class="sg-sh-ic">${iconHtml}</div><div class="sg-sh-main"><div class="sg-sh-name">${escapeAttr(title.toUpperCase())}</div>
         <div class="sg-sh-pips">${pips}</div>${nextInfo}</div><div class="sg-sh-act">${action}</div></div>`;
@@ -363,11 +363,11 @@ function renderShelterModal() {
             <div class="sg-sh-grid" data-drop="bag">${bag}</div>`;
     } else if (shelterTab === 'stations') {
         html += `<div class="sg-sh-sect"><span>ÁLLOMÁSOK</span><span></span></div>
-            ${shelterStructureCard('bed', sh, near)}${shelterStructureCard('hearth', sh, near)}
+            ${shelterStructureCard('workbench', sh, near)}${shelterStructureCard('smelter', sh, near)}${shelterStructureCard('bed', sh, near)}${shelterStructureCard('hearth', sh, near)}${shelterStructureCard('rain', sh, near)}${shelterStructureCard('generator', sh, near)}
             <div class="sg-sh-hint">Az alapanyag a hátizsákodból fogy, ha ott nincs elég, a raktárból. Egyszerre egy építkezés futhat, valódi időben.</div>`;
     } else {
         html += `<div class="sg-sh-sect"><span>VÉDELEM</span><span class="mono">${SurvivalShelter.structureHp(sh)} PONT</span></div>
-            ${shelterStructureCard('wall', sh, near)}${shelterStructureCard('barricade', sh, near)}
+            ${shelterStructureCard('wall', sh, near)}${shelterStructureCard('barricade', sh, near)}${shelterStructureCard('trap', sh, near)}
             <div class="sg-sh-note"><b>RAID-IDŐ:</b> a PvP frissítéssel szombaton és vasárnap 11:00–18:00 között lehet majd betörni a menedékekbe. A szerkezeti pontot (fal + barikád) kell lebontani hozzá.</div>`;
     }
     html += `<button class="sg-sh-link" onclick="startShelterClaim()">Költözés másik épületbe</button>`;

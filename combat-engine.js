@@ -198,14 +198,62 @@ function enemyTurn(p, combat, itemDatabase, random) {
 // Támadás a választott fegyverrel (a fegyverváltás nem vesz el kört): a játékos üt, majd ha az ellenség él, visszaüt.
 // Visszatérés: { events, outcome: 'won' | 'lost' | null, recovered: tárgykulcs, ha a lövés után visszakaptál valamit
 //   (lőfegyver: üres hüvely, íj: nyílvessző) }
+// Fegyverkiegészítő a helyen (v0.1.34): 'silencer' | 'scope' | 'mag' – csak lőfegyveren hat
+function modOf(p, itemDatabase, slot) {
+    const key = p.mods && p.mods[slot];
+    const it = key && itemDatabase[key];
+    return it && it.attach ? it.attach : null;
+}
+// Bővített tár: minden 3. lövés ingyen
+function magSaves(p, slot) {
+    p.magShots = p.magShots || {};
+    p.magShots[slot] = (p.magShots[slot] || 0) + 1;
+    return p.magShots[slot] % 3 === 0;
+}
+// Az ellenség köre a dobható hatásokkal: égés (sebez), kábulás (kimarad)
+function enemyPhase(p, combat, itemDatabase, random, events) {
+    if (combat.burn && combat.burn.rounds > 0) {
+        combat.enemy.hp = Math.max(0, combat.enemy.hp - combat.burn.dmg);
+        combat.burn.rounds -= 1;
+        events.push({ actor: 'player', type: 'burn', amount: combat.burn.dmg, hpAfter: combat.enemy.hp });
+        if (combat.enemy.hp <= 0) return 'won';
+    }
+    if (combat.stunned) { combat.stunned = false; events.push({ actor: 'enemy', type: 'stunned', amount: 0, hpAfter: Math.round(p.hp) }); return null; }
+    events.push(enemyTurn(p, combat, itemDatabase, random));
+    return null;
+}
+
+// Dobható fegyver (v0.1.34): molotov, gránát, füst, villanó. A füst biztos menekülés.
+function throwItem(p, combat, itemDatabase, itemKey, random) {
+    random = random || Math.random;
+    const item = itemDatabase[itemKey];
+    if (!item || item.type !== 'throwable' || !item.throwFx) return { error: 'Ezt nem lehet eldobni.' };
+    const slot = p.inventory.find(s => s.key === itemKey && s.count > 0);
+    if (!slot) return { error: 'Nincs ilyen a leltáradban!' };
+    slot.count -= 1;
+    if (slot.count <= 0) p.inventory = p.inventory.filter(s => s !== slot);
+    const fx = item.throwFx, events = [];
+    if (fx.smoke) return { events: [{ actor: 'player', type: 'smoke', item: item.name }], outcome: 'fled' };
+    const amount = Math.max(0, Math.round(fx.dmg || 0));
+    combat.enemy.hp = Math.max(0, combat.enemy.hp - amount);
+    if (fx.burn) combat.burn = { dmg: fx.burn, rounds: fx.burnRounds || 2 };
+    if (fx.stun) combat.stunned = true;
+    events.push({ actor: 'player', type: 'throw', item: item.name, amount, burn: !!fx.burn, stun: !!fx.stun, hpAfter: combat.enemy.hp });
+    if (combat.enemy.hp <= 0) return { events, outcome: 'won' };
+    if (enemyPhase(p, combat, itemDatabase, random, events) === 'won') return { events, outcome: 'won' };
+    combat.round += 1;
+    return { events, outcome: p.hp <= 0 ? 'lost' : null };
+}
+
 function attack(p, combat, itemDatabase, random, slot) {
     random = random || Math.random;
     const events = [];
     const weapon = weaponInfo(p, itemDatabase, slot);
     let recovered = null;
     const fx = Skills.effects(p.skills);
+    const mod = weapon.ammoKey ? modOf(p, itemDatabase, WEAPON_SLOTS.includes(slot) ? slot : 'weapon') : null;
     if (weapon.ammoKey) {
-        useAmmo(p, weapon.ammoKey);
+        if (!(mod === 'mag' && magSaves(p, slot))) useAmmo(p, weapon.ammoKey);
         const back = ammoRecovery(itemDatabase[weapon.ammoKey]);
         if (back && random() < Math.min(0.95, back.chance + (fx.casing || 0))) recovered = back.key;
     }
@@ -216,7 +264,7 @@ function attack(p, combat, itemDatabase, random, slot) {
     amount *= 1 + ((weapon.ranged ? fx.dmgRanged : fx.dmgMelee) || 0);
     if (fx.firstStrike && !combat.struck) amount *= 1.5;
     combat.struck = true;
-    const crit = random() < RULES.CRIT_CHANCE + (fx.critChance || 0);
+    const crit = random() < RULES.CRIT_CHANCE + (fx.critChance || 0) + (mod === 'scope' ? 0.1 : 0);
     if (crit) amount *= RULES.CRIT_MULT + (fx.critDmg || 0);
     amount = Math.max(1, Math.round(amount * penalty.dmg));
 
@@ -224,7 +272,7 @@ function attack(p, combat, itemDatabase, random, slot) {
     events.push({ actor: 'player', type: crit ? 'crit' : 'hit', amount, weapon: weapon.name, noAmmo: weapon.noAmmo, hpAfter: combat.enemy.hp });
 
     if (combat.enemy.hp <= 0) return { events, outcome: 'won', recovered };
-    events.push(enemyTurn(p, combat, itemDatabase, random));
+    if (enemyPhase(p, combat, itemDatabase, random, events) === 'won') return { events, outcome: 'won', recovered };
     combat.round += 1;
     return { events, outcome: p.hp <= 0 ? 'lost' : null, recovered };
 }
@@ -256,7 +304,7 @@ function flee(p, combat, itemDatabase, random) {
     const chance = whistle ? 1 : Math.min(1, RULES.FLEE_CHANCE + fatiguePenalty(p.fatigue || 0).flee + (fx.flee || 0));
     if (whistle || random() < chance) return { events: [{ actor: 'player', type: 'flee', chance, whistle }], outcome: 'fled' };
     const events = [{ actor: 'player', type: 'flee_fail', chance }];
-    events.push(enemyTurn(p, combat, itemDatabase, random));
+    if (enemyPhase(p, combat, itemDatabase, random, events) === 'won') return { events, outcome: 'won' };
     combat.round += 1;
     return { events, outcome: p.hp <= 0 ? 'lost' : null };
 }
@@ -270,4 +318,4 @@ function rewards(combat, random) {
     return { xp: 15 + 10 * lvl, money: 5 * lvl + Math.floor(random() * 11), drop };
 }
 
-module.exports = { ENEMIES, RULES, WEAPON_SLOTS, enemyPoolFor, levelWeight, fatiguePenalty, createCombat, weaponInfo, attack, heal, flee, rewards };
+module.exports = { ENEMIES, RULES, WEAPON_SLOTS, enemyPoolFor, levelWeight, fatiguePenalty, createCombat, weaponInfo, attack, heal, flee, throwItem, modOf, magSaves, rewards };

@@ -18,7 +18,7 @@ const R = {
     FLEE: 0.85, FLEE_REFUSED_BONUS: 0.15, FLEE_GRAZE: 0.25, GRAZE_MULT: 0.5,
     TURN_MS: 20000, PICK_MS: 30000, PICKS: 3, SURRENDER_MONEY: 0.5,
     FLEE_PROTECT_MS: 10 * 60000, PAIR_COOLDOWN_MS: 30 * 60000,
-    BANDIT_MS: 30 * 60000, BAG_MS: 30 * 60000, BAG_RANGE: 30, HEAR: 500, HEAR_GAP_MS: 45000,
+    BANDIT_MS: 30 * 60000, BAG_MS: 30 * 60000, BAG_RANGE: 30, HEAR: 500, HEAR_RADIO: 1500, HEAR_GAP_MS: 45000,
     DMG_MULT: 1, MAX_ROUNDS: 40
 };
 
@@ -94,6 +94,7 @@ function setup(ctx) {
         if (!freshPos(ed) || now() - (ed.lastMovedAt || 0) > R.ACTIVE_MS * 6) return { error: `${d} nincs a közelben.` };
         const dist = haversine(ea.lat, ea.lng, ed.lat, ed.lng);
         if (dist > R.RANGE) return { error: `Túl messze van (${Math.round(dist)} m). Legfeljebb ${R.RANGE} m-ről támadhatsz.` };
+        if (ed.camo && dist > ed.camo) return { error: `${d} nincs a közelben.` }; // álcaruha (v0.1.34)
         const [za, zd] = await Promise.all([safeZoneAt(ea), safeZoneAt(ed)]);
         if (za || zd) return { error: `🛡️ Biztonságos zóna (${(za || zd).name}): itt nem lehet támadni.` };
         const fp = fleeProtect.get(a + '>' + d);
@@ -130,16 +131,18 @@ function setup(ctx) {
     function shotDamage(p, slot, f) {
         const weapon = CombatEngine.weaponInfo(p, itemDatabase, slot);
         const fx = Skills.effects(p.skills);
-        if (weapon.ammoKey) {
+        const mod = weapon.ammoKey ? CombatEngine.modOf(p, itemDatabase, slot) : null; // v0.1.34 kiegészítők
+        if (weapon.ammoKey && !(mod === 'mag' && CombatEngine.magSaves(p, slot))) {
             const s = p.inventory.find(x => x.key === weapon.ammoKey && x.count > 0);
             if (s) { s.count -= 1; if (s.count <= 0) p.inventory = p.inventory.filter(x => x !== s); }
         }
         let amount = weapon.dmg + Math.floor(random() * (CombatEngine.RULES.DMG_RANDOM + 1));
         amount *= 1 + ((weapon.ranged ? fx.dmgRanged : fx.dmgMelee) || 0);
-        const crit = random() < CombatEngine.RULES.CRIT_CHANCE + (fx.critChance || 0);
+        const crit = random() < CombatEngine.RULES.CRIT_CHANCE + (fx.critChance || 0) + (mod === 'scope' ? 0.1 : 0);
         if (crit) amount *= CombatEngine.RULES.CRIT_MULT + (fx.critDmg || 0);
         amount *= CombatEngine.fatiguePenalty(p.fatigue || 0).dmg * R.DMG_MULT;
-        return { amount: Math.max(1, Math.round(amount)), crit, weapon: weapon.name, ranged: !!weapon.ranged || !!weapon.ammoKey, noAmmo: weapon.noAmmo };
+        return { amount: Math.max(1, Math.round(amount)), crit, weapon: weapon.name, ranged: !!weapon.ranged || !!weapon.ammoKey, noAmmo: weapon.noAmmo,
+            silent: mod === 'silencer' && !weapon.noAmmo, hitBonus: mod === 'scope' ? 0.1 : 0 };
     }
 
     function view(f, name) {
@@ -151,7 +154,7 @@ function setup(ctx) {
             foe: { name: P[foe].name, hp: P[foe].hp, maxHp: P[foe].maxHp, avatar: P[foe].avatar, level: P[foe].level, bandit: banditUntil(P[foe].name) > now() },
             myTurn: f.phase === 'fight' && f.turn === me, deadline: f.deadline, turnMs: R.TURN_MS,
             canSurrender: me === 'd' && !f.surrenderUsed && f.phase === 'fight',
-            refused: !!f.refused, log: f.log.slice(-14), slots: P[me].slots || [], heals: P[me].heals || [],
+            refused: !!f.refused, log: f.log.slice(-14), slots: P[me].slots || [], heals: P[me].heals || [], throws: P[me].throws || [],
             pick: f.phase === 'pick' && me === 'a' ? f.pick : null, pickDeadline: f.phase === 'pick' ? f.pickDeadline : null,
             end: f.end ? (f.end[me] || null) : null
         };
@@ -166,6 +169,8 @@ function setup(ctx) {
                 const ammo = it && it.reqAmmo ? p.inventory.reduce((a, x) => a + (x.key === it.reqAmmo ? x.count : 0), 0) : null;
                 return { slot: s, name: w.name, dmg: w.dmg, noAmmo: !!w.noAmmo, key: it ? p.equipment[s] : null, ammo };
             }),
+            throws: p.inventory.filter(s => { const it = itemDatabase[s.key]; return it && it.type === 'throwable' && s.count > 0; })
+                .map(s => ({ key: s.key, name: itemDatabase[s.key].name, count: s.count, img: itemDatabase[s.key].img || null })),
             heals: p.inventory.filter(s => { const it = itemDatabase[s.key]; return it && it.effects && it.effects.hp > 0 && s.count > 0; })
                 .reduce((acc, s) => { const x = acc.find(h => h.key === s.key); if (x) x.count += s.count; else acc.push({ key: s.key, name: itemDatabase[s.key].name, hp: itemDatabase[s.key].effects.hp, count: s.count }); return acc; }, []) };
     }
@@ -176,7 +181,7 @@ function setup(ctx) {
         for (const name in activePlayers) {
             if (name === f.a || name === f.d) continue;
             const e = activePlayers[name]; if (!freshPos(e)) continue;
-            const dist = haversine(e.lat, e.lng, f.lat, f.lng); if (dist > R.HEAR) continue;
+            const dist = haversine(e.lat, e.lng, f.lat, f.lng); if (dist > (e.hasRadio ? R.HEAR_RADIO : R.HEAR)) continue;
             const k = name + '|' + f.id; if (now() - (heard.get(k) || 0) < R.HEAR_GAP_MS) continue; heard.set(k, now());
             const y = Math.sin((f.lng - e.lng) * Math.PI / 180) * Math.cos(f.lat * Math.PI / 180);
             const x = Math.cos(e.lat * Math.PI / 180) * Math.sin(f.lat * Math.PI / 180) - Math.sin(e.lat * Math.PI / 180) * Math.cos(f.lat * Math.PI / 180) * Math.cos((f.lng - e.lng) * Math.PI / 180);
@@ -197,7 +202,7 @@ function setup(ctx) {
         fights.set(f.id, f); fightOf.set(a, f.id); fightOf.set(d, f.id);
         await setBandit(a, R.BANDIT_MS); // aki kezdeményez, az bandita
         // az első lövés: ritkán talál
-        let cover = 0, shot = null, hit = false;
+        let cover = 0, shot = null, hit = false, trap = 0, trapHit = 0;
         const ra = await withPlayer(a, (p) => {
             const slot = bestSlot(p);
             shot = shotDamage(p, slot, f);
@@ -206,7 +211,8 @@ function setup(ctx) {
         });
         const rd = await withPlayer(d, (p) => {
             cover = shelterCover(p, ed);
-            hit = random() < Math.max(0.05, R.OPEN_HIT - cover);
+            trap = cover ? ((p.shelter.levels && p.shelter.levels.trap) || 0) : 0; // v0.1.34 csapdák
+            hit = random() < Math.max(0.05, R.OPEN_HIT + shot.hitBonus - cover - (trap >= 1 ? 0.08 : 0));
             if (hit) {
                 const mit = 1 - Math.min(CombatEngine.RULES.DEFENSE_CAP, playerStats(p).defense * CombatEngine.RULES.DEFENSE_PER_POINT);
                 shot.amount = Math.max(1, Math.round(shot.amount * mit));
@@ -215,10 +221,14 @@ function setup(ctx) {
             f.p.d = snap(p, d);
             return {};
         });
-        if (ra && ra.p) sendPlayerState(a, ra.p);
+        if (trap >= 2) {
+            const rt = await withPlayer(a, (p) => { trapHit = Math.min(Math.max(0, Math.round(p.hp) - 1), 25); p.hp -= trapHit; f.p.a = snap(p, a); return {}; });
+            if (rt && rt.p) sendPlayerState(a, rt.p);
+        } else if (ra && ra.p) sendPlayerState(a, ra.p);
         if (rd && rd.p) sendPlayerState(d, rd.p);
         log(f, `🔫 ${a} rálőtt ${d}-ra (${shot.weapon})${hit ? ` – TALÁLAT: -${shot.amount} élet${shot.crit ? ' (kritikus!)' : ''}` : ' – mellé ment!'}${cover ? ' 🏠 A menedék fedezéket adott.' : ''}`, hit ? 'hit' : 'miss');
-        gunshot(f);
+        if (!shot.silent) gunshot(f);
+        if (trapHit) log(f, `💥 ${a} beleakadt ${d} menedékénél egy medvecsapdába: -${trapHit} élet!`, 'hit');
         Admin.logEvent('pvp_attack', a, { target: d, hit, dmg: hit ? shot.amount : 0 });
         notify(d, '🔫 RÁD LŐTTEK!', `${a} megtámadott. Lőj vissza, menekülj vagy add meg magad!`);
         armTimer(f);
@@ -308,13 +318,44 @@ function setup(ctx) {
             f.turn = foe; f.round++; armTimer(f); push(f);
             return { ok: true };
         }
+        if (action === 'throw') {
+            let res = null;
+            const ra = await withPlayer(name, (p) => {
+                const item = itemDatabase[d.item];
+                const slot = item && item.type === 'throwable' && p.inventory.find(s => s.key === d.item && s.count > 0);
+                if (!slot) { res = { error: 'Nincs ilyen dobható fegyvered.' }; return { save: false }; }
+                slot.count -= 1; if (slot.count <= 0) p.inventory = p.inventory.filter(s => s !== slot);
+                res = { fx: item.throwFx || {}, name: item.name };
+                f.p[me] = snap(p, name);
+                return {};
+            });
+            if (res.error) return res;
+            if (ra && ra.p) sendPlayerState(name, ra.p);
+            if (res.fx.smoke) { log(f, `💨 ${name} füstgránátot dobott, és eltűnt a füstben!`, 'info'); return finish(f, null, 'fled', me); }
+            let dead = false, amount = 0;
+            const rd = await withPlayer(foeName, (p) => {
+                const def = playerStats(p).defense * CombatEngine.RULES.DEFENSE_PER_POINT * (1 - (res.fx.pierce || 0));
+                amount = Math.max(res.fx.dmg ? 1 : 0, Math.round((res.fx.dmg || 0) * R.DMG_MULT * (1 - Math.min(CombatEngine.RULES.DEFENSE_CAP, def))));
+                p.hp = Math.max(0, p.hp - amount);
+                if (p.hp <= 0) { dead = true; dropAll(p, f, foeName, name); }
+                f.p[foe] = snap(p, foeName);
+                return {};
+            });
+            if (rd && rd.p) sendPlayerState(foeName, rd.p);
+            if (res.fx.burn) f['burn' + foe] = 2;
+            log(f, `💥 ${name} eldobta: ${res.name} – -${amount} élet${res.fx.burn ? ', lángra kapott!' : ''}${res.fx.stun ? ', elvakult!' : ''}`, 'hit');
+            if (res.fx.loud) gunshot(f);
+            if (dead) return finish(f, me, 'kill');
+            if (res.fx.stun) { log(f, `⚡ ${foeName} elvakult: kimarad egy köre.`, 'info'); f.round++; armTimer(f); push(f); return { ok: true }; }
+            return endTurn(f, me, foe);
+        }
         // lövés (alapértelmezett; időtúllépéskor is ez történik)
         const slotReq = CombatEngine.WEAPON_SLOTS.includes(d.slot) ? d.slot : null;
         let shot = null, hit = false, cover = 0, dead = false;
         const ra = await withPlayer(name, (p) => { shot = shotDamage(p, slotReq || bestSlot(p), f); f.p[me] = snap(p, name); return {}; });
         const rd = await withPlayer(foeName, (p) => {
             cover = shelterCover(p, activePlayers[foeName]);
-            hit = random() < Math.max(0.25, R.HIT - cover);
+            hit = random() < Math.max(0.25, R.HIT + shot.hitBonus - cover);
             if (hit) {
                 const mit = 1 - Math.min(CombatEngine.RULES.DEFENSE_CAP, playerStats(p).defense * CombatEngine.RULES.DEFENSE_PER_POINT);
                 shot.amount = Math.max(1, Math.round(shot.amount * mit));
@@ -329,9 +370,21 @@ function setup(ctx) {
         if (ra && ra.p) sendPlayerState(name, ra.p);
         if (rd && rd.p) sendPlayerState(foeName, rd.p);
         log(f, `${d.auto ? '⏱️ ' : ''}🔫 ${name} lő (${shot.weapon})${hit ? ` – TALÁLAT: -${shot.amount} élet${shot.crit ? ' (kritikus!)' : ''}` : ' – mellé!'}${cover && hit === false ? ' 🏠' : ''}`, hit ? 'hit' : 'miss');
-        gunshot(f);
+        if (!shot.silent) gunshot(f);
         if (dead) return finish(f, me, 'kill');
+        return endTurn(f, me, foe);
+    }
+    // kör vége; ha a soron következő ég (molotov), előbb az égés sebez
+    async function endTurn(f, me, foe) {
         f.turn = foe; f.round++;
+        if (f['burn' + foe] > 0) {
+            f['burn' + foe] -= 1;
+            const foeName = f[foe]; let dead = false;
+            const r = await withPlayer(foeName, (p) => { p.hp = Math.max(0, p.hp - 8); if (p.hp <= 0) { dead = true; dropAll(p, f, foeName, f[me]); } f.p[foe] = snap(p, foeName); return {}; });
+            if (r && r.p) sendPlayerState(foeName, r.p);
+            log(f, `🔥 ${foeName} ég: -8 élet.`, 'hit');
+            if (dead) return finish(f, me, 'kill');
+        }
         if (f.round > R.MAX_ROUNDS) { log(f, '⏳ A harc elhúzódott: mindketten visszavonultak.', 'info'); return finish(f, null, 'draw'); }
         armTimer(f); push(f);
         return { ok: true };
@@ -382,6 +435,7 @@ function setup(ctx) {
         const items = [];
         (p.inventory || []).forEach(s => items.push({ key: s.key, count: s.count, dur: s.dur }));
         Object.entries(p.equipment || {}).forEach(([slot, key]) => { if (key) items.push({ key, count: 1, dur: p.equipmentDur && p.equipmentDur[slot] }); });
+        Object.values(p.mods || {}).forEach(key => { if (key) items.push({ key, count: 1 }); }); p.mods = {};
         const money = p.money || 0;
         p.inventory = []; Object.keys(p.equipment || {}).forEach(k => { p.equipment[k] = null; }); p.equipmentDur = {}; p.money = 0;
         f.drop = { items, money, victim, killer };

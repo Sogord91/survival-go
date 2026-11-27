@@ -110,6 +110,7 @@ module.exports = {
     // --- TÖBBI JÁTÉKOS ---
     PLAYER_VIEW_METERS: 150,            // ennyire látod a többi játékost
     PLAYER_VIEW_NIGHT_METERS: 30,       // éjszaka, működő fényforrás nélkül
+    WALKIE_METERS: 5000,                // adó-vevővel a csapattársak ennyiről látják egymást (v0.1.34)
     PLAYER_VIEW_BINOCULARS_METERS: 300, // távcsővel a leltárban (ha nem korlátoz a sötét)
     AVATARS: ['avatar1.png', 'avatar2.png', 'avatar3.png', 'avatar4.png'], // csak ezek választhatók (a public/images/avatars mappából)
 
