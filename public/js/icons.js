@@ -1,0 +1,58 @@
+// icons.js – EMOJI HELYETT JÁTÉKIKONOK (v0.1.28)
+// Minden emoji a játékban egységes ikonra cserélődik (game-icons.net, CC BY 3.0 – a wikiben feltüntetve).
+// Az ikonok egy SVG-ben vannak (images/gi.svg), amit egyszer betöltünk az oldalba.
+// Az átalakítás automatikus: a megjelenő szövegekben (gombok, napló, ablakok, térkép) az emojit ikon váltja fel,
+// így a régi kódot és a szerver üzeneteit nem kell egyenként átírni. Új ikon: egy sor az SG_EMOJI listában.
+(function () {
+    const SG_EMOJI = {"📦": "cardboard-box", "🏕": "camping-tent", "🎁": "present", "⚠": "hazard-sign", "💎": "cut-diamond", "🛡": "checked-shield", "🔧": "monkey-wrench", "🏆": "trophy-cup", "🔫": "pistol-gun", "⭐": "round-star", "🎒": "backpack", "🏚": "ancient-ruins", "⚔": "crossed-swords", "🎯": "targeting", "🔥": "flame", "👥": "two-shadows", "🥾": "boots", "🤝": "shaking-hands", "🗺": "treasure-map", "✉": "envelope", "🎄": "xmas-tree", "💥": "explosion-rays", "📌": "pin", "❄": "snowflake-1", "💀": "skull-crossed-bones", "💬": "talk", "📸": "photo-camera", "📍": "position-marker", "⚡": "bolt", "👑": "crown", "🥫": "opened-food-can", "🩹": "sticking-plaster", "🧥": "leather-armor", "👤": "person", "🌙": "moon", "💊": "pill", "🪖": "brodie-helmet", "🔋": "battery-pack", "🎖": "medal", "🔨": "claw-hammer", "🛠": "spanner", "☢": "radioactive", "📜": "scroll-unfurled", "🪵": "log", "🔔": "ringing-bell", "🧭": "compass", "🏃": "run", "📮": "mailbox", "⚙": "cog", "🔄": "cycle", "👖": "trousers", "💰": "coins", "🧱": "brick-wall", "⏳": "hourglass", "🚫": "cancel", "📲": "smartphone", "🏠": "house", "🔦": "flashlight", "💧": "water-drop", "📡": "satellite-communication", "👜": "swap-bag", "🧪": "test-tubes", "🧰": "toolbox", "🔩": "gear-hammer", "🦺": "kevlar-vest", "☕": "coffee-cup", "📅": "calendar", "✏": "pencil", "🔒": "padlock", "🏛": "greek-temple", "✨": "sparkles", "⏱": "stopwatch", "🐺": "wolf-head", "☀": "sun", "🏹": "bow-arrow", "🪓": "wood-axe", "💨": "wind-slap", "🔎": "magnifying-glass", "🔍": "magnifying-glass", "❤": "heart-beats", "💡": "light-bulb", "🔌": "plug", "🚪": "door", "🎡": "carousel", "🧟": "shambling-zombie", "🛏": "bed", "🔕": "silenced", "📤": "share", "📣": "megaphone", "🚶": "walk", "🗡": "stiletto", "🏷": "price-tag", "🌲": "pine-tree", "🍀": "clover", "✅": "check-mark", "👹": "oni", "⛽": "gas-pump", "☣": "biohazard", "🔪": "kitchen-knives", "🪨": "stone-pile", "🧴": "potion-ball", "👟": "converse-shoe", "🏦": "bank", "🎅": "santa-hat", "🏳": "flying-flag", "🦅": "eagle-head", "🐻": "bear-head", "🦊": "fox-head", "⛰": "mountains", "🏴": "flying-flag", "👋": "hand", "😮": "surprised", "🎉": "party-popper", "👁": "eye-target", "📯": "hunting-horn", "🍺": "beer-stein", "🚒": "truck", "⛪": "church", "🏭": "factory", "🚗": "car-wheel", "🏨": "house", "🩸": "drop", "🍲": "cauldron", "🌿": "herbs-bundle", "🪛": "screwdriver", "🏅": "medal", "♻": "recycle", "🐟": "fish-cooked", "🥩": "steak", "🍯": "honeypot", "🧻": "paper", "🏏": "baseball-bat", "⛏": "mining", "🪢": "rope-coil", "🧢": "billed-cap", "🧶": "wool", "⛑": "medical-pack", "👕": "shirt", "🧑": "person", "🌀": "whirlwind", "📿": "necklace", "🪙": "coins", "📘": "book-cover", "🪟": "window", "🧵": "sewing-string", "🚨": "siren", "✂": "scissors", "🪏": "spade", "🏮": "lantern-flame", "🔭": "telescope", "🥉": "podium-third", "❌": "cancel", "📖": "open-book", "📓": "notebook", "🐞": "ladybug", "🙂": "person", "🌟": "falling-star", "🍱": "meal", "💠": "diamond-hard", "☠": "skull-crossed-bones", "🔗": "linked-rings", "🧩": "puzzle", "🗓": "calendar", "🏘": "village", "🚩": "flag-objective", "❔": "help", "⌛": "hourglass", "🐍": "snake", "🦂": "scorpion", "🕷": "spider-alt", "🦉": "owl", "🐗": "boar", "🦌": "deer", "🐝": "bee", "⚓": "anchor", "👊": "fist", "🛒": "shopping-cart", "🏪": "shop", "🏥": "hospital-cross", "🚧": "barrier", "🏫": "school-bag", "📚": "bookshelf", "⚖": "scales", "🎭": "drama-masks", "🚂": "steam-locomotive", "🚜": "farm-tractor", "🌾": "wheat", "🐎": "horse-head", "🏋": "weight-lifting-up", "⚽": "soccer-ball", "🏊": "swimfins", "⚰": "coffin", "💢": "enrage", "💪": "biceps", "😴": "night-sleep", "🫀": "heart-organ", "🤫": "silence", "🪶": "feather", "📏": "measure-tape", "🧤": "gloves", "🗝": "key", "📐": "pencil-ruler", "🍫": "chocolate-bar", "🍖": "meat", "🍘": "cookie", "🍑": "peach", "🥓": "bacon", "🥜": "peanut", "🍜": "noodles", "🥣": "bowl-of-rice", "🍞": "bread", "🫓": "sliced-bread", "🍇": "grapes", "🥔": "potato", "🍅": "tomato", "🥕": "carrot", "🍪": "cookie", "🧁": "cupcake", "🍟": "french-fries", "🌭": "hot-dog", "🥃": "brandy-bottle", "🚰": "water-tank", "🧃": "soda-can", "🍍": "pineapple", "🥥": "coconuts", "🍵": "teapot", "💉": "syringe", "🪡": "sewing-needle", "🎗": "ribbon", "👝": "knapsack", "🎩": "top-hat", "🕶": "sunglasses", "😷": "gas-mask", "🩳": "shorts", "🩴": "sandal", "🦾": "mechanical-arm", "💍": "ring", "⌚": "pocket-watch", "🦷": "tooth", "💚": "hearts", "🖼": "mona-lisa", "💿": "compact-disc", "👼": "angel-wings", "🧊": "ice-cube", "🐤": "chicken", "🎶": "musical-notes", "🪐": "ringed-planet", "🪫": "battery-25", "🧈": "butter", "🐂": "bull-horns", "📻": "radio-tower", "📰": "newspaper", "🪞": "mirror-mirror", "🧦": "socks", "🦯": "walk", "⛓": "crossed-chains", "🫙": "mason-jar", "🛢": "barrel", "🫗": "pouring-pot", "🕯": "candle-light", "🧽": "cube", "🗜": "clamp", "🪚": "hand-saw", "🪝": "hook", "🔑": "key", "🧉": "coffee-mug", "🥤": "soda-can", "🥇": "podium-winner", "🥈": "podium-second", "🍽": "knife-fork", "👞": "leather-boot", "🗑": "trash-can", "🎵": "musical-notes", "📨": "envelope", "🐀": "rat", "🐕": "sitting-dog", "🦹": "domino-mask", "🧠": "brain", "📢": "megaphone", "📩": "envelope", "🚀": "rocket", "♾": "infinity", "🪩": "ornament"};
+    const SG_ICON_COLOR = {"heart-beats": "#d6453a", "drop": "#c0392b", "water-drop": "#5b9bd0", "flame": "#e0873a", "hazard-sign": "#e0b13a", "radioactive": "#d9c94a", "biohazard": "#9fc24a", "cut-diamond": "#7fd0e0", "money-stack": "#d9c58a", "coins": "#d9c58a", "pine-tree": "#7fae5a", "present": "#d65a4a", "snowflake-1": "#bfe3f2", "bolt": "#f0d050", "sun": "#f0c040", "moon": "#d9d2a8", "skull-crossed-bones": "#e9e3cf", "cancel": "#d6453a", "check-mark": "#8fd14a", "ringing-bell": "#e0b13a", "round-star": "#f0c94a", "crown": "#f0c94a", "trophy-cup": "#e0be5a", "medal": "#e0be5a", "clover": "#7fc25a", "pill": "#e9e3cf", "sticking-plaster": "#e0b08a", "battery-pack": "#9fc24a", "light-bulb": "#f0d77a"};
+    const keys = Object.keys(SG_EMOJI).sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const RE = new RegExp('(' + keys.join('|') + ')\ufe0f?', 'gu');
+    const TEST = new RegExp('(' + keys.join('|') + ')', 'u');
+    // FESTETT IKONOK: ha egy jelhez elkészül a festett kép (images/icons/<név>.webp), ide kerül a neve, és onnantól az jelenik meg
+    const SG_PAINTED = new Set(["ancient-ruins", "backpack", "battery-pack", "bolt", "boots", "calendar", "camping-tent", "cancel", "cardboard-box", "carousel", "checked-shield", "claw-hammer", "cog", "coins", "compass", "crossed-swords", "crown", "cut-diamond", "cycle", "envelope", "flag-objective", "flame", "greek-temple", "hazard-sign", "heart-beats", "hourglass", "house", "lantern-flame", "magnifying-glass", "mailbox", "medal", "monkey-wrench", "moon", "opened-food-can", "ornament", "padlock", "pencil", "person", "photo-camera", "pill", "pin", "pistol-gun", "position-marker", "present", "puzzle", "radioactive", "ringing-bell", "round-star", "scroll-unfurled", "shaking-hands", "shambling-zombie", "skull-crossed-bones", "smartphone", "snowflake-1", "spanner", "stiletto", "stopwatch", "talk", "targeting", "treasure-map", "trophy-cup", "village", "walk", "whirlwind", "wind-slap", "wolf-head", "xmas-tree"]);
+    function sgIcon(name, cls, color) {
+        if (SG_PAINTED.has(name)) return `<img class="gi gi-img${cls ? ' ' + cls : ''}" src="/images/icons/${name}.webp" alt="" aria-hidden="true">`;
+        const c = color || SG_ICON_COLOR[name];
+        return `<svg class="gi${cls ? ' ' + cls : ''}" aria-hidden="true"${c ? ` style="color:${c}"` : ''}><use href="#gi-${name}"></use></svg>`;
+    }
+    function sgEmojiIcon(e, cls) { const n = SG_EMOJI[String(e || '').replace(/\ufe0f/g, '')]; return n ? sgIcon(n, cls) : (e || ''); }
+    // szövegben lévő emojik cseréje HTML-re (innerHTML-be szánt szövegekhez)
+    function sgIconize(html) { return String(html).replace(RE, (m, e) => sgIcon(SG_EMOJI[e])); }
+    window.SG_EMOJI = SG_EMOJI; window.sgIcon = sgIcon; window.sgEmojiIcon = sgEmojiIcon; window.sgIconize = sgIconize;
+
+    const SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, OPTION: 1, SELECT: 1, TITLE: 1, NOSCRIPT: 1, svg: 1, SVG: 1 };
+    function convertText(node) {
+        const t = node.nodeValue; if (!t || !TEST.test(t)) return;
+        const p = node.parentNode; if (!p || SKIP[p.nodeName] || p.closest && p.closest('svg,[data-noicon]')) return;
+        const frag = document.createElement('span'); frag.innerHTML = t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(RE, (m, e) => sgIcon(SG_EMOJI[e]));
+        const f = document.createDocumentFragment(); while (frag.firstChild) f.appendChild(frag.firstChild);
+        p.replaceChild(f, node);
+    }
+    function walk(root) {
+        if (root.nodeType === 3) return convertText(root);
+        if (root.nodeType !== 1 || SKIP[root.nodeName]) return;
+        const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null); const list = [];
+        while (tw.nextNode()) if (TEST.test(tw.currentNode.nodeValue)) list.push(tw.currentNode);
+        list.forEach(convertText);
+    }
+    let queue = new Set(), scheduled = false;
+    function flush() { scheduled = false; const q = queue; queue = new Set(); q.forEach(n => { if (n.isConnected) walk(n); }); }
+    const mo = new MutationObserver((muts) => {
+        for (const m of muts) {
+            if (m.type === 'characterData') queue.add(m.target);
+            else m.addedNodes.forEach(n => queue.add(n));
+        }
+        if (!scheduled) { scheduled = true; requestAnimationFrame(flush); }
+    });
+    function start() {
+        // az ikonkészlet beágyazása, hogy a <use href="#gi-…"> mindenhol működjön
+        fetch('/images/gi.svg').then(r => r.text()).then(svg => {
+            const box = document.createElement('div'); box.style.display = 'none'; box.setAttribute('aria-hidden', 'true'); box.innerHTML = svg;
+            document.body.insertBefore(box, document.body.firstChild);
+        }).catch(() => { });
+        walk(document.body);
+        mo.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();

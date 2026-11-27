@@ -50,7 +50,7 @@
                      title: (q) => `Nyiss ki ${q.target} ajándékcsomagot`, hint: 'Hétvégén 9 és 19 óra között az utcákon, a közeledben.' },
         d_advent:  { scope: 'daily', move: false, icon: '🗓️', targets: [1, 1, 1], need: 'advent', xp: 30, money: 20,
                      title: () => 'Nyisd ki a mai adventi ablakot', hint: 'A Küldetés gomb alatt, az adventi naptárban.' },
-        d_orn:     { scope: 'daily', move: false, icon: '✨', targets: [1, 1, 2], need: 'trees', xp: 40, money: 25,
+        d_orn:     { scope: 'daily', move: false, icon: '🪩', targets: [1, 1, 2], need: 'trees', xp: 40, money: 25,
                      title: (q) => `Barkácsolj ${q.target > 1 ? q.target + ' karácsonyi díszt' : 'egy karácsonyi díszt'}`, hint: 'Barkács → Karácsony.' },
         // --- napi, otthon is megy ---
         craft:     { scope: 'daily', move: false, icon: '🔨', targets: [2, 3, 4], xp: 40, money: 25,
@@ -307,7 +307,7 @@
     function describe(quest) {
         const d = DEFS[quest.kind];
         if (!d) return { icon: '❔', title: quest.kind, hint: '', move: false };
-        return { icon: d.icon, title: d.title(quest), hint: d.hint, move: d.move, ...rewardOf(quest) };
+        return { icon: d.icon, title: d.title(quest), hint: d.hint, move: d.move, need: d.need, ...rewardOf(quest) };
     }
     // A kliensnek elég ennyi (a bejárt területek listája nem kell neki)
     function publicView(q) {

@@ -8,7 +8,7 @@ function questRowHtml(q, index, canReroll) {
     const reroll = canReroll && !q.done
         ? `<button class="sg-qs-swap" onclick="questReroll(${index})" title="Csere (naponta 1×)">⟳ CSERE</button>` : '';
     return `<div class="sg-q-step sg-qs${q.done ? ' done' : ''}${d.move ? ' move' : ''}">
-        <span class="sg-q-check">${q.done ? '✓' : d.icon}</span>
+        <span class="sg-q-check ${d.need ? 'cat-event' : d.move ? 'cat-move' : 'cat-item'}">${q.done ? '✓' : d.icon}</span>
         <div style="flex:1;min-width:0"><div class="sg-q-t">${escapeAttr(d.title)}</div>
             ${q.done ? '' : `<div class="sg-q-h">${escapeAttr(d.hint)}</div>`}
             <div class="sg-qs-bar"><i style="width:${pct}%"></i><span>${SurvivalQuests.progressText(q)}</span></div>

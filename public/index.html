@@ -582,6 +582,19 @@
         .sg-so-camp-img { display: block; width: 100%; max-width: 320px; margin: 6px auto; border: 1px solid rgba(0,0,0,.6); box-shadow: 0 2px 6px rgba(0,0,0,.5); }
 
 
+
+        /* ===== JÁTÉKIKONOK az emojik helyén (v0.1.28, js/icons.js) ===== */
+        svg.gi, img.gi { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.2em; fill: currentColor; flex: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.55)); }
+        img.gi-img { object-fit: contain; }
+        /* küldetés-ikonok: színkódolt kocka (mozgás zöld, ünnepi piros, tárgyas barna) */
+        .sg-q-check { width: 34px !important; height: 34px !important; color: #efe6c8; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.14) 0 2px, transparent 2px 4px) !important; box-shadow: inset 0 0 0 1px rgba(233,227,207,.18); }
+        .sg-q-check .gi { width: 22px; height: 22px; vertical-align: 0; }
+        .sg-q-check img.gi { width: 30px; height: 30px; }
+        img.gi { width: 1.35em; height: 1.35em; vertical-align: -0.3em; }
+        .sg-q-check.cat-move { background-color: #3d4a2a !important; border-color: #6f8f3a !important; }
+        .sg-q-check.cat-event { background-color: #4f2a28 !important; border-color: #9a4a3a !important; }
+        .sg-q-check.cat-item { background-color: #4a3a22 !important; border-color: #8a6a3a !important; }
+        .sg-qs.done .sg-q-check { background-color: #2f3a22 !important; color: #8fd14a; }
         /* ===== Menüsor: nagy kerek Készlet középen, Menü az óra alatt (v0.1.27.4) ===== */
         .sg-nav-orb { position: relative; overflow: visible; }
         .sg-orb { position: relative; display: flex; align-items: center; justify-content: center; width: 74px; height: 74px; margin-top: -34px; border-radius: 50%;
@@ -1995,6 +2008,7 @@
     <script src="js/premium-ui.js"></script>
     <script src="js/shelter-ui.js"></script>
     <script src="js/hub.js"></script>
+    <script src="js/icons.js"></script>
     <script src="/js/auth.js"></script>
 </body>
 </html>
