@@ -160,7 +160,7 @@
         .sg-night { position: absolute; right: 2px; top: calc(100% + 6px); padding: 2px 7px; background: rgba(21,23,15,.92); border: 1px solid #3f4433;
             font: 700 10px var(--sg-font); letter-spacing: .1em; color: var(--sg-thread); white-space: nowrap; }
 
-        .sg-bottom { position: absolute; z-index: 1000; left: 14px; right: 14px; bottom: calc(var(--sg-safe-b) + 100px); pointer-events: none; }
+        .sg-bottom { position: absolute; z-index: 1000; left: 14px; right: 14px; bottom: calc(var(--sg-safe-b) + 108px); pointer-events: none; }
         .sg-chips { display: flex; gap: 14px; margin-bottom: 8px; font: 700 11px var(--sg-font); letter-spacing: .14em; color: #bdb8a8; text-shadow: 0 1px 2px #000; }
         .sg-chips b { color: #f5f5f4; }
         .sg-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -1343,6 +1343,27 @@
         /* alsó menüsor: vászonsáv fém végekkel, középen kivágás a kerek gombnak */
         .nav-bar { background: none !important; border: 0 !important; box-shadow: none !important; border-style: solid !important; border-color: transparent !important; border-width: 4px 20px 0 !important; border-image: url(/images/hud/navbar.webp) 18 105 0 fill / 6px 24px 0 stretch !important; padding-left: 0 !important; padding-right: 0 !important; }
         .nav-bar:before { display: none !important; }
+        /* a kerek gomb gyűrűje ne lógjon a feliratba és a csíkokba (v0.1.31.1) */
+        .sg-orb { width: 64px !important; height: 64px !important; margin-top: -22px !important; }
+        .sg-orb::after { inset: -4px !important; }
+        .nav-btn .sg-orb img { width: 46px !important; height: 46px !important; }
+        .sg-nav-orb span { margin-top: 7px !important; }
+        /* skinek (v0.1.31) */
+        img.sg-skin-tint.sg-skin-rust { filter: sepia(.9) saturate(2.2) hue-rotate(-18deg) brightness(.85) contrast(1.1); }
+        img.sg-skin-tint.sg-skin-frost { filter: grayscale(.4) sepia(.2) hue-rotate(170deg) saturate(1.6) brightness(1.15); }
+        .sg-paint-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; margin: 6px 0; }
+        .sg-paint-grid .inv-tile { aspect-ratio: 1; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .sg-paint-grid .inv-tile img { width: 80%; height: 80%; object-fit: contain; }
+        /* Rozsdás szett: keret a HUD-avataron és a jelölőn, címtáblák */
+        .sg-ava.cos-frame_rust_s1::before { background-image: url(/images/premium/rust_frame.webp) !important; inset: -9px !important; }
+        .sg-marker.cos-frame_rust_s1 { border-color: transparent !important; background: url(/images/premium/rust_frame.webp) center / 118% 118% no-repeat, #3a3f2c !important; }
+        .sg-marker-title.t-title_rust_s1, .sg-marker-title.t-title_rust_vet, .sg-marker-title.t-title_rust_s { background: center / 100% 100% no-repeat !important; border: 0 !important; padding: 3px 10px !important; color: #ffe0c0 !important; text-shadow: 0 1px 2px #000; }
+        .sg-marker-title.t-title_rust_s1 { background-image: url(/images/premium/rust_title1.webp) !important; padding-top: 9px !important; }
+        .sg-marker-title.t-title_rust_vet { background-image: url(/images/premium/rust_title2.webp) !important; padding: 3px 16px !important; }
+        .sg-marker-title.t-title_rust_s { background-image: url(/images/premium/rust_title3.webp) !important; }
+        .sg-ava.cos-frame_frost26::before { background-image: url(/images/premium/frost_frame.webp) !important; inset: -8px !important; }
+        .sg-marker.cos-frame_frost26 { border-color: transparent !important; background: url(/images/premium/frost_frame.webp) center / 118% 118% no-repeat, #3a3f2c !important; }
+        .sg-rust-emb { width: 1.5em; height: 1.5em; vertical-align: -0.4em; object-fit: contain; }
     </style>
 </head>
 <body class="overflow-hidden">

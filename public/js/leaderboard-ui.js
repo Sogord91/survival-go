@@ -55,8 +55,8 @@ function lbRender(loading) {
         html += `<div class="sg-lb-season"><div><b>${d.monthName.toUpperCase()}</b> · ${d.rewarded ? 'SZEZON' : 'PRÓBASZEZON'}</div><div>${lbLeft(d.msLeft)}${d.me && !d.me.shadow && lbBoard !== 'teams' ? ` <button class="sg-lb-me" onclick="lbJumpMe()">📍 ${d.me.rank}.</button>` : ''}</div></div>`;
         if (lbBoard === 'xp') {
             html += d.rewarded
-                ? `<div class="sg-lb-reward"><div class="sg-lb-rh">🟫 ROZSDÁS SZETT · a hónap végén</div>${S.REWARDS.map(r => `<div><b>${r.from}–${r.to}.</b> ${escapeAttr(r.label)}</div>`).join('')}<small>Legalább ${S.MIN_XP_FOR_REWARD} szezonpont kell.</small></div>`
-                : `<div class="sg-lb-reward"><div class="sg-lb-rh">🟫 ROZSDÁS SZETT · 2027 januárjától</div>December próbaszezon: ismerd meg a ranglistát! Januártól a hónap legjobbjai kapják a Rozsdás szettet (keret, cím, fegyverfesték).</div>`;
+                ? `<div class="sg-lb-reward"><div class="sg-lb-rh"><img class="sg-rust-emb" src="/images/premium/rust_emblem.webp" alt=""> ROZSDÁS SZETT · a hónap végén</div>${S.REWARDS.map(r => `<div><b>${r.from}–${r.to}.</b> ${escapeAttr(r.label)}</div>`).join('')}<small>Legalább ${S.MIN_XP_FOR_REWARD} szezonpont kell.</small></div>`
+                : `<div class="sg-lb-reward"><div class="sg-lb-rh"><img class="sg-rust-emb" src="/images/premium/rust_emblem.webp" alt=""> ROZSDÁS SZETT · 2027 januárjától</div>December próbaszezon: ismerd meg a ranglistát! Januártól a hónap legjobbjai kapják a Rozsdás szettet (keret, cím, fegyverfesték).</div>`;
         }
     }
     html += `<div class="sg-lb-desc">${escapeAttr(b ? b.desc : '')}</div>`;

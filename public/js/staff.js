@@ -8,7 +8,7 @@ function renderStaffHud() {
         // stáb keret, vagy ha nincs, a prémium keret (v0.1.16)
         const S = window.SurvivalShop;
         const f = !r && S && player.cosmetic && S.BY_KEY[player.cosmetic.frame];
-        ava.className = 'sg-ava' + (r ? ` sg-role sg-role-${player.staffRole}` : '') + (f ? ` sg-cos${f.glow ? ' glow' : ''}${f.pulse ? ' pulse' : ''}${f.style === 'camo' ? ' camo' : ''}` : '');
+        ava.className = 'sg-ava' + (r ? ` sg-role sg-role-${player.staffRole}` : '') + (f ? ` sg-cos cos-${f.key}${f.glow ? ' glow' : ''}${f.pulse ? ' pulse' : ''}${f.style === 'camo' ? ' camo' : ''}` : '');
         ava.style.setProperty('--role-c', r ? r.color : '');
         ava.style.setProperty('--cos-c', f ? f.color : '');
     }

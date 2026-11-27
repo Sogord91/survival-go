@@ -9,8 +9,33 @@ const GEM = '<img class="sg-gem" src="/images/premium/gem.webp" alt="credit">';
 const priceHtml = (credits) => `${GEM}${credits} <span style="opacity:.7">(≈ ${PS().fmtHuf(PS().huf(credits))})</span>`;
 const pImg = (name) => `/images/premium/${name}.webp`;
 
+// FESTÉKEK (v0.1.31): a festék egy tárgyfajtára kerül (pl. minden AK-47-ed rozsdás lesz); halálkor sem vész el
+let paintSel = null;
+function paintsHtml(paints) {
+    const S = window.SurvivalShop, skins = premium.skins || {};
+    const painted = Object.keys(skins);
+    if (!paints.length && !painted.length) return '';
+    let h = `<div class="sg-prem-h">FESTÉKEK ÉS SKINEK</div>`;
+    h += paints.map(k => { const p = S.BY_KEY[k]; return `<div class="sg-found-row" style="--tc:${p.style === 'rust' ? '#c0622a' : '#8fd0ee'}"><img src="${pImg(p.img)}" alt=""><div><b>${pEsc(p.name)} ×${premium.keys[k]}</b><small>${pEsc(p.desc || '')}</small></div>
+        <button class="sg-pill" onclick="paintPick('${k}')">FELFESTEM</button></div>`; }).join('');
+    if (paintSel) {
+        const p = S.BY_KEY[paintSel];
+        // választható tárgyak: minden fajta, ami ráfér (a fiókra kerül, nem egy példányra)
+        const list = Object.entries(itemDatabase).filter(([key, it]) => S.paintFits(p, it));
+        h += `<div class="sg-prem-h">MIRE KERÜLJÖN? <small>(${pEsc(p.name)})</small></div><p class="sg-ann-from">A festés a tárgy minden példányára érvényes a fiókodban, és halálkor sem vész el. A festék elfogy.</p>
+            <div class="sg-paint-grid">${list.map(([key, it]) => `<button class="inv-tile${skins[key] === p.style ? ' selected' : ''}" title="${pEsc(it.name)}" onclick="paintApply('${paintSel}','${key}')">${tileIconHtml(Object.assign({}, it, { _key: key, _style: p.style }))}</button>`).join('')}</div>
+            <button class="sg-pill" style="margin-top:6px" onclick="paintPick(null)">MÉGSE</button>`;
+    }
+    if (painted.length) h += `<div class="sg-prem-h">FESTETT TÁRGYAID (${painted.length})</div><div class="sg-paint-grid">${painted.filter(k => itemDatabase[k]).map(k => `<button class="inv-tile" title="${pEsc(itemDatabase[k].name)} – koppints a levételhez" onclick="if(confirm('Leveszed a festést erről: ${pEsc(itemDatabase[k].name).replace(/'/g, '')}? A festék nem jár vissza.'))socket.emit('paint_remove',{item:'${k}'})">${tileIconHtml(Object.assign({}, itemDatabase[k], { _key: k }))}</button>`).join('')}</div>`;
+    return h;
+}
+function paintPick(k) { paintSel = k; renderPremium(); }
+function paintApply(paint, item) { paintSel = null; socket.emit('paint_apply', { paint, item }); }
+
 socket.on('premium_state', (data) => {
-    premium = Object.assign({ owned: [], crates: {}, keys: {}, orders: [] }, data || {});
+    premium = Object.assign({ owned: [], crates: {}, keys: {}, orders: [], skins: {} }, data || {});
+    window.sgSkins = premium.skins || {};
+    if (typeof updateUI === 'function') try { updateUI(); } catch (e) { /* */ }
     const btn = document.getElementById('btn-open-premium');
     // zárt boltnál csak akkor látszik (Gyűjtemény néven), ha már van nyert kinézete vagy kristálya
     const hasStuff = (premium.owned || []).length > 0 || (premium.credits || 0) > 0;
@@ -90,7 +115,7 @@ function renderPremium() {
         const paints = Object.keys(premium.keys || {}).filter(k => S.BY_KEY[k] && S.BY_KEY[k].paint && premium.keys[k] > 0);
         body.innerHTML = msg + `<div class="sg-prem-h">KERETEK ÉS CÍMEK (${mine.length})</div>` +
             (mine.length ? `<div class="sg-prem-grid">${mine.map(c => shopCard(c, eqBtn(c))).join('')}</div>` : '<p class="sg-ann-from">Még nincs nyert kinézeted. Az adventi naptárban és a szerencsekeréken szerezhetsz!</p>') +
-            (paints.length ? `<div class="sg-prem-h">FESTÉKEK</div><p class="sg-ann-from">${paints.map(k => `${pEsc(S.BY_KEY[k].name)} ×${premium.keys[k]}`).join(' · ')} – a skinrendszerrel festheted majd fel.</p>` : '') +
+            paintsHtml(paints) +
             `<p class="sg-ann-from" style="margin-top:10px">${premium.credits ? `💎 ${premium.credits} kristályod van. ` : ''}A bolt később nyílik; a nyert kinézeteid és kristályaid addig is megmaradnak, halálkor sem vesznek el.</p>`;
         return;
     }
@@ -129,6 +154,7 @@ function renderPremium() {
         body.innerHTML = msg +
             `<div class="sg-prem-h">KERETEK ÉS CÍMEK (${mine.length}/${S.COSMETICS.length})</div>` +
             (mine.length ? `<div class="sg-prem-grid">${mine.map(c => shopCard(c, eqBtn(c))).join('')}</div>` : '<p class="sg-ann-from">Még nincs kinézeted. Nézz körül a Boltban vagy nyiss ládát!</p>') +
+            paintsHtml(Object.keys(premium.keys || {}).filter(k => S.BY_KEY[k] && S.BY_KEY[k].paint && premium.keys[k] > 0)) +
             `<div class="sg-prem-h">EGYÉB</div><p class="sg-ann-from">Prémium hátizsák-hely: +${premium.slotsBought * 2} · Ládák: ${Object.values(premium.crates).reduce((a, b) => a + b, 0)} · Kulcsok: ${premium.keys.key_basic || 0}</p>` +
             (renames ? `<div class="sg-prem-card"><b>🏷 Névváltoztatás (${renames})</b><small>Az új neveddel kell majd belépned. 3–16 betű vagy szám.</small><input id="premium-newname" maxlength="16" style="width:100%;padding:6px;margin-bottom:5px;background:#ece6d6;color:#2a2620;border:2px solid #15170f"><button onclick="const n=document.getElementById('premium-newname').value.trim(); if(n && confirm('Biztos? Az új neved: '+n)) socket.emit('premium_rename',{newName:n})">NÉV MEGVÁLTOZTATÁSA</button></div>` : '') +
             `<div class="sg-prem-h">RENDELÉSEIM</div>` + (premium.orders.length ? `<table class="sg-odds">${premium.orders.map(o => `<tr><td>${pEsc(o.code)}</td><td>${S.fmtHuf(o.huf)} → ◆ ${o.credits}</td><td class="n">${{ pending: '⏳ utalásra vár', paid: '✔ jóváírva', cancelled: '✕ törölve', expired: '⌛ lejárt' }[o.status] || o.status}</td></tr>`).join('')}</table>` : '<p class="sg-ann-from">Még nincs rendelésed.</p>');

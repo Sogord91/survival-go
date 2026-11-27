@@ -354,13 +354,29 @@ function updateWatch() {
 }
 setInterval(updateWatch, 15000);
 
+// SKINEK (v0.1.31): a festett tárgyfajta képe images/items/skin_<stílus>/<kulcs>.webp; ha nincs ilyen kép, színezéssel
+const SG_SKIN_IMG = { rust: new Set(['6b43_armor', 'ak47', 'altyn_helmet', 'approach_shoes', 'attack_backpack', 'axe', 'baseball_bat', 'beanie', 'bow', 'canvas_shoes', 'cap', 'combat_boots', 'combat_shotgun', 'crowbar', 'daypack', 'desert_boots', 'double_barrel', 'earflap_cap', 'exo_skeleton', 'expedition_backpack', 'fanny_pack', 'field_satchel', 'fire_helmet', 'firefighter_suit', 'folding_shovel', 'gauss_gun', 'gorka_jacket', 'gorka_pants', 'gp5_mask', 'half_respirator', 'hard_hat', 'hiking_boots', 'hivis_vest', 'hoodie', 'hunting_rifle', 'hunting_vest', 'improvised_bow', 'jeans', 'kevlar_vest', 'knife', 'leather_backpack', 'leather_jacket', 'leather_pants', 'm4a1_carbine', 'm50_gas_mask', 'machete', 'makarov', 'market_tote', 'medical_bag', 'military_jacket', 'motorcycle_helmet', 'nail_club', 'night_vision', 'paca_vest', 'parka', 'pickaxe', 'pipe_club', 'pipe_pistol', 'revolver_nagant', 'rpk_machinegun', 'rubber_boots', 'school_backpack', 'seva_suit', 'shorts', 'shotgun', 'shovel', 'sks_rifle', 'sledgehammer', 'sling', 'slippers', 'sneakers', 'spear', 'steel_toe_boots', 'stone_axe', 'submachine_ppsh', 'tactical_backpack', 'tactical_helmet', 'tactical_pants', 'tshirt', 'ushanka', 'val_rifle', 'vintorez_sniper', 'windbreaker', 'wool_trousers', 'wrench']), frost: new Set(['6b43_armor', 'ak47', 'altyn_helmet', 'approach_shoes', 'attack_backpack', 'axe', 'baseball_bat', 'beanie', 'bow', 'canvas_shoes', 'cap', 'combat_boots', 'combat_shotgun', 'crowbar', 'daypack', 'desert_boots', 'double_barrel', 'earflap_cap', 'exo_skeleton', 'expedition_backpack', 'fanny_pack', 'field_satchel', 'fire_helmet', 'firefighter_suit', 'folding_shovel', 'gauss_gun', 'gorka_jacket', 'gorka_pants', 'gp5_mask', 'half_respirator', 'hard_hat', 'hiking_boots', 'hivis_vest', 'hoodie', 'hunting_rifle', 'hunting_vest', 'improvised_bow', 'jeans', 'kevlar_vest', 'knife', 'leather_backpack', 'leather_jacket', 'leather_pants', 'm4a1_carbine', 'm50_gas_mask', 'machete', 'makarov', 'market_tote', 'medical_bag', 'military_jacket', 'motorcycle_helmet', 'nail_club', 'night_vision', 'paca_vest', 'parka', 'pickaxe', 'pipe_club', 'pipe_pistol', 'revolver_nagant', 'rpk_machinegun', 'rubber_boots', 'school_backpack', 'seva_suit', 'shorts', 'shotgun', 'shovel', 'sks_rifle', 'sledgehammer', 'sling', 'slippers', 'sneakers', 'spear', 'steel_toe_boots', 'stone_axe', 'submachine_ppsh', 'tactical_backpack', 'tactical_helmet', 'tactical_pants', 'tshirt', 'ushanka', 'val_rifle', 'vintorez_sniper', 'windbreaker', 'wool_trousers', 'wrench']) };
+let sgItemKeyOf = null;
+function itemKeyOf(item) {
+    if (!item) return null; if (item._key) return item._key;
+    if (!sgItemKeyOf) { sgItemKeyOf = new Map(); Object.entries(itemDatabase).forEach(([k, v]) => sgItemKeyOf.set(v, k)); }
+    return sgItemKeyOf.get(item) || null;
+}
+// a tárgy képe a játékos skinjével (vagy egy előnézeti stílussal: item._style)
+function itemSkinInfo(item) {
+    const key = itemKeyOf(item), style = item && item._style ? item._style : (key && window.sgSkins ? window.sgSkins[key] : null);
+    if (!style || !item || !item.img) return { src: item && item.img ? `/images/items/${item.img}.webp` : null, cls: '' };
+    if (SG_SKIN_IMG[style] && SG_SKIN_IMG[style].has(key)) return { src: `/images/items/skin_${style}/${key}.webp`, cls: ` sg-skin-${style}` };
+    return { src: `/images/items/${item.img}.webp`, cls: ` sg-skin-${style} sg-skin-tint` };
+}
 // A tárgy ikonja: ha van képe az ikoncsomagból (img), azt mutatjuk; ha a kép még nincs feltöltve
 // vagy nem töltődik be, az emoji jelenik meg helyette.
 function itemIconHtml(item, sizeClass) {
     const emoji = (item && item.icon) || '📦';
     if (item && item.img) {
         const alt = String(item.name || '').replace(/"/g, '&quot;');
-        return `<img src="/images/items/${item.img}.webp" class="${sizeClass} object-contain" alt="${alt}" onerror="this.outerHTML='<span class=&quot;text-xl&quot;>${emoji}</span>'">`;
+        const sk = itemSkinInfo(item);
+        return `<img src="${sk.src}" class="${sizeClass} object-contain${sk.cls}" alt="${alt}" onerror="this.outerHTML='<span class=&quot;text-xl&quot;>${emoji}</span>'">`;
     }
     if (emoji.includes('/') || emoji.includes('.png')) return `<img src="${emoji}" class="${sizeClass} object-contain" alt="">`;
     return `<span class="text-xl">${emoji}</span>`;
@@ -374,7 +390,8 @@ function escapeAttr(text) {
 function tileIconHtml(item) {
     const emoji = (item && item.icon) || '📦';
     if (item && item.img) {
-        return `<img src="/images/items/${item.img}.webp" alt="${escapeAttr(item.name)}" onerror="this.outerHTML='<span class=&quot;tile-emoji&quot;>${emoji}</span>'">`;
+        const sk = itemSkinInfo(item);
+        return `<img src="${sk.src}" class="${sk.cls.trim()}" alt="${escapeAttr(item.name)}" onerror="this.outerHTML='<span class=&quot;tile-emoji&quot;>${emoji}</span>'">`;
     }
     return `<span class="tile-emoji">${emoji}</span>`;
 }
@@ -871,7 +888,7 @@ function togglePin(key) {
 function quickbarTap(i) {
     const key = quickbarList()[i];
     if (!key) {
-        logMessage('📌 Tűzz ki ide egy tárgyat: avatar → Készlet → koppints a tárgyra → „📌 Gyorssáv”.');
+        logMessage('📌 Tűzz ki ide egy tárgyat: Készlet → koppints a tárgyra → „📌 Gyorssáv”.');
         return;
     }
     if (player.combat) { logMessage('Harc közben a harci ablakból gyógyíthatsz.'); return; }

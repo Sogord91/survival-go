@@ -79,10 +79,25 @@
     ];
     // Festékek (Fagyos Csend, v0.1.19): a fiókhoz tartoznak (halálkor nem vesznek el), a skinrendszerrel egy tárgyra festhetők
     const PAINTS = [
-        { key: 'paint_rust_weapon', name: 'Rozsdás festék – fegyver', paint: true, slotKind: 'weapon', rarity: 'legendary', img: 'key', desc: 'Szezonjutalom (a havi ranglista első 3 helyezettje): rozsdás, kopott vas festés egy fegyveredre.' },
-        { key: 'paint_frost_weapon', name: 'Fagyos festék – fegyver', paint: true, slotKind: 'weapon', rarity: 'legendary', img: 'key', desc: 'Jégkék, deres festés egy fegyveredre. A skinrendszerrel festheted rá (december közepétől).' },
-        { key: 'paint_frost_jacket', name: 'Fagyos festék – kabát',   paint: true, slotKind: 'torso',  rarity: 'legendary', img: 'key', desc: 'Jégkék, deres festés egy kabátodra. A skinrendszerrel festheted rá (december közepétől).' }
+        { key: 'paint_rust_weapon', name: 'Rozsdás festék – fegyver', paint: true, style: 'rust', slotKind: 'weapon', rarity: 'legendary', img: 'rust_paint', desc: 'Szezonjutalom (a havi ranglista első 3 helyezettje): rozsdás, kopott vas festés egy fegyveredre.' },
+        { key: 'paint_frost_weapon', name: 'Fagyos festék – fegyver', paint: true, style: 'frost', slotKind: 'weapon', rarity: 'legendary', img: 'frost_paint', desc: 'Jégkék, deres festés egy fegyveredre. A skinrendszerrel festheted rá (december közepétől).' },
+        { key: 'paint_frost_jacket', name: 'Fagyos festék – kabát',   paint: true, style: 'frost', slotKind: 'torso',  rarity: 'legendary', img: 'frost_paint', desc: 'Jégkék, deres festés egy kabátodra. A skinrendszerrel festheted rá (december közepétől).' }
     ];
+    // SKINEK (v0.1.31): a festék egy tárgyfajtára kerül a fiókodban (pl. minden AK-47-ed rozsdás lesz), halálkor sem vész el.
+    // Képek: /images/items/skin_<stílus>/<tárgy>.webp – ha egy tárgyhoz még nincs kép, a játék színezéssel jelzi.
+    PAINTS.push(
+        { key: 'paint_rust_gear', name: 'Rozsdás festék – felszerelés', paint: true, style: 'rust', slotKind: 'gear', rarity: 'legendary', img: 'rust_paint', desc: 'Rozsdás festés egy ruhadarabodra, sisakodra, páncélodra, cipődre vagy hátizsákodra.' },
+        { key: 'paint_frost_gear', name: 'Fagyos festék – felszerelés', paint: true, style: 'frost', slotKind: 'gear', rarity: 'legendary', img: 'frost_paint', desc: 'Jégkék, deres festés egy ruhadarabodra, sisakodra, páncélodra, cipődre vagy hátizsákodra.' });
+    const GEAR_TYPES = ['helmet', 'armor', 'torso', 'legs', 'shoes', 'backpack'];
+    const SKIN_STYLES = { rust: 'Rozsdás', frost: 'Fagyos' };
+    // ráfér-e ez a festék erre a tárgyra (a tárgy leírása az items.js-ből)
+    function paintFits(paint, item) {
+        if (!paint || !paint.paint || !item) return false;
+        if (paint.slotKind === 'weapon') return item.type === 'weapon';
+        if (paint.slotKind === 'torso') return item.type === 'torso';
+        if (paint.slotKind === 'gear') return GEAR_TYPES.includes(item.type);
+        return false;
+    }
     const CRATE_ALIASES = { crate_basic: 'crate_small' }; // régi név
 
     const BY_KEY = {};
@@ -116,7 +131,7 @@
         return odds[odds.length - 1].key;
     }
 
-    const api = { CREDIT_HUF, PACKAGES, RARITY, COSMETICS, COMFORT, CRATES, KEYS, PAINTS, CRATE_ALIASES, BY_KEY, huf, fmtHuf, crateOdds, rarityChances, rollCrate };
+    const api = { CREDIT_HUF, PACKAGES, RARITY, COSMETICS, COMFORT, CRATES, KEYS, PAINTS, CRATE_ALIASES, BY_KEY, GEAR_TYPES, SKIN_STYLES, paintFits, huf, fmtHuf, crateOdds, rarityChances, rollCrate };
     root.SurvivalShop = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

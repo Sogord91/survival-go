@@ -668,9 +668,9 @@ function staffMarkerExtra(role, cosmetic) {
     const f = S && cosmetic && S.BY_KEY[cosmetic.frame];
     const t = S && cosmetic && S.BY_KEY[cosmetic.title];
     return {
-        cls: f ? ` sg-cos${f.glow ? ' glow' : ''}${f.pulse ? ' pulse' : ''}${f.style === 'camo' ? ' camo' : ''}` : '',
+        cls: f ? ` sg-cos cos-${f.key}${f.glow ? ' glow' : ''}${f.pulse ? ' pulse' : ''}${f.style === 'camo' ? ' camo' : ''}` : '',
         style: f ? ` style="--cos-c:${f.color}"` : '',
-        tag: t ? `<span class="sg-marker-title" style="--cos-c:${t.color}">${t.name.toUpperCase()}</span>` : ''
+        tag: t ? `<span class="sg-marker-title t-${t.key}" style="--cos-c:${t.color}">${t.name.toUpperCase()}</span>` : ''
     };
 }
 function myMarkerHtml(avatarFile) {

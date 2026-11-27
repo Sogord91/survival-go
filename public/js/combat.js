@@ -69,7 +69,7 @@ function syncCombatUI() {
             const name = document.createElement('span');
             name.className = 'truncate min-w-0';
             name.textContent = parts.name;
-            if (parts.img) { const im = document.createElement('img'); im.src = '/images/items/' + parts.img + '.webp'; im.alt = ''; im.className = 'gi gi-img'; im.style.marginRight = '4px'; btn.appendChild(im); }
+            if (parts.img) { const im = document.createElement('img'); im.src = parts.src || ('/images/items/' + parts.img + '.webp'); im.alt = ''; im.className = 'gi gi-img'; im.style.marginRight = '4px'; btn.appendChild(im); }
             btn.appendChild(name);
             if (parts.ammo) {
                 const ammo = document.createElement('span');
@@ -98,7 +98,7 @@ function attackButtonParts(slot) {
         ammo = count > 0 ? `(${count})` : '(nincs lőszer)';
     }
     if (SurvivalStats.isBroken(player, slot)) return { name: `💥 ${weapon.name}`, ammo: '(tönkrement)' };
-    return { name: weapon.name, img: weapon.img, ammo };
+    return { name: weapon.name, img: weapon.img, src: typeof itemSkinInfo === 'function' ? itemSkinInfo(weapon).src : null, ammo };
 }
 
 // Egy lépés küldése a szervernek

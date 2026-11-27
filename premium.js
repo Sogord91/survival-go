@@ -5,6 +5,7 @@
 const mongoose = require('mongoose');
 const Shop = require('./public/js/shop');
 const Roles = require('./public/js/roles');
+const Items = require('./public/js/items');
 
 const DAY = 86400000;
 const ORDER_EXPIRE_DAYS = 14;
@@ -35,9 +36,12 @@ function normalizePremium(x) {
     const owned = [...new Set((Array.isArray(x.owned) ? x.owned : []).filter(k => Shop.BY_KEY[k] && Shop.BY_KEY[k].kind))];
     const frame = owned.includes(x.frame) && Shop.BY_KEY[x.frame].kind === 'frame' ? x.frame : '';
     const title = owned.includes(x.title) && Shop.BY_KEY[x.title].kind === 'title' ? x.title : '';
-    return { credits: Math.max(0, Math.floor(num(x.credits))), owned, crates: counts(x.crates), keys: counts(x.keys), frame, title, slotsBought: Math.max(0, Math.floor(num(x.slotsBought))) };
+    // skinek: tárgyfajta -> festés stílusa (v0.1.31)
+    const skins = {};
+    Object.entries(x.skins && typeof x.skins === 'object' ? x.skins : {}).forEach(([k, v]) => { if (Items[k] && Shop.SKIN_STYLES[v]) skins[k] = v; });
+    return { credits: Math.max(0, Math.floor(num(x.credits))), owned, crates: counts(x.crates), keys: counts(x.keys), frame, title, skins, slotsBought: Math.max(0, Math.floor(num(x.slotsBought))) };
 }
-const cosmeticOf = (pr) => ({ frame: pr.frame || '', title: pr.title || '' });
+const cosmeticOf = (pr) => ({ frame: pr.frame || '', title: pr.title || '', skins: pr.skins || {} });
 
 const sellerInfo = () => ({
     name: process.env.PREMIUM_SELLER_NAME || '', address: process.env.PREMIUM_SELLER_ADDRESS || '', taxNo: process.env.PREMIUM_SELLER_TAXNO || '',
@@ -84,7 +88,7 @@ function setup(ctx) {
         const enabled = enabledFor(role !== undefined ? role : socket.data.role);
         if (!pr) { const u = await PlayerModel.findOne({ username }, { premium: 1 }).lean(); pr = normalizePremium(u && u.premium); }
         // Zárt bolt mellett is: a nyert kinézetek (advent, kerék) és kristályok a Gyűjteményben (v0.1.19.1)
-        if (!enabled) return socket.emit('premium_state', { enabled: false, collection: true, owned: pr.owned, frame: pr.frame, title: pr.title, credits: pr.credits, keys: pr.keys, crates: {}, orders: [] });
+        if (!enabled) return socket.emit('premium_state', { enabled: false, collection: true, owned: pr.owned, frame: pr.frame, title: pr.title, credits: pr.credits, keys: pr.keys, crates: {}, orders: [], skins: pr.skins });
         const orders = await OrderModel.find({ user: username }).sort({ createdAt: -1 }).limit(10).lean();
         const s = sellerInfo();
         socket.emit('premium_state', {
@@ -246,6 +250,22 @@ function setup(ctx) {
             return { message: key ? `Felvéve: ${Shop.BY_KEY[key].name}` : (kind === 'frame' ? 'Keret levéve.' : 'Cím levéve.') };
         })); });
 
+        // festék felvitele egy tárgyfajtára (a festék elfogy, a skin a fiókhoz tartozik)
+        socket.on('paint_apply', (data) => { data = data || {}; done(withPremium(username, (pr) => {
+            const paint = Shop.BY_KEY[String(data.paint || '')], item = Items[String(data.item || '')];
+            if (!paint || !paint.paint) return { error: 'Ismeretlen festék.' };
+            if (!(pr.keys[paint.key] > 0)) return { error: 'Ebből a festékből nincs több.' };
+            if (!item || !Shop.paintFits(paint, item)) return { error: 'Ez a festék erre a tárgyra nem kerülhet.' };
+            if (pr.skins[data.item] === paint.style) return { error: 'Ez már így van festve.' };
+            pr.keys[paint.key]--; if (!pr.keys[paint.key]) delete pr.keys[paint.key];
+            pr.skins[data.item] = paint.style;
+            return { message: `${Shop.SKIN_STYLES[paint.style]} festés felkerült: ${item.name}.` };
+        })); });
+        // skin levétele (a festék nem jár vissza)
+        socket.on('paint_remove', (data) => { data = data || {}; done(withPremium(username, (pr) => {
+            const k = String(data.item || ''); if (!pr.skins[k]) return { error: 'Ezen nincs festés.' };
+            delete pr.skins[k]; return { message: 'Festés levéve (a festék nem jár vissza).' };
+        })); });
         socket.on('premium_open_crate', guard((data) => done(withPremium(username, (pr, u, txs) => {
             const ck = Shop.CRATE_ALIASES[data.key] || String(data.key);
             const crate = Shop.CRATES.find(c => c.key === ck);
