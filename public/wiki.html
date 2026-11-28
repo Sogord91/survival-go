@@ -111,6 +111,15 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ITEMS = itemDatabase, RECIPES = window.craftingRecipes || [], B = window.SurvivalBuildings, ST = window.SurvivalStats;
 let W = null; // szerver adatai
+// Szilveszter: meglepetés – a tárgyai, receptjei és az oldala csak dec. 31-től látszanak a wikiben
+let NY_ON = true;
+function hideNewYear() {
+    NY_ON = !!(window.SurvivalNewYear && SurvivalNewYear.active(Date.now()));
+    if (NY_ON) return;
+    Object.keys(ITEMS).forEach(k => { const it = ITEMS[k]; if (it.type === 'event' || it.eventLoot || it._pendingEvent) delete ITEMS[k]; });
+    for (let i = RECIPES.length - 1; i >= 0; i--) if (RECIPES[i].event === 'newyear') RECIPES.splice(i, 1);
+    const g = GUIDES.findIndex(x => x.slug === 'szilveszter'); if (g >= 0) GUIDES.splice(g, 1);
+}
 const pct = (x) => Math.round(x * 100) + '%';
 const num = (x) => (Math.round(x * 100) / 100).toLocaleString('hu-HU');
 
@@ -512,7 +521,7 @@ const GUIDES = [
     <p>Az esemény alatt a napi és heti <a href="#/oldal/kuldetesek">küldetések</a> között mindig van téli feladat is: díszt akasztani egy (akár másik település) fájára, hétvégén ajándékcsomagokat nyitni, kinyitni a mai adventi ablakot vagy díszt barkácsolni.</p>
     <h2>❄ Havas térkép</h2>
     <p>December 1-jétől január 6-ig finom hóesés hullik a térképre. Ha zavar, vagy kíméled az akkumulátort, a Menüben kikapcsolhatod.</p>
-    <h2>✨ Szilveszter: az év zárása</h2><p>Dec. 31-én és jan. 1-jén szilveszteri csomag, tűzijáték és éjféli műsor: <a href="#/oldal/szilveszter">Szilveszter</a>.</p>
+    ${NY_ON ? '<h2>✨ Szilveszter: az év zárása</h2><p>Dec. 31-én és jan. 1-jén szilveszteri csomag, tűzijáték és éjféli műsor: <a href="#/oldal/szilveszter">Szilveszter</a>.</p>' : ''}
     <h2>🧊 Fagyos szett</h2>
     <p>Jégkék, deres festések ruhákra és fegyverekre – december közepén érkezik a skinrendszerrel.</p>`; } },
   { slug: 'eventek', title: 'Eventek és naptár', group: 'Útmutatók', render: () => `
@@ -676,7 +685,7 @@ function home() {
 }
 
 // ---------- adatbázis oldalak ----------
-const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['gloves', 'Kesztyű'], ['throwable', 'Dobható'], ['attachment', 'Kiegészítő'], ['blueprint', 'Tervrajz'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy'], ['curio', 'Érdekesség'], ['event', 'Szilveszter']];
+const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['gloves', 'Kesztyű'], ['throwable', 'Dobható'], ['attachment', 'Kiegészítő'], ['blueprint', 'Tervrajz'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy'], ['curio', 'Érdekesség']];
 function itemsPage(type) {
   const list = Object.entries(ITEMS).filter(([, it]) => !type || it.type === type).sort((a, b) => a[1].name.localeCompare(b[1].name, 'hu'));
   const sub = (it) => it.dmg ? `+${it.dmg} sebzés` : it.def ? `+${it.def} védelem` : it.effects ? Object.entries(it.effects).filter(([, v]) => v).map(([k, v]) => `${EFFECT_HU[k]} ${v > 0 ? '+' : ''}${v}`).join(', ') : (it.bonusSlots ? `+${it.bonusSlots} hely` : TYPE_HU[it.type] || '');
@@ -698,7 +707,7 @@ function itemPage(key) {
     ${uses.length ? `<h2>Mire jó? (${uses.length} recept)</h2>${uses.map(recipeHtml).join('')}` : ''}`;
 }
 function recipesPage(cat) {
-  const cats = window.CRAFT_CATEGORIES || [...new Set(RECIPES.map(r => r.cat))];
+  const cats = (window.CRAFT_CATEGORIES || [...new Set(RECIPES.map(r => r.cat))]).filter(c => RECIPES.some(r => r.cat === c));
   const c = cats.find(x => slug(x) === cat);
   const list = RECIPES.filter(r => !c || r.cat === c);
   return `<h1>Barkácsreceptek${c ? ': ' + esc(c) : ''}</h1><p class="lead">${list.length} recept. A szerszámok nem fogynak el, csak kopnak. Lásd még: <a href="#/oldal/barkacs">Barkácsolás</a>.</p>
@@ -799,7 +808,7 @@ function route() {
 let qt = null;
 $('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { const v = $('q').value.trim(); if (v.length >= 2) location.hash = '#/kereses/' + encodeURIComponent(v); else if (!v && location.hash.startsWith('#/kereses')) location.hash = '#/'; }, 250); });
 window.addEventListener('hashchange', route);
-fetch('/api/wiki').then(r => r.json()).then(d => { W = d; if (d.premiumMode !== 'on') { const i = GUIDES.findIndex(g => g.slug === 'premium'); if (i >= 0) GUIDES.splice(i, 1); } route(); }).catch(() => { $('main').innerHTML = '<h1>Nem sikerült betölteni</h1><p>Ellenőrizd az internetkapcsolatot, és frissítsd az oldalt.</p>'; });
+fetch('/api/wiki').then(r => r.json()).then(d => { W = d; if (d.premiumMode !== 'on') { const i = GUIDES.findIndex(g => g.slug === 'premium'); if (i >= 0) GUIDES.splice(i, 1); } hideNewYear(); route(); }).catch(() => { $('main').innerHTML = '<h1>Nem sikerült betölteni</h1><p>Ellenőrizd az internetkapcsolatot, és frissítsd az oldalt.</p>'; });
 </script>
 <style>svg.gi,img.gi{display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.25em;fill:currentColor;object-fit:contain}</style>
 <script src="/js/icons.js"></script>

@@ -623,7 +623,8 @@ function itemUses(key) {
         const unique = [...new Set(names)];
         return unique.slice(0, max).join(', ') + (unique.length > max ? ` és még ${unique.length - max}` : '');
     };
-    const recipes = window.craftingRecipes || [];
+    // a szilveszteri recepteket csak szilveszterkor áruljuk el (v0.1.36.2)
+    const recipes = (window.craftingRecipes || []).filter(r => r.event !== 'newyear' || (typeof newYearActive !== 'undefined' && newYearActive));
     const toolOptions = (entry) => (window.RecipeTools ? RecipeTools.toolOptions(entry) : (Array.isArray(entry) ? entry : [entry]));
     const fire = (window.RecipeTools && RecipeTools.FIRE_STARTERS) || ['matchbox', 'ferro_rod'];
     const uses = [];
