@@ -15,7 +15,7 @@ let player = {
     xp: 0,
     defense: 0,
     maxInv: 10,
-    maxWeight: 30,
+    maxWeight: 35,
     weight: 0,
     inventory: [],
     combat: null,       // folyamatban lévő harc (a szervertől)
@@ -111,11 +111,11 @@ function dropItem(index) {
 }
 
 // Tárgy használata (szerver oldali kérés)
-function useItem(itemKey) {
+function useItem(itemKey, index) {
     if (typeof socket !== 'undefined' && socket) {
-        socket.emit('use_item', {
-            itemKey: itemKey
-        });
+        const data = { itemKey: itemKey };
+        if (Number.isInteger(index)) data.index = index; // a halnál pontosan azt a darabot (v0.1.45)
+        socket.emit('use_item', data);
     }
 }
 

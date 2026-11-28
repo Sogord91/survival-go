@@ -27,7 +27,7 @@ function lbLeft(ms) {
 }
 function lbValue(v, board) {
     const b = lbBoards().find(x => x.key === board);
-    const n = board === 'meters' ? String(v).replace('.', ',') : Number(v).toLocaleString('hu-HU');
+    const n = board === 'meters' || board === 'fishG' ? String(v).replace('.', ',') : Number(v).toLocaleString('hu-HU');
     return `${n} <small>${b ? b.unit : ''}</small>`;
 }
 function lbRowHtml(r, board, mine) {

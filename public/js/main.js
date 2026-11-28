@@ -743,10 +743,10 @@ function renderItemSheet() {
     const slot = ref.source === 'inv' ? player.inventory[ref.index] : { key: ref.key, count: 1 };
     const count = (slot && slot.count) || 1;
     document.getElementById('item-sheet-icon').innerHTML = tileIconHtml(item);
-    document.getElementById('item-sheet-name').textContent = item.name + (count > 1 ? `  ×${count}` : '');
+    document.getElementById('item-sheet-name').textContent = item.name + (count > 1 ? `  ×${count}` : '') + (item.kg && slot && slot.kg ? ` · ${sgKg(slot.kg)}` : '');
     document.getElementById('item-sheet-desc').textContent = itemFlavorText(item.desc);
 
-    const weight = Math.round((item.weight || 0) * count * 100) / 100;
+    const weight = Math.round(SurvivalStats.slotWeight(slot || { count }, item) * 100) / 100;
     const modKey = ref.source === 'eq' && player.mods && player.mods[ref.slot], modItem = modKey && itemDatabase[modKey];
     document.getElementById('item-sheet-meta').textContent = `Súly: ${weight} kg` + (ref.source === 'eq' ? ' · Felszerelve' : '') + (modItem ? ` · Kiegészítő: ${modItem.name}` : '')
         + (item.type === 'blueprint' && (player.blueprints || []).includes(item.learn) ? ' · Már ismered' : '');
@@ -755,7 +755,10 @@ function renderItemSheet() {
     const broken = item.wear && durSlot && durSlot.dur !== undefined && durSlot.dur <= 0;
     const repairInfo = item.wear && durSlot && durSlot.dur !== undefined && durSlot.dur < item.durability ? repairRequirement(item) : null;
     // a tönkrement tárgy értékei áthúzva: most nem adnak semmit
-    document.getElementById('item-sheet-stats').innerHTML = itemStatLines(item)
+    // hal: a saját súlya szerint (v0.1.45)
+    const fishKg = item.kg && slot && slot.kg && window.SurvivalHunting ? slot.kg : 0;
+    const statItem = fishKg ? { ...item, effects: { ...item.effects, hunger: SurvivalHunting.rawHunger(fishKg) } } : item;
+    document.getElementById('item-sheet-stats').innerHTML = itemStatLines(statItem).concat(fishKg ? [`Sütve: ${SurvivalHunting.portions(fishKg)} adag`] : [])
         .map(line => broken
             ? `<span class="px-1.5 py-0.5 rounded bg-gray-900/80 border border-gray-700/60 text-[10px] font-bold text-gray-500 line-through">${escapeAttr(line)}</span>`
             : `<span class="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/60 text-[10px] font-bold text-emerald-200">${escapeAttr(line)}</span>`).join('');
@@ -841,7 +844,7 @@ function inventoryAction(index) {
     const slot = player.inventory[index];
     if (!slot) return;
     const item = itemDatabase[slot.key];
-    if (SurvivalStats.isConsumable(item)) useItem(slot.key);
+    if (SurvivalStats.isConsumable(item)) useItem(slot.key, index);
     else if (SurvivalStats.isEquippable(item)) equipItem(slot.key, SurvivalStats.equipSlot(item), index);
 }
 
@@ -1032,7 +1035,7 @@ function updateUI() {
         const brokenTile = item.wear && slot.dur !== undefined && slot.dur <= 0;
         const selected = dropMode && dropSelection.has(index);
         const click = dropMode ? `toggleDropSelect(${index})` : `openItemSheet('inv', ${index})`;
-        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}${selected ? ' selected' : ''}" data-src="inv" data-index="${index}" onclick="${click}" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}${selected ? '<span class="tile-check">❌</span>' : ''}</button>`;
+        invHtml += `<button class="inv-tile${brokenTile ? ' broken' : ''}${selected ? ' selected' : ''}" data-src="inv" data-index="${index}" onclick="${click}" title="${escapeAttr(item.name)}${brokenTile ? ' (tönkrement)' : ''}">${tileIconHtml(item)}${count}${tileDurabilityHtml(slot, item)}${slot.kg && item.kg ? `<span class="sg-fish-kg">${sgKg(slot.kg)}</span>` : ''}${brokenTile ? '<span class="tile-broken">💥</span>' : ''}${selected ? '<span class="tile-check">❌</span>' : ''}</button>`;
     }
     invGrid.innerHTML = invHtml;
     renderDropBar();
@@ -1094,10 +1097,27 @@ function updateUI() {
         }
     });
     const summary = document.getElementById('eq-summary');
-    if (summary) summary.innerHTML = `<span>🛡️ ${player.defense || 0}</span><span>🎒 ${player.maxInv || 10}</span>`;
+    if (summary) {
+        const tk = SurvivalStats.trainingKg(player);
+        summary.innerHTML = `<span>🛡️ ${player.defense || 0}</span><span>🎒 ${player.maxInv || 10}</span><span onclick="strengthInfo()" style="cursor:pointer" title="Erőnlét">💪 ${String(Math.round((player.weight || 0) * 10) / 10).replace('.', ',')}/${String(player.maxWeight || 35).replace('.', ',')} kg</span>`;
+    }
 
     renderCraftList();
     if (lootWindow) renderLootWindow(); // a hely és a súly kijelzése frissül
+}
+
+// Súly kiírása (hal): 0,35 kg / 4,7 kg
+function sgKg(kg) { return window.SurvivalHunting ? SurvivalHunting.fmtKg(kg) : `${kg} kg`; }
+// Erőnlét (v0.1.45): megrakott hátizsákkal gyalogolva nő a teherbírás
+function strengthInfo() {
+    const T = SurvivalStats.TRAIN, tk = SurvivalStats.trainingKg(player);
+    const m = Math.round((player.strength && player.strength.m) || 0);
+    const f = (v) => String(v).replace('.', ',');
+    const loaded = (player.weight || 0) >= T.MIN_KG;
+    const msg = tk >= T.MAX
+        ? `💪 Erőnlét: +${T.MAX} kg teherbírás, ennél erősebb már nem lehetsz.`
+        : `💪 Erőnlét: +${f(tk)} kg teherbírás (legfeljebb +${T.MAX} kg). Ha legalább ${T.MIN_KG} kg van nálad, minden ${T.METERS} m gyaloglás +${f(T.KG)} kg-ot ad. A következőig: ${Math.max(0, T.METERS - m)} m. ${loaded ? 'Most edzel!' : `Most ${f(Math.round((player.weight || 0) * 10) / 10)} kg van nálad, ez még kevés az edzéshez.`} Halálkor a fele megmarad.`;
+    if (typeof showToast === 'function') showToast(msg); else logMessage(msg);
 }
 
 // Kopó tárgy (szerszám) tartóssága kis csíkkal

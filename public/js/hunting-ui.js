@@ -10,6 +10,11 @@ function huntTick() {
     if (typeof socket === 'undefined' || !socket || !player || player.dead) return;
     socket.emit('animals_near');
     socket.emit('fish_check');
+    // újratöltés után a kivetett horog megmarad (v0.1.45)
+    if (player.fishing && player.fishing.until && !fishState && Date.now() < player.fishing.until + 120000) {
+        fishState = { until: player.fishing.until, lateS: (window.SurvivalHunting && SurvivalHunting.LATE_S) || 120 };
+        clearInterval(fishTimer); fishTimer = setInterval(fishRender, 500); fishRender();
+    }
 }
 setTimeout(() => { huntTick(); setInterval(huntTick, 40000); }, 6000);
 
@@ -89,12 +94,14 @@ socket.on('gather_result', (d) => {
     if (!d || !d.message) return;
     logMessage((d.success ? '🌿 ' : '⚠️ ') + d.message);
     if (typeof showToast === 'function') showToast(d.message);
-    if (d.success && d.payload && d.payload.id) { const a = huntAnimals.find(x => x.id === d.payload.id); if (a) { a.gathered = true; const mk = huntMarkers.get(a.id); if (mk) mk.setIcon(animalIcon(a.kind, true)); } }
+    const pl = d.payload || d; // a szerver a payload mezőit közvetlenül az üzenetbe teszi
+    if (d.success && pl.id) { const a = huntAnimals.find(x => x.id === pl.id); if (a) { a.gathered = true; const mk = huntMarkers.get(a.id); if (mk) mk.setIcon(animalIcon(a.kind, true)); } }
 });
 socket.on('hunt_result', (d) => {
     if (!d) return;
-    if (d.gone || (d.payload && d.payload.id)) {
-        const id = d.gone || d.payload.id;
+    const pl = d.payload || d;
+    if (d.gone || (d.success && pl.id)) {
+        const id = d.gone || pl.id;
         const m = huntMarkers.get(id); if (m && map) { map.removeLayer(m); huntMarkers.delete(id); }
         huntAnimals = huntAnimals.filter(a => a.id !== id);
     }
@@ -107,7 +114,8 @@ socket.on('fish_spot', (d) => {
     if (fishSpot) huntHint('fish', 'HORGÁSZAT', [
         'A térképen a kék horog a legközelebbi vízpartot jelzi.',
         'Horgászbot kell (barkácsolható: bot, damil, horog) és csali: giliszta, kenyér, tortilla vagy nyers vadhús.',
-        'A vízparton megjelenik a HORGÁSZ gomb. Kivetés után várd ki a kapást: ha túl korán húzod ki, elúszik a hal. Kapáskor rezeg a telefon, 2 perced van kihúzni.']);
+        'A vízparton megjelenik a HORGÁSZ gomb. Kivetés után várd ki a kapást: ha túl korán húzod ki, elúszik a hal. Kapáskor rezeg a telefon, 2 perced van kihúzni.',
+        'Kihúzáskor a hal küzd: amikor a jel a zöld sávba ér, húzz! A nagy halak több körig küzdenek. Minden halnak saját súlya van, a nagyobbikból több sült hal lesz.']);
     if (typeof map === 'undefined' || !map || typeof L === 'undefined') return;
     if (!fishSpot) { if (fishSpotMarker) { map.removeLayer(fishSpotMarker); fishSpotMarker = null; } fishButton(); return; }
     const html = `<div class="sg-fish-mk" data-noicon>${typeof sgEmojiIcon === 'function' ? sgEmojiIcon('🪝', 'sg-fish-img') : ''}</div>`;
@@ -141,17 +149,62 @@ function fishPanel() {
     if (!p) {
         p = document.createElement('div');
         p.id = 'fish-panel'; p.className = 'sg-fish-panel hud-panel';
-        p.innerHTML = `<div class="sg-fish-title">Horgászat</div><div id="fish-text" class="sg-fish-text"></div>
-            <button id="fish-pull" class="w-full bg-amber-800 py-2.5 rounded-xl text-xs font-bold" onclick="socket.emit('fish_pull')">Kihúzom</button>`;
+        p.innerHTML = `<div class="sg-fish-title" id="fish-title">Horgászat</div><div id="fish-text" class="sg-fish-text"></div>
+            <div id="fish-bar" class="sg-fish-bar hidden"><div id="fish-zone" class="sg-fish-zone"></div><div id="fish-needle" class="sg-fish-needle"></div></div>
+            <button id="fish-pull" class="w-full bg-amber-800 py-2.5 rounded-xl text-xs font-bold" onclick="fishTap()">Kihúzom</button>`;
         document.body.appendChild(p);
     }
     return p;
 }
+// Fárasztás (v0.1.45): minden körben a zöld sávban kell húzni
+let fishFight = null, fishRaf = null;
+function fishTap() {
+    if (fishFight) {
+        if (fishFight.sent) return;
+        fishFight.sent = true;
+        socket.emit('fish_reel');
+        return;
+    }
+    socket.emit('fish_pull');
+}
+function fishFightFrame() {
+    fishRaf = null;
+    if (!fishFight) return;
+    const f = fishFight, now = performance.now();
+    const t = Math.min(1, (now - f.recv) / f.total);
+    const needle = document.getElementById('fish-needle'), btn = document.getElementById('fish-pull'), panel = fishPanel();
+    if (needle) needle.style.left = (t * 100) + '%';
+    const open = now >= f.recv + f.delay && now <= f.recv + f.delay + f.width;
+    if (open && !f.buzzed) { f.buzzed = true; try { navigator.vibrate && navigator.vibrate(120); } catch (e) { } }
+    panel.classList.toggle('bite', open);
+    if (btn) { btn.textContent = f.sent ? '...' : open ? 'HÚZD MOST!' : 'Várj... (zöldnél húzd)'; btn.className = `w-full ${open ? 'bg-emerald-700' : 'bg-slate-700'} py-2.5 rounded-xl text-xs font-bold`; }
+    if (t < 1 || !f.sent) fishRaf = requestAnimationFrame(fishFightFrame);
+}
+socket.on('fish_fight', (d) => {
+    if (!d) return;
+    clearInterval(fishTimer); fishTimer = null;
+    fishState = fishState || { until: 0, lateS: 0 };
+    const p = fishPanel(); p.classList.remove('hidden');
+    const total = d.delayMs + d.widthMs + 500;
+    fishFight = { recv: performance.now(), delay: d.delayMs, width: d.widthMs, total, sent: false, buzzed: false };
+    document.getElementById('fish-title').textContent = `${d.sizeName} · ${d.round}/${d.of}`;
+    const hearts = '●'.repeat(Math.max(0, d.lives)) + '○'.repeat(Math.max(0, (SurvivalHunting.FIGHT_LIVES || 2) - d.lives));
+    document.getElementById('fish-text').textContent = `${d.note || (d.round === 1 ? 'Akad! Fárasszad: húzz, amikor a jel a zöld sávba ér.' : 'Küzd...')}  Zsinór: ${hearts}`;
+    const bar = document.getElementById('fish-bar'); bar.classList.remove('hidden');
+    const zone = document.getElementById('fish-zone');
+    zone.style.left = (d.delayMs / total * 100) + '%'; zone.style.width = (d.widthMs / total * 100) + '%';
+    if (!fishRaf) fishRaf = requestAnimationFrame(fishFightFrame);
+    if (typeof playSound === 'function' && d.round === 1) playSound('hit');
+});
 function fishRender() {
     const p = fishPanel();
-    if (!fishState) { p.classList.add('hidden'); clearInterval(fishTimer); fishTimer = null; fishButton(); return; }
+    if (!fishState) { p.classList.add('hidden'); clearInterval(fishTimer); fishTimer = null; fishFight = null; fishButton(); return; }
     p.classList.remove('hidden');
+    if (fishFight) return;
+    document.getElementById('fish-title').textContent = 'Horgászat';
+    document.getElementById('fish-bar').classList.add('hidden');
     const now = Date.now(), text = document.getElementById('fish-text'), btn = document.getElementById('fish-pull');
+    btn.className = 'w-full bg-amber-800 py-2.5 rounded-xl text-xs font-bold';
     if (now < fishState.until) {
         text.textContent = 'Várd a kapást... Ha túl korán húzod ki, elúszik a hal.';
         btn.textContent = 'Kihúzom (még korai)'; p.classList.remove('bite');
@@ -163,8 +216,8 @@ function fishRender() {
 }
 socket.on('fish_result', (d) => {
     if (!d) return;
-    if (d.message) { logMessage((d.success ? '🪝 ' : '⚠️ ') + d.message); if (typeof showToast === 'function' && (!d.success || (d.payload && d.payload.done))) showToast(d.message); }
-    const pl = d.payload || {};
-    if (d.success && pl.until) { fishState = { until: pl.until, lateS: pl.lateS || 120 }; clearInterval(fishTimer); fishTimer = setInterval(fishRender, 500); fishRender(); fishButton(); }
-    if (pl.done) { fishState = null; fishRender(); }
+    const pl = d.payload || d; // a szerver a payload mezőit közvetlenül az üzenetbe teszi
+    if (d.message) { logMessage((d.success ? '🪝 ' : '⚠️ ') + d.message); if (typeof showToast === 'function' && (!d.success || pl.done)) showToast(d.message); }
+    if (d.success && pl.until) { fishFight = null; fishState = { until: pl.until, lateS: pl.lateS || 120 }; clearInterval(fishTimer); fishTimer = setInterval(fishRender, 500); fishRender(); fishButton(); }
+    if (pl.done) { fishState = null; fishFight = null; fishPanel().classList.remove('bite'); fishRender(); }
 });

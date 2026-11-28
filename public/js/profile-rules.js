@@ -16,7 +16,9 @@
         { key: 'wins', name: 'Győzelmek', icon: '⚔️', unit: 'harc' },
         { key: 'crafted', name: 'Barkácsolás', icon: '🔨', unit: 'tárgy' },
         { key: 'longestDays', name: 'Leghosszabb élet', icon: '⏳', unit: 'nap' },
-        { key: 'season', name: 'E havi pont', icon: '📅', unit: 'pont' }
+        { key: 'season', name: 'E havi pont', icon: '📅', unit: 'pont' },
+        { key: 'fish', name: 'Legnagyobb hal', icon: '🐟', unit: 'kg' },
+        { key: 'fishCount', name: 'Kifogott halak', icon: '🪝', unit: 'db' }
     ];
     const BIO_MAX = 160;
     const DEFAULT = { bio: '', color: '#7d8f3a', pattern: 'camo', badge: '', show: ['km', 'xp', 'wins'], hideStats: false };

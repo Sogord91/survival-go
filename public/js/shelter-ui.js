@@ -342,7 +342,7 @@ function renderShelterModal() {
             const slot = sh.stash[i];
             if (!slot) { grid += '<div class="inv-tile empty"></div>'; continue; }
             const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦' };
-            grid += `<button class="inv-tile" data-src="stash" data-index="${i}" ${near ? `onclick="shelterTileClick('stash', ${i})"` : 'disabled'} title="${escapeAttr(item.name)} – kivétel">${tileIconHtml(item)}${slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : ''}</button>`;
+            grid += `<button class="inv-tile" data-src="stash" data-index="${i}" ${near ? `onclick="shelterTileClick('stash', ${i})"` : 'disabled'} title="${escapeAttr(item.name)} – kivétel">${tileIconHtml(item)}${slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : ''}${slot.kg && item.kg ? `<span class="sg-fish-kg">${sgKg(slot.kg)}</span>` : ''}</button>`;
         }
         let bag = '';
         const inv = player.inventory || [];
@@ -350,7 +350,7 @@ function renderShelterModal() {
             const slot = inv[i];
             if (!slot) { bag += '<div class="inv-tile empty"></div>'; continue; }
             const item = itemDatabase[slot.key] || { name: slot.key, icon: '📦' };
-            bag += `<button class="inv-tile" data-src="bag" data-index="${i}" ${near ? `onclick="shelterTileClick('bag', ${i})"` : 'disabled'} title="${escapeAttr(item.name)} – raktárba">${tileIconHtml(item)}${slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : ''}</button>`;
+            bag += `<button class="inv-tile" data-src="bag" data-index="${i}" ${near ? `onclick="shelterTileClick('bag', ${i})"` : 'disabled'} title="${escapeAttr(item.name)} – raktárba">${tileIconHtml(item)}${slot.count > 1 ? `<span class="tile-count">×${slot.count}</span>` : ''}${slot.kg && item.kg ? `<span class="sg-fish-kg">${sgKg(slot.kg)}</span>` : ''}</button>`;
         }
         html += `
             <div class="sg-sh-sect"><span>RAKTÁR · halál után is megmarad</span><span class="mono">${sh.stash.length} / ${cap}</span></div>

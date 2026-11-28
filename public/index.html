@@ -452,7 +452,7 @@
         #skills-confirm { position: absolute; left: 16px; right: 16px; bottom: 16px; }
         .sg-sk-conf { padding: 12px; background: #1d2016; border: 2px solid var(--sg-gold); font: 600 13px/1.4 var(--sg-font); color: var(--sg-thread); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
         /* RANGLISTA (v0.1.20) */
-        .sg-lb-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+        .sg-lb-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
         .sg-lb-tabs button { padding: 5px 1px 4px; background: rgba(0,0,0,.3); border: 1px solid rgba(21,23,15,.9); border-bottom: 3px solid transparent; color: var(--sg-muted); font-size: 15px; line-height: 1.1; }
         .sg-lb-tabs button span { display: block; font: 800 9px var(--sg-font); letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
         .sg-lb-tabs button.on { background: rgba(0,0,0,.5); border-bottom-color: var(--sg-gold); color: var(--sg-thread); }
@@ -1391,6 +1391,10 @@
         .sg-fish-title { font-weight: 800; letter-spacing: 2px; color: #9fd6f5; margin-bottom: 4px; }
         .sg-fish-text { font-size: 12px; color: #e6e0cb; margin-bottom: 10px; }
         .sg-fish-panel.bite { box-shadow: 0 0 24px rgba(255,200,80,.9); animation: sgBite .5s ease-in-out infinite alternate; }
+        .sg-fish-bar { position: relative; height: 16px; margin: 0 2px 10px; border-radius: 8px; background: linear-gradient(#1b2a33, #0e171c); border: 1.5px solid #3f6478; overflow: hidden; }
+        .sg-fish-zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(#5fd17a, #2f8f4a); box-shadow: 0 0 8px rgba(95,209,122,.8); }
+        .sg-fish-needle { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #ffe7a0; border-radius: 2px; box-shadow: 0 0 6px #ffcc55; }
+        .sg-fish-kg { position: absolute; left: 2px; right: 2px; bottom: 1px; text-align: center; font: 700 8px var(--sg-mono, monospace); color: #bfe6ff; text-shadow: 0 1px 2px #000, 0 0 3px #000; pointer-events: none; }
         @keyframes sgBite { from { transform: translateX(-50%) rotate(-1.5deg); } to { transform: translateX(-50%) rotate(1.5deg); } }
         /* SZILVESZTER (v0.1.35) */
         .sg-ny-card { width: 100%; max-width: 360px; padding: 22px 18px 16px; border-radius: 16px; text-align: center; color: #efe6c8; background: radial-gradient(circle at 50% 0%, rgba(255,200,90,.18), transparent 60%), #1b2016; border: 1px solid rgba(255,215,94,.45); box-shadow: 0 0 40px rgba(255,190,80,.25); }

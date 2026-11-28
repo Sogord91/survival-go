@@ -36,7 +36,8 @@ function setup(ctx) {
             cells: pd.quests && Array.isArray(pd.quests.cells) ? pd.quests.cells.length : 0, loot: st.buildingsLooted || 0, wins: st.combatsWon || 0,
             crafted: st.itemsCrafted || 0, kills: st.killsTotal || 0, deaths: st.deaths || 0,
             longestDays: Math.floor(Math.max(st.longestLifeMs || 0, pd.lifeStartedAt && !pd.dead ? Date.now() - pd.lifeStartedAt : 0) / 86400000),
-            season: se.xp || 0
+            season: se.xp || 0,
+            fish: Math.round((st.fishBestG || 0) / 100) / 10, fishCount: st.fishCaught || 0 // v0.1.45
         };
         // csapat
         let team = null;

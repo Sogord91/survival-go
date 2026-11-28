@@ -67,7 +67,39 @@
         return CATCH[0][0];
     }
 
-    const api = { DOMESTIC_SHARE, SKIN, SKIN_TOOLS, ANIMALS, PER_PLAYER, NEAR_METERS, MIN_SPAWN_METERS, LIFETIME_MIN, RANGE_MELEE, RANGE_RANGED, WATER_RANGE, WAIT_MIN_S, WAIT_MAX_S, LATE_S, BAITS, CATCH, isRanged, pickAnimal, pickCatch };
+    // FÁRASZTÁS ÉS EGYEDI SÚLY (v0.1.45)
+    // min/max: kg; base: ennyi húzás kell a legkisebbhez, a nagyobbaknál +0..3; per: ennyi kg ad 1 adag sült halat
+    const FISH = {
+        fish_crucian: { min: 0.15, max: 0.9, base: 1, extra: 0 },
+        fish_carp:    { min: 0.8, max: 14, base: 2, extra: 2 },
+        fish_pike:    { min: 0.8, max: 12, base: 2, extra: 2 },
+        fish_catfish: { min: 3, max: 35, base: 3, extra: 2 }
+    };
+    const KG_PER_PORTION = 0.6, MAX_PORTIONS = 12;    // sütés: ennyi kg = 1 adag, legfeljebb ennyi adag egy sütésből
+    const RAW_HUNGER_PER_KG = 15, RAW_HUNGER_MIN = 4, RAW_HUNGER_MAX = 35; // nyersen
+    const FIGHT_LIVES = 2;                          // ennyi hibánál szakad el / úszik el
+    const FIGHT_DELAY_MS = [900, 2600];             // a húzás jó pillanata ennyi idő múlva nyílik
+    const FIGHT_WINDOW_MS = [1100, 950, 800, 650];  // ilyen hosszú (kis, közepes, erős, óriás hal)
+    const FIGHT_GRACE_EARLY = 200, FIGHT_GRACE_LATE = 450; // a hálózati késés miatti türelem
+    function rollKg(key, random, big) {
+        const f = FISH[key];
+        if (!f) return null;
+        const r = Math.pow(random(), big ? 1.6 : 2.2); // a kicsik a gyakoriak, az óriások ritkák
+        return Math.round((f.min + (f.max - f.min) * r) * 100) / 100;
+    }
+    function fightRounds(key, kg) {
+        const f = FISH[key];
+        if (!f) return 1;
+        const r = Math.max(0, Math.min(1, (kg - f.min) / (f.max - f.min)));
+        return f.base + Math.round(r * f.extra);
+    }
+    function sizeClass(rounds) { return Math.max(0, Math.min(3, rounds - 1)); } // 0 kicsi … 3 óriás
+    const SIZE_NAMES = ['Kis hal', 'Közepes hal', 'Erős hal!', 'Óriás!'];
+    function portions(kg) { return Math.max(1, Math.min(MAX_PORTIONS, Math.round(kg / KG_PER_PORTION))); }
+    function rawHunger(kg) { return Math.max(RAW_HUNGER_MIN, Math.min(RAW_HUNGER_MAX, Math.round(kg * RAW_HUNGER_PER_KG))); }
+    function fmtKg(kg) { const n = Number(kg) || 0; return (n < 1 ? n.toFixed(2) : n.toFixed(1)).replace('.', ',') + ' kg'; }
+
+    const api = { FISH, KG_PER_PORTION, MAX_PORTIONS, FIGHT_LIVES, FIGHT_DELAY_MS, FIGHT_WINDOW_MS, FIGHT_GRACE_EARLY, FIGHT_GRACE_LATE, SIZE_NAMES, rollKg, fightRounds, sizeClass, portions, rawHunger, fmtKg, DOMESTIC_SHARE, SKIN, SKIN_TOOLS, ANIMALS, PER_PLAYER, NEAR_METERS, MIN_SPAWN_METERS, LIFETIME_MIN, RANGE_MELEE, RANGE_RANGED, WATER_RANGE, WAIT_MIN_S, WAIT_MAX_S, LATE_S, BAITS, CATCH, isRanged, pickAnimal, pickCatch };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (typeof window !== 'undefined') window.SurvivalHunting = api;
 })(this);

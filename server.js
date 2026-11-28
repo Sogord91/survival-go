@@ -143,6 +143,7 @@ const userSchema = new mongoose.Schema({
         wearVersion: { type: Number, default: 0 }, // a kopási táblázat verziója (régi mentések arányos átszámításához)
         combat: { type: mongoose.Schema.Types.Mixed, default: null },     // folyamatban lévő harc (újracsatlakozás után is folytatódik)
         fishing: { type: mongoose.Schema.Types.Mixed, default: null },    // kivetett horog (v0.1.42)
+        strength: { type: mongoose.Schema.Types.Mixed, default: null },   // Erőnlét: { kg, m } (v0.1.45)
         dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} },  // személyes zárak menekülés után: { épület-azonosító: lejárat }
         stats: { type: mongoose.Schema.Types.Mixed, default: {} },        // életre szóló statisztika (a halál után is megmarad; v0.1.10)
         lifeStartedAt: { type: Number, default: null },                   // a mostani túlélő mikor indult (a leghosszabb élethez)
@@ -239,7 +240,7 @@ app.get('/api/wiki', (req, res) => {
             shoeWearMeters: C.SHOE_WEAR_METERS, repairGear: C.REPAIR_GEAR_FRACTION, repairFirearm: C.REPAIR_FIREARM_FRACTION, repairOther: C.REPAIR_OTHER_FRACTION,
             thermosBonus: C.THERMOS_DRINK_BONUS, repairMachineOil: C.MACHINE_OIL_REPAIR_FRACTION, jumpLootBlockSeconds: C.JUMP_LOOT_BLOCK_SECONDS,
             starterKit: C.STARTER_KIT, earlyKit: C.EARLY_SURVIVOR_KIT, earlyBackpack: C.EARLY_SURVIVOR_BACKPACK, earlyLimit: C.EARLY_SURVIVOR_LIMIT,
-            base: SurvivalStats.BASE, hpPerLevel: SurvivalStats.HP_PER_LEVEL, overweightHardCap: SurvivalStats.OVERWEIGHT_HARD_CAP, overweightFactor: SurvivalStats.OVERWEIGHT_FACTOR,
+            base: SurvivalStats.BASE, train: SurvivalStats.TRAIN, hpPerLevel: SurvivalStats.HP_PER_LEVEL, overweightHardCap: SurvivalStats.OVERWEIGHT_HARD_CAP, overweightFactor: SurvivalStats.OVERWEIGHT_FACTOR,
             usernameMin: C.USERNAME_MIN, usernameMax: C.USERNAME_MAX
         },
         event: Admin.publicEvent(),
@@ -491,7 +492,7 @@ function normalizeItemList(list) {
             const item = itemDatabase[s.key];
             if (item && !item.stackable) {
                 // nem stackelhető: darabonként; a kopó tárgyak (szerszámok) megtartják a tartósságukat
-                for (let i = 0; i < count; i++) inventory.push(newSlot(s.key, s.dur));
+                for (let i = 0; i < count; i++) { const ns = newSlot(s.key, s.dur); if (item.kg && num(s.kg, 0) > 0) ns.kg = Math.round(num(s.kg, 0) * 100) / 100; inventory.push(ns); }
             } else {
                 const existing = inventory.find(x => x.key === s.key);
                 if (existing) existing.count += count;
@@ -545,6 +546,7 @@ function normalizePlayerFields(p, equipment, inventory) {
         magShots: (p.magShots && typeof p.magShots === 'object') ? p.magShots : {},
         fishing: (p.fishing && typeof p.fishing === 'object' && Number.isFinite(Number(p.fishing.until))) ? p.fishing : null,
         newyear: Math.floor(num(p.newyear, 0)),
+        strength: normalizeStrength(p.strength),
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
     };
 }
@@ -698,7 +700,12 @@ function normalizeQuickbar(raw) {
 
 // ===================== STATISZTIKA (v0.1.10) =====================
 // Egyelőre csak gyűjtjük (nincs kijelezve): később ebből lesznek az eredmények és a profil statisztikája.
-const STAT_NUMBERS = ['walkedMeters', 'buildingsLooted', 'itemsCrafted', 'combatsWon', 'killsTotal', 'deaths', 'longestLifeMs', 'xpTotal', 'pvpWins', 'pvpDeaths'];
+const STAT_NUMBERS = ['walkedMeters', 'buildingsLooted', 'itemsCrafted', 'combatsWon', 'killsTotal', 'deaths', 'longestLifeMs', 'xpTotal', 'pvpWins', 'pvpDeaths',
+    'animalsHunted', 'carcassesSkinned', 'fishCaught', 'fishBestG']; // v0.1.45: a vadászat és a horgászat számlálói is megmaradnak
+function normalizeStrength(raw) {
+    const t = raw && typeof raw === 'object' ? raw : {};
+    return { kg: clamp(Math.round(num(t.kg, 0) * 10) / 10, 0, SurvivalStats.TRAIN.MAX), m: clamp(num(t.m, 0), 0, SurvivalStats.TRAIN.METERS) };
+}
 function normalizeStats(raw) {
     const s = raw && typeof raw === 'object' ? raw : {};
     const out = {};
@@ -707,6 +714,9 @@ function normalizeStats(raw) {
     if (s.kills && typeof s.kills === 'object') {
         Object.keys(s.kills).forEach(k => { const v = Number(s.kills[k]) || 0; if (v > 0) out.kills[k] = v; });
     }
+    out.fishBest = {}; // fajonként a legnagyobb hal, grammban (v0.1.45)
+    if (s.fishBest && typeof s.fishBest === 'object') Object.keys(s.fishBest).forEach(k => { const v = Math.floor(Number(s.fishBest[k]) || 0); if (v > 0 && itemDatabase[k]) out.fishBest[k] = v; });
+    if (typeof s.fishBestKey === 'string' && itemDatabase[s.fishBestKey]) out.fishBestKey = s.fishBestKey;
     out.since = Number(s.since) || Date.now(); // mióta gyűjtjük
     return out;
 }
@@ -752,11 +762,11 @@ function lbRowOf(u, month) {
         const pd = u.playerData || {};
         const se = pd.season && pd.season.month === month ? pd.season : {};
         const pr = u.premium || {}, st = pd.stats || {};
-        return { name: u.username, xp: se.xp || 0, meters: se.meters || 0, cells: se.cells || 0, quests: se.quests || 0, pvp: se.pvp || 0, level: pd.level || 1,
+        return { name: u.username, xp: se.xp || 0, meters: se.meters || 0, cells: se.cells || 0, quests: se.quests || 0, pvp: se.pvp || 0, fishG: se.fishG || 0, level: pd.level || 1,
             frame: pr.frame || '', title: pr.title || '', early: !!u.earlySurvivor,
             // összesített (v0.1.24): a játék kezdete óta, a halál sem nullázza
             all: { xp: Math.max(st.xpTotal || 0, SurvivalSeason.xpForLevel(pd.level) + (pd.xp || 0)), meters: st.walkedMeters || 0,
-                cells: (pd.quests && Array.isArray(pd.quests.cells) ? pd.quests.cells.length : 0), loot: st.buildingsLooted || 0, wins: st.combatsWon || 0, pvp: st.pvpWins || 0, level: pd.level || 1 } };
+                cells: (pd.quests && Array.isArray(pd.quests.cells) ? pd.quests.cells.length : 0), loot: st.buildingsLooted || 0, wins: st.combatsWon || 0, pvp: st.pvpWins || 0, fishG: st.fishBestG || 0, level: pd.level || 1 } };
 }
 // hányadik lenne a listán (a stábtagnak): ennyien előzik meg + 1
 function lbShadowRank(ranked, row, get) {
@@ -800,7 +810,7 @@ async function seasonCloseIfNeeded() {
 function normalizeSeason(raw) {
     if (!raw || typeof raw !== 'object' || typeof raw.month !== 'string' || !/^\d{4}-\d{2}$/.test(raw.month)) return null;
     const n = (v) => Math.max(0, Math.floor(num(v, 0)));
-    return { month: raw.month, xp: n(raw.xp), meters: n(raw.meters), cells: n(raw.cells), quests: n(raw.quests) };
+    return { month: raw.month, xp: n(raw.xp), meters: n(raw.meters), cells: n(raw.cells), quests: n(raw.quests), pvp: n(raw.pvp), fishG: n(raw.fishG) };
 }
 // Szezon-számláló növelése (hónapváltáskor nulláz)
 function seasonAdd(p, key, amount) {
@@ -830,6 +840,7 @@ function normalizeQuests(raw) {
 }
 // Küldetés-esemény: frissíti a napi/heti listát, jóváírja a jutalmat, és sorba teszi az üzeneteket (a sendPlayerState küldi ki)
 const pendingNotices = new Map(); // username -> [szöveg]
+const fishFights = new Map(); // username -> folyamatban lévő fárasztás (csak memóriában, néhány másodperc; v0.1.45)
 function queueNotice(username, text) {
     if (!pendingNotices.has(username)) pendingNotices.set(username, []);
     pendingNotices.get(username).push(text);
@@ -1040,6 +1051,9 @@ function sendPlayerState(username, p, extra) {
 
 // --- LELTÁR SEGÉDFÜGGVÉNYEK (slot = kemény határ, súly = 150%-os plafon) ---
 // Stackelhető tárgyból egy slotban bármennyi lehet; a nem stackelhető minden darabja külön slot.
+// a tárgy neve (a horgászat, nyúzás, gyűjtés üzeneteihez is; v0.1.45)
+function itemName(key) { return itemDatabase[key] ? itemDatabase[key].name : key; }
+
 function isStackable(key) {
     const item = itemDatabase[key];
     return !!(item && item.stackable);
@@ -1140,12 +1154,13 @@ function slotsNeeded(p, key, count) {
 }
 
 // Felvehető-e a tárgy? { ok: true } vagy { ok: false, reason: 'unknown' | 'slots' | 'weight' }
-function canAddItem(p, key, count) {
+function canAddItem(p, key, count, kg) {
     const item = itemDatabase[key];
     if (!item) return { ok: false, reason: 'unknown' };
     const stats = playerStats(p);
     if (p.inventory.length + slotsNeeded(p, key, count) > stats.slots) return { ok: false, reason: 'slots' };
-    if (stats.weight + num(item.weight, 0) * count > stats.weightHardCap + 1e-9) return { ok: false, reason: 'weight' };
+    const each = item.kg && num(kg, 0) > 0 ? num(kg, 0) : num(item.weight, 0); // a halnak saját súlya van (v0.1.45)
+    if (stats.weight + each * count > stats.weightHardCap + 1e-9) return { ok: false, reason: 'weight' };
     return { ok: true };
 }
 
@@ -1154,6 +1169,30 @@ function addItem(p, key, count) {
     if (!check.ok) return check;
     pushItem(p, key, count);
     return check;
+}
+
+// Hal a saját súlyával (v0.1.45)
+function addFish(p, key, kg) {
+    const check = canAddItem(p, key, 1, kg);
+    if (!check.ok) return check;
+    p.inventory.push({ key, count: 1, kg });
+    return check;
+}
+// Súlyos tárgyból (hal) egy darab kivétele: index szerint, különben a legkönnyebb / legnehezebb; visszaadja a súlyát
+function takeKgSlot(p, key, index, heaviest) {
+    let i = Number.isInteger(index) && p.inventory[index] && p.inventory[index].key === key ? index : -1;
+    if (i < 0) p.inventory.forEach((s, j) => {
+        if (s.key !== key) return;
+        if (i < 0) { i = j; return; }
+        const a = SurvivalStats.slotWeight(s, itemDatabase[key]), b = SurvivalStats.slotWeight(p.inventory[i], itemDatabase[key]);
+        if (heaviest ? a > b : a < b) i = j;
+    });
+    if (i < 0) return null;
+    const kg = SurvivalStats.slotWeight({ ...p.inventory[i], count: 1 }, itemDatabase[key]);
+    const slot = p.inventory[i];
+    slot.count -= 1;
+    if (slot.count <= 0) p.inventory.splice(i, 1);
+    return kg;
 }
 
 // Belefér-e a jelenlegi leltár (csere vagy levétel után)? null, 'slots' vagy 'weight'
@@ -2049,6 +2088,14 @@ io.on('connection', (socket) => {
             // A hatások az items.js "effects" mezőjéből jönnek (éhség, szomjúság, élet, fáradtság)
             // Termosz a leltárban: az italok jobban oltják a szomjat
             let effects = itemConfig.effects;
+            // hal: a súlyától függ, mennyit ér nyersen (v0.1.45); a megjelölt darab, különben a legkisebb
+            let fishIdx = null;
+            if (itemConfig.kg) {
+                fishIdx = Number.isInteger(data.index) && p.inventory[data.index] && p.inventory[data.index].key === data.itemKey ? data.index : null;
+                if (fishIdx === null) p.inventory.forEach((s, i) => { if (s.key === data.itemKey && (fishIdx === null || SurvivalStats.slotWeight(s, itemConfig) < SurvivalStats.slotWeight(p.inventory[fishIdx], itemConfig))) fishIdx = i; });
+                const kg = SurvivalStats.slotWeight({ ...p.inventory[fishIdx], count: 1 }, itemConfig);
+                effects = { ...effects, hunger: SurvivalHunting.rawHunger(kg) };
+            }
             if (itemConfig.type === 'drink' && effects && effects.thirst > 0 && hasItem(p, 'thermos')) {
                 effects = { ...effects, thirst: Math.round(effects.thirst * (1 + config.THERMOS_DRINK_BONUS)) };
             }
@@ -2062,7 +2109,7 @@ io.on('connection', (socket) => {
             const changes = SurvivalStats.applyEffects(p, effects, playerStats(p).maxHp);
             if (Object.keys(changes).length === 0) return { save: false, error: 'Most nincs rá szükséged.' };
 
-            removeItem(p, data.itemKey, 1);
+            if (fishIdx !== null) takeKgSlot(p, data.itemKey, fishIdx); else removeItem(p, data.itemKey, 1);
             if (itemConfig.leaves && itemDatabase[itemConfig.leaves]) addItem(p, itemConfig.leaves, 1); // pl. az üveg megmarad (v0.1.35)
             markTutorial(p, 'use');
             questEvent(p, username, 'use', null, qFlags());
@@ -2335,6 +2382,15 @@ io.on('connection', (socket) => {
             bumpStat(p, 'walkedMeters', moved);
             if (!p.lifeStartedAt) p.lifeStartedAt = Date.now();
             let levels = xp > 0 ? grantXp(p, xp) : 0;
+            // Erőnlét (v0.1.45): megrakott hátizsákkal gyalogolva erősödsz
+            const T = SurvivalStats.TRAIN;
+            if (SurvivalStats.carriedWeight(p, itemDatabase) >= T.MIN_KG && SurvivalStats.trainingKg(p) < T.MAX) {
+                const tr = normalizeStrength(p.strength);
+                tr.m += moved;
+                while (tr.m >= T.METERS && tr.kg < T.MAX) { tr.m -= T.METERS; tr.kg = Math.min(T.MAX, Math.round((tr.kg + T.KG) * 10) / 10); if (tr.kg % 2 === 0) queueNotice(username, `💪 Erősödsz! Erőnlét: +${String(tr.kg).replace('.', ',')} kg teherbírás.`); }
+                if (tr.kg >= T.MAX) tr.m = 0;
+                p.strength = tr;
+            }
             // Első lépések: "sétálj 100 métert" (v0.1.19)
             if (p.stats && p.stats.walkedMeters >= SurvivalTutorial.WALK_METERS) levels += markTutorial(p, 'walk');
             // Küldetések (v0.1.20): séta és új területek
@@ -2431,16 +2487,19 @@ io.on('connection', (socket) => {
 
             // Előbb elvesszük az alapanyagokat (ez helyet szabadíthat fel), aztán megnézzük, elfér-e a termék.
             // Ha nem fér el, semmi nem mentődik (save: false), így az alapanyagok sem vesznek el.
+            let kgUsed = 0; // sütés súly szerint (v0.1.45): a legnagyobb halak fogynak előbb
             for (const [matKey, reqQty] of Object.entries(recipe.req)) {
                 if (chosen && chosen.key === matKey) {
                     chosen.count -= reqQty;
                     if (chosen.count <= 0) p.inventory = p.inventory.filter(s => s !== chosen);
+                } else if (recipe.byKg && itemDatabase[matKey] && itemDatabase[matKey].kg) {
+                    for (let i = 0; i < reqQty; i++) kgUsed += takeKgSlot(p, matKey, i === 0 && Number.isInteger(data.index) ? data.index : null, true) || 0;
                 } else removeItem(p, matKey, reqQty);
             }
             if (fireMatch) removeItem(p, RecipeTools.FIRE_STARTERS[0], 1);
             if (waterKey) removeItem(p, waterKey, recipe.water);
             const result = recipe.result || recipe.key;
-            let count = recipe.count || 1;
+            let count = recipe.byKg ? SurvivalHunting.portions(kgUsed) : (recipe.count || 1);
             // nyúzás vadászkéssel: +1 hús (v0.1.42)
             if (recipe.cat === 'Vadászat' && usedTools.some(sl => sl.key === 'hunting_knife') && recipe.extra) count += 1;
             const added = addItem(p, result, count);
@@ -2475,7 +2534,8 @@ io.on('connection', (socket) => {
             markTutorial(p, 'craft');
             questEvent(p, username, 'craft', { count, ornament: recipe.event === 'winter' }, qFlags());
             if (cfx.craftXp) grantXp(p, cfx.craftXp); // Mesterremek
-            let message = `Sikeresen megbarkácsoltad: ${recipe.name}${count > 1 ? ` (${count} db)` : ''}!${count > (recipe.count || 1) ? ' ✨ Dupla adag!' : ''}${thrift}`;
+            const baseCount = recipe.byKg ? SurvivalHunting.portions(kgUsed) : (recipe.count || 1);
+            let message = `Sikeresen megbarkácsoltad: ${recipe.name}${count > 1 ? ` (${count} db)` : ''}!${count > baseCount ? ' ✨ Dupla adag!' : ''}${recipe.byKg ? ` (${SurvivalHunting.fmtKg(kgUsed)} halból)` : ''}${thrift}`;
             if (extraGot.length) message += ` Mellé: ${extraGot.join(', ')}.`;
             if (extraLost.length) message += ` Nem fért el: ${extraLost.join(', ')}.`;
             if (broken.length > 0) message += ` Eltört: ${broken.join(', ')}.`;
@@ -3034,7 +3094,7 @@ io.on('connection', (socket) => {
                 const rows = await leaderboardRows(month);
                 const get = (r) => r.all[board] || 0;
                 const ranked = rankAll(rows, get), meIdx = ranked.findIndex(r => r.name === username);
-                const pick = (r, i) => ({ rank: i + 1, name: r.name, value: board === 'meters' ? Math.round(get(r) / 100) / 10 : get(r), level: r.level, frame: r.frame, title: r.title, early: r.early });
+                const pick = (r, i) => ({ rank: i + 1, name: r.name, value: board === 'meters' || board === 'fishG' ? Math.round(get(r) / 100) / 10 : get(r), level: r.level, frame: r.frame, title: r.title, early: r.early });
                 let me = meIdx >= 0 ? pick(ranked[meIdx], meIdx) : null;
                 if (!me && Admin.isStaffName(username)) { const sr = await lbStaffRow(username, month); if (sr) me = { ...pick(sr, lbShadowRank(ranked, sr, get)), shadow: true }; }
                 return io.to(socket.id).emit('leaderboard', { period: 'all', board, total: ranked.length, top: ranked.slice(0, 1000).map(pick),
@@ -3474,7 +3534,43 @@ io.on('connection', (socket) => {
             return { message: `Kivetettél (csali: ${itemName(bait)}${kept ? ', és meg is maradt' : ''}). Várd a kapást!`, payload: { until: p.fishing.until, lateS: SurvivalHunting.LATE_S } };
         })).then(reply('fish_result')).catch(logError('Hiba a horgászatnál:'));
     });
+    // Kihúzás a kapáskor: elkezdődik a fárasztás (v0.1.45). Minden körben a jó pillanatban kell húzni.
+    const H = SurvivalHunting;
+    const fightSend = (f, note) => {
+        const lo = H.FIGHT_DELAY_MS[0], hi = H.FIGHT_DELAY_MS[1];
+        const delay = Math.round(lo + Math.random() * (hi - lo));
+        const width = Math.round(H.FIGHT_WINDOW_MS[f.size] * (1 + Math.min(0.5, (f.fast || 0) * 0.5)));
+        const now = Date.now();
+        f.openAt = now + delay; f.closeAt = f.openAt + width;
+        clearTimeout(f.timer);
+        f.timer = setTimeout(() => fightMiss(f, 'late'), delay + width + H.FIGHT_GRACE_LATE + 900);
+        socket.emit('fish_fight', { round: f.round + 1, of: f.rounds, delayMs: delay, widthMs: width, size: f.size, sizeName: f.junk ? 'Valami nehéz akadt rá' : H.SIZE_NAMES[f.size], lives: H.FIGHT_LIVES - f.misses, note: note || '' });
+    };
+    const fightEnd = (f, fn) => {
+        clearTimeout(f.timer);
+        if (fishFights.get(username) !== f) return;
+        fishFights.delete(username);
+        withPlayer(username, aliveOnly((p) => {
+            const ffx = skillFx(p);
+            const rod = mostWorn(p, 'fishing_rod');
+            let broke = '';
+            if (rod && !chance(ffx.rodSave)) { rod.dur = (rod.dur === undefined ? itemDatabase.fishing_rod.durability : rod.dur) - 1; if (rod.dur <= 0) { p.inventory = p.inventory.filter(s => s !== rod); broke = ' Eltört a horgászbot!'; } }
+            const r = fn(p, ffx);
+            r.message += broke;
+            return r;
+        })).then(reply('fish_result')).catch(logError('Hiba a horgászatnál:'));
+    };
+    const fightMiss = (f, why) => {
+        if (fishFights.get(username) !== f) return;
+        f.misses += 1;
+        if (f.misses >= H.FIGHT_LIVES) {
+            const what = f.junk ? 'Leakadt, ami a horgon volt' : `${f.size >= 2 ? 'A nagy hal' : 'A hal'} elszakította a zsinórt és elúszott`;
+            return fightEnd(f, () => ({ message: `${what}. A csali odaveszett.`, payload: { done: true, escaped: true } }));
+        }
+        fightSend(f, why === 'early' ? 'Túl korán rántottál! Még egy hiba, és elúszik.' : 'Elkésted! Ránt egyet a zsinóron. Még egy hiba, és elúszik.');
+    };
     socket.on('fish_pull', () => {
+        if (fishFights.has(username)) return;
         withPlayer(username, freeOnly((p) => {
             const f = p.fishing;
             if (!f) return { save: false, error: 'Nem vetettél ki.' };
@@ -3483,20 +3579,61 @@ io.on('connection', (socket) => {
             p.fishing = null;
             const e = activePlayers[username];
             if (e && e.lat !== null && distanceMeters(e, f) > 80) return { message: 'Elmentél a víz mellől: a zsinór elszakadt.', payload: { done: true } };
-            if (now > f.until + SurvivalHunting.LATE_S * 1000) return { message: 'Túl későn húztad ki: a hal leakadt.', payload: { done: true } };
+            if (now > f.until + H.LATE_S * 1000) return { message: 'Túl későn húztad ki: a hal leakadt.', payload: { done: true } };
             const ffx = skillFx(p);
-            const rod = mostWorn(p, 'fishing_rod');
-            let broke = '';
-            if (rod && !chance(ffx.rodSave)) { rod.dur = (rod.dur === undefined ? itemDatabase.fishing_rod.durability : rod.dur) - 1; if (rod.dur <= 0) { p.inventory = p.inventory.filter(s => s !== rod); broke = ' Eltört a horgászbot!'; } }
-            let key = SurvivalHunting.pickCatch(Math.random);
+            let key = H.pickCatch(Math.random);
             if (key.startsWith('fish_') && !['fish_pike', 'fish_catfish'].includes(key) && chance(ffx.bigFish)) key = Math.random() < 0.3 ? 'fish_catfish' : 'fish_pike'; // Nagy fogás
-            const isFish = key.startsWith('fish_');
-            const n = isFish && chance(ffx.fishDouble) ? 2 : 1; // Halak ura
-            grantXp(p, Math.round((isFish ? 10 : 4) * n * (1 + (ffx.wildXp || 0))));
-            if (isFish) { bumpStat(p, 'fishCaught', n); questEvent(p, username, 'fish', { count: n }, qFlags()); }
-            if (!addItem(p, key, n).ok) return { message: `Kifogtad: ${itemName(key)}, de nem fért el, visszadobtad.${broke}`, payload: { done: true } };
-            return { message: `${isFish ? 'Megvan!' : 'Hát...'} Kifogtad: ${n > 1 ? '2 ' : ''}${itemName(key)}!${broke}`, payload: { done: true, key } };
-        })).then(reply('fish_result')).catch(logError('Hiba a horgászatnál:'));
+            const junk = !H.FISH[key];
+            const kg = junk ? null : H.rollKg(key, Math.random, !!ffx.bigFish);
+            const rounds = junk ? 1 : H.fightRounds(key, kg);
+            const fight = { key, kg, junk, rounds, round: 0, misses: 0, size: junk ? 1 : H.sizeClass(rounds), fast: ffx.fishFast || 0, double: chance(ffx.fishDouble), wildXp: ffx.wildXp || 0, timer: null, sock: socket.id };
+            fishFights.set(username, fight);
+            return { message: '', payload: { fight: true } };
+        })).then((res) => {
+            const fight = fishFights.get(username);
+            if (fight && fight.round === 0 && !fight.openAt) { if (res && res.p) sendPlayerState(username, res.p); return fightSend(fight); }
+            reply('fish_result')(res);
+        }).catch(logError('Hiba a horgászatnál:'));
+    });
+    socket.on('fish_reel', () => {
+        const f = fishFights.get(username);
+        if (!f || !f.openAt) return;
+        const now = Date.now();
+        if (now < f.openAt - H.FIGHT_GRACE_EARLY) return fightMiss(f, 'early');
+        if (now > f.closeAt + H.FIGHT_GRACE_LATE) return fightMiss(f, 'late');
+        f.round += 1; f.openAt = 0;
+        if (f.round < f.rounds) return fightSend(f, f.rounds - f.round === 1 ? 'Már fárad! Még egy húzás!' : 'Jó húzás! Küzd tovább...');
+        // partra került
+        fightEnd(f, (p) => {
+            const key = f.key, isFish = !f.junk;
+            const n = isFish && f.double ? 2 : 1; // Halak ura: egy második (kisebb) hal is akadt
+            const kgs = isFish ? [f.kg].concat(n > 1 ? [H.rollKg(key, Math.random, false)] : []) : [];
+            grantXp(p, Math.round((isFish ? 8 + 4 * f.rounds : 4) * n * (1 + f.wildXp)));
+            if (!isFish) {
+                if (!addItem(p, key, 1).ok) return { message: `Kifogtad: ${itemName(key)}, de nem fért el, visszadobtad.`, payload: { done: true } };
+                return { message: `Hát... Kifogtad: ${itemName(key)}!`, payload: { done: true, key } };
+            }
+            bumpStat(p, 'fishCaught', n);
+            questEvent(p, username, 'fish', { count: n }, qFlags());
+            // rekordok: fajonként és összesen, valamint a havi ranglista
+            const g = Math.round(Math.max(...kgs) * 1000);
+            const st = p.stats || (p.stats = normalizeStats(null));
+            st.fishBest = st.fishBest || {};
+            const speciesRecord = g > (st.fishBest[key] || 0);
+            if (speciesRecord) st.fishBest[key] = g;
+            const record = g > (st.fishBestG || 0);
+            if (record) { st.fishBestG = g; st.fishBestKey = key; }
+            p.season = { ...SurvivalSeason.fresh(p.season, Date.now()) };
+            if (g > (p.season.fishG || 0)) p.season.fishG = g;
+            const kept = [], lost = [];
+            kgs.forEach(kg => (addFish(p, key, kg).ok ? kept : lost).push(kg));
+            const nm = itemName(key), list = (a) => a.map(H.fmtKg).join(' + ');
+            let message = kept.length ? `Megvan! ${nm}: ${list(kept)}!` : `${nm} (${list(lost)}): nem fért el nálad, visszaengedted.`;
+            if (kept.length && lost.length) message += ` A másikat (${list(lost)}) visszaengedted, nem fért el.`;
+            if (kept.length && record) message += ' Új egyéni rekord!';
+            else if (kept.length && speciesRecord) message += ` Ez az eddigi legnagyobb ${{ fish_crucian: 'kárászod', fish_carp: 'pontyod', fish_pike: 'csukád', fish_catfish: 'harcsád' }[key] || 'halad'}!`;
+            return { message, payload: { done: true, key, kg: f.kg, record: record || speciesRecord } };
+        });
     });
 
     // ----- Hétvégi ajándékvadászat -----
@@ -3707,7 +3844,7 @@ io.on('connection', (socket) => {
             const slot = p.shelter.stash[data.index];
             if (!slot) return { save: false, error: 'Ez a tárgy már nincs a raktárban.' };
             const count = Number.isInteger(data.count) && data.count > 0 ? Math.min(data.count, slot.count) : slot.count;
-            const check = canAddItem(p, slot.key, isStackable(slot.key) ? count : 1);
+            const check = canAddItem(p, slot.key, isStackable(slot.key) ? count : 1, slot.kg);
             if (!check.ok) return { save: false, error: CAPACITY_MESSAGES[check.reason] };
             const name = itemDatabase[slot.key] ? itemDatabase[slot.key].name : slot.key;
             if (isStackable(slot.key)) {
@@ -3774,7 +3911,8 @@ io.on('connection', (socket) => {
             const keepShelter = p.shelter;   // a menedék és a raktára is megmarad (v0.1.12)
             const keepBlueprints = p.blueprints; // az elolvasott tervrajzok tudása is (v0.1.34)
             const keepNewyear = p.newyear;       // a szilveszteri csomag halál után nem jár újra
-            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, quests: keepQuests, season: keepSeason, advent: keepAdvent, winter: keepWinter, premiumSlots: keepSlots, shelter: keepShelter, blueprints: keepBlueprints || [], newyear: keepNewyear || 0, lifeStartedAt: Date.now() });
+            const keepStrength = { kg: Math.round(SurvivalStats.trainingKg(p) * SurvivalStats.TRAIN.KEEP_ON_DEATH * 10) / 10, m: 0 }; // az Erőnlét fele megmarad (v0.1.45)
+            Object.assign(p, newPlayerData(), { lastSeen: Date.now(), stats: keepStats, tutorial: keepTutorial, daily: keepDaily, quests: keepQuests, season: keepSeason, advent: keepAdvent, winter: keepWinter, premiumSlots: keepSlots, shelter: keepShelter, blueprints: keepBlueprints || [], newyear: keepNewyear || 0, strength: keepStrength, lifeStartedAt: Date.now() });
             const entry = activePlayers[username];
             if (entry) { entry.warned = {}; entry.xpMeters = 0; entry.lastMovedAt = Date.now(); }
             return { message: 'Új túlélő indult a Zónában. Sok szerencsét!' };
@@ -3783,6 +3921,8 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`🔌 Kliens levált: ${socket.id}`);
+        const ff = fishFights.get(username); // a félbehagyott fárasztás elvész (v0.1.45)
+        if (ff && ff.sock === socket.id) { clearTimeout(ff.timer); fishFights.delete(username); }
         // Csak akkor töröljük, ha a bejegyzés még ehhez a kapcsolathoz tartozik
         // (a kidobott régi munkamenet ne törölje az újat).
         const leaving = activePlayers[username];

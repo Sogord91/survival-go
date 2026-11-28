@@ -4,7 +4,7 @@
 // mindig a felszerelésből és a szintből számoljuk újra, így nem csúszhatnak szét.
 (function (root) {
     // Alapértékek egy felszerelés nélküli, 1. szintű karakterre
-    const BASE = { maxHp: 100, defense: 0, slots: 15, maxWeight: 30, fatigueRate: 1 }; // v0.1.43: 10 -> 15 alap hely
+    const BASE = { maxHp: 100, defense: 0, slots: 15, maxWeight: 35, fatigueRate: 1 }; // v0.1.43: 10 -> 15 alap hely; v0.1.45: 30 -> 35 kg
 
     // weapon = elsődleges fegyver, secondary = másodlagos (pisztoly), melee = közelharci
     const EQUIPMENT_SLOTS = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon', 'secondary', 'melee', 'gloves'];
@@ -52,6 +52,10 @@
             });
         });
 
+        // Erőnlét (v0.1.45)
+        const tk = trainingKg(player);
+        if (tk > 0) bonuses.push({ source: 'training', maxWeight: tk });
+
         // Képességek (v0.1.20)
         const SK = skillsApi();
         if (SK && player && player.skills) {
@@ -76,13 +80,24 @@
         return d !== null && d <= 0;
     }
 
+    // Egy leltárhely súlya: a halaknak saját súlyuk van (slot.kg, v0.1.45), a többi a tárgy súlya × darab
+    function slotWeight(slot, item) {
+        const kg = item && item.kg ? num(slot && slot.kg, 0) : 0;
+        return (kg > 0 ? kg : num(item && item.weight, 0)) * Math.max(0, num(slot && slot.count, 1));
+    }
+
+    // ERŐNLÉT (v0.1.45): ha legalább MIN_KG van nálad, minden METERS gyaloglás +KG teherbírást ad (legfeljebb MAX).
+    // Halálkor a fele megmarad.
+    const TRAIN = { MIN_KG: 15, METERS: 500, KG: 0.5, MAX: 20, KEEP_ON_DEATH: 0.5 };
+    function trainingKg(player) { return Math.max(0, Math.min(TRAIN.MAX, num(player && player.strength && player.strength.kg, 0))); }
+
     // A leltár és a felszerelés össztömege (kg)
     function carriedWeight(player, itemDatabase) {
         let total = 0;
         const inventory = Array.isArray(player && player.inventory) ? player.inventory : [];
         inventory.forEach(slot => {
             const item = slot && itemDatabase[slot.key];
-            if (item) total += num(item.weight, 0) * Math.max(0, num(slot.count, 1));
+            if (item) total += slotWeight(slot, item);
         });
         const equipment = (player && player.equipment) || {};
         EQUIPMENT_SLOTS.forEach(slot => {
@@ -172,7 +187,7 @@
 
     const api = {
         BASE, EQUIPMENT_SLOTS, HP_PER_LEVEL, OVERWEIGHT_FACTOR, OVERWEIGHT_HARD_CAP, EFFECT_KEYS,
-        num, collectBonuses, carriedWeight, computeStats, overweightMultiplier,
+        num, collectBonuses, carriedWeight, slotWeight, TRAIN, trainingKg, computeStats, overweightMultiplier,
         isConsumable, isEquippable, equipSlot, applyEffects, findUsableLight,
         equipmentDur, isBroken
     };

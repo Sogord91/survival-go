@@ -12,6 +12,7 @@
         { key: 'quests', name: 'Küldetések', icon: '📜', unit: 'db', desc: 'A hónapban teljesített napi és heti küldetések.' },
         { key: 'level', name: 'Szint', icon: '⭐', unit: 'szint', desc: 'A jelenlegi túlélő szintje (halálkor elölről kezdődik).' },
         { key: 'pvp', name: 'PvP', icon: '🔫', unit: 'győzelem', desc: 'A hónapban megnyert támadások (más túlélő legyőzése).' },
+        { key: 'fishG', name: 'Legnagyobb hal', icon: '🐟', unit: 'kg', desc: 'A hónap legnagyobb kifogott hala.' },
         { key: 'teams', name: 'Csapatok', icon: '🏕️', unit: 'pont', desc: 'A csapatok tagjainak összesített szezonpontja ebben a hónapban.' }
     ];
     // ÖSSZESÍTETT ranglista (v0.1.24): a játék kezdete óta, a halál sem nullázza
@@ -22,6 +23,7 @@
         { key: 'loot', name: 'Kutatás', icon: '🏚️', unit: 'épület', desc: 'Az összes átkutatott épület.' },
         { key: 'wins', name: 'Győzelmek', icon: '⚔️', unit: 'győzelem', desc: 'Az összes megnyert harc.' },
         { key: 'pvp', name: 'PvP', icon: '🔫', unit: 'győzelem', desc: 'Az összes legyőzött túlélő (támadásban).' },
+        { key: 'fishG', name: 'Legnagyobb hal', icon: '🐟', unit: 'kg', desc: 'A valaha kifogott legnagyobb hal.' },
         { key: 'level', name: 'Szint', icon: '⭐', unit: 'szint', desc: 'A jelenlegi túlélő szintje (halálkor elölről kezdődik).' }
     ];
     // a szinthez tartozó összes XP (1. szinttől): 100 + 200 + … + (L-1)·100
@@ -61,11 +63,12 @@
     // A játékos szezon-számlálója (hónapváltáskor nulláz)
     function fresh(s, now) {
         const month = monthKey(now);
-        if (!s || s.month !== month) return { month, xp: 0, meters: 0, cells: 0, quests: 0, pvp: 0 };
+        if (!s || s.month !== month) return { month, xp: 0, meters: 0, cells: 0, quests: 0, pvp: 0, fishG: 0 };
         return s;
     }
     function valueOf(entry, key) {
         if (key === 'meters') return Math.round((entry.meters || 0) / 100) / 10;
+        if (key === 'fishG') return Math.round((entry.fishG || 0) / 100) / 10; // grammból kg (v0.1.45)
         return entry[key] || 0;
     }
 

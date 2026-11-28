@@ -71,11 +71,11 @@
         { key: 'm_care', branch: 'mester', tier: 5, col: 'b', req: R3('m_casing'), max: 5, per: 0.04, fx: 'wearSave', icon: '🧴', name: 'Ápolt felszerelés', desc: (v) => `további ${pct(v)} eséllyel nem kopik a felszerelésed` },
         // --- VADÁSZ (v0.1.43) ---
         { key: 'v_stalk', branch: 'vadasz', tier: 0, col: 'a', max: 5, per: 0.08, fx: 'huntQuiet', icon: '🤫', name: 'Becserkészés', desc: (v) => `${pct(v)}-kal ritkábban neszel meg az állat` },
-        { key: 'v_patient', branch: 'vadasz', tier: 0, col: 'b', max: 5, per: 0.08, fx: 'fishFast', icon: '⏳', name: 'Türelmes horgász', desc: (v) => `${pct(v)}-kal hamarabb jön a kapás` },
+        { key: 'v_patient', branch: 'vadasz', tier: 0, col: 'b', max: 5, per: 0.08, fx: 'fishFast', icon: '⏳', name: 'Türelmes horgász', desc: (v) => `${pct(v)}-kal hamarabb jön a kapás, és hosszabb a zöld sáv fárasztáskor` },
         { key: 'v_track', branch: 'vadasz', tier: 1, col: 'a', req: R3('v_stalk'), max: 5, per: 4, fx: 'huntRange', icon: '👁️', name: 'Nyomolvasó', desc: (v) => `+${v} m-ről is becserkészheted az állatot` },
         { key: 'v_bait', branch: 'vadasz', tier: 1, col: 'b', req: R3('v_patient'), max: 5, per: 0.1, fx: 'baitSave', icon: '🐍', name: 'Csalimester', desc: (v) => `${pct(v)} eséllyel nem fogy el a csali` },
         { key: 'v_skin', branch: 'vadasz', tier: 2, col: 'a', req: R3('v_track'), max: 5, per: 0.1, fx: 'skinBonus', icon: '🔪', name: 'Nyúzómester', desc: (v) => `${pct(v)} eséllyel +1 hús nyúzáskor` },
-        { key: 'v_bigfish', branch: 'vadasz', tier: 2, col: 'b', req: R3('v_bait'), max: 5, per: 0.06, fx: 'bigFish', icon: '🐟', name: 'Nagy fogás', desc: (v) => `${pct(v)}-kal gyakrabban akad csuka és harcsa` },
+        { key: 'v_bigfish', branch: 'vadasz', tier: 2, col: 'b', req: R3('v_bait'), max: 5, per: 0.06, fx: 'bigFish', icon: '🐟', name: 'Nagy fogás', desc: (v) => `${pct(v)}-kal gyakrabban akad csuka és harcsa, és nagyobbak a halak` },
         { key: 'v_ranger', branch: 'vadasz', tier: 3, col: 'c', reqAny: ['v_skin', 'v_bigfish'], max: 1, per: 1, fx: 'moreAnimals', cap: true, icon: '🌲', name: 'Vadőr', desc: () => 'Eggyel több állat bukkan fel a közeledben' },
         { key: 'v_instinct', branch: 'vadasz', tier: 4, col: 'a', req: R3('v_skin'), max: 5, per: 0.06, fx: 'animalDmg', icon: '🎯', name: 'Vadászösztön', desc: (v) => `+${pct(v)} sebzés az állatok ellen` },
         { key: 'v_line', branch: 'vadasz', tier: 4, col: 'b', req: R3('v_bigfish'), max: 5, per: 0.1, fx: 'rodSave', icon: '🧵', name: 'Erős damil', desc: (v) => `${pct(v)} eséllyel nem kopik a horgászbot` },

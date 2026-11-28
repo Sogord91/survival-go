@@ -273,13 +273,17 @@ const GUIDES = [
     ${list(it => it.type === 'carcass' || it.type === 'trophy')}
     <h2>Horgászat</h2>
     <p>A térképen a legközelebbi vízparton (tó, folyó, patak, csatorna) horog jelzi a horgászhelyet. Ha ${H.WATER_RANGE} m-en belül vagy, és van nálad <b>horgászbot</b> és <b>csali</b> (${H.BAITS.map(itemLink).join(', ')}), megjelenik a <b>Horgászat</b> gomb.</p>
-    <ul><li>Kivetés után ${H.WAIT_MIN_S}–${H.WAIT_MAX_S} másodperc a kapás. Ha túl korán húzod ki, elúszik a hal.</li>
+    <ul><li>Kivetéskor elfogy egy csali. ${H.WAIT_MIN_S}–${H.WAIT_MAX_S} másodperc múlva jön a kapás. Ha túl korán húzod ki, elúszik a hal.</li>
       <li>Kapáskor rezeg a telefon: ${Math.round(H.LATE_S / 60)} perced van kihúzni. Ne menj el a víz mellől!</li>
-      <li>Kárász, ponty, csuka, ritkán harcsa, és néha egy ócska csizma vagy palackposta.</li></ul>
+      <li><b>Fárasztás:</b> a kihúzáskor a hal küzd. Egy csíkon jel fut végig: amikor a <b>zöld sávba</b> ér, húzz! A kis hal egy húzással kijön, a nagyobbak több körig küzdenek, és náluk rövidebb a zöld sáv. ${H.FIGHT_LIVES} hibánál (túl korán vagy túl későn húzol) a hal elszakítja a zsinórt.</li>
+      <li><b>Minden halnak saját súlya van:</b> ${Object.entries(H.FISH).map(([k, f]) => `${itemLink(k)} ${String(f.min).replace('.', ',')}–${String(f.max).replace('.', ',')} kg`).join(', ')}. A nagyok ritkák!</li>
+      <li>A nagyobb hal nyersen is többet ér, sütve pedig több adag lesz belőle: kb. ${String(H.KG_PER_PORTION).replace('.', ',')} kg halból 1 adag sült hal (egy sütésből legfeljebb ${H.MAX_PORTIONS}). Sütéskor a legnagyobb hal kerül a tűzre.</li>
+      <li>Néha egy ócska csizma vagy palackposta akad a horogra.</li>
+      <li><b>Rekordok:</b> a profilodban látszik a legnagyobb halad, a ranglistán pedig a hónap és minden idők legnagyobb hala.</li></ul>
     <p><b>Horgászbot</b> épületben is akad (sportbolt, ház), vagy barkácsolhatod: egyenes bot, damil és horog. Horgot rézdrótból vagy csontból is hajlíthatsz, damilt pamutzsinórból sodorhatsz.</p>
     ${list((it, k) => k.startsWith('fish_') || ['fishing_rod', 'fishing_line', 'worms', 'grilled_fish', 'old_boot', 'hunting_knife'].includes(k))}
     <h2>Vadász képességek</h2>
-    <p>A Képességek között új ág: a <b>Vadász</b>. Bal ösvény: becserkészés, nyomolvasás (messzebbről), nyúzómester (több hús), vadászösztön (sebzés az állatok ellen), trófeagyűjtő. Jobb ösvény: türelmes horgász (hamarabb jön a kapás), csalimester, nagy fogás (több csuka és harcsa), erős damil, halak ura (dupla fogás). A csúcson: <b>Vadőr</b> (eggyel több állat) és <b>A vadon ura</b> (+50% XP).</p>
+    <p>A Képességek között új ág: a <b>Vadász</b>. Bal ösvény: becserkészés, nyomolvasás (messzebbről), nyúzómester (több hús), vadászösztön (sebzés az állatok ellen), trófeagyűjtő. Jobb ösvény: türelmes horgász (hamarabb jön a kapás, könnyebb a fárasztás), csalimester, nagy fogás (több csuka és harcsa, nagyobb halak), erős damil, halak ura (dupla fogás). A csúcson: <b>Vadőr</b> (eggyel több állat) és <b>A vadon ura</b> (+50% XP).</p>
     <h2>Küldetések</h2>
     <p>Napi: ejts el állatot, fogj halat, nyúzz meg egy tetemet. Heti: ejts el több állatot, fogj sok halat, szerezz trófeát.</p>`; } },
   { slug: 'harci-eszkozok', title: 'Harci eszközök és tervrajzok', group: 'Útmutatók', render: () => {
@@ -348,6 +352,7 @@ const GUIDES = [
   { slug: 'suly', title: 'Súly és hátizsák', group: 'Útmutatók', render: () => `
     <h1>Súly és hátizsák</h1>
     <ul><li>Alapból <b>${R().base.slots} hely</b> és <b>${R().base.maxWeight} kg</b> teherbírás. A hátizsákok és egyes ruhák növelik.</li>
+      <li><b>Erőnlét:</b> ha legalább ${R().train.MIN_KG} kg van nálad, minden ${R().train.METERS} m gyaloglás +${String(R().train.KG).replace('.', ',')} kg teherbírást ad, legfeljebb +${R().train.MAX} kg-ig. Halálkor a fele megmarad. A Készletben a kg-ra koppintva látod, hol tartasz. A Túlélő ág <b>Teherhordó</b> képessége további kilókat ad.</li>
       <li>A halmozható tárgyakból (étel, lőszer…) egy helyen bármennyi elfér; a nem halmozhatók (fegyver, ruha) darabonként egy helyet foglalnak.</li>
       <li><b>Túlsúly:</b> a teherbírásod fölött gyorsabban fáradsz (10% túlsúly ≈ 1,2×, 50% ≈ 2× fáradás). A teherbírás ${pct(R().overweightHardCap)}-a fölé már semmit nem vehetsz fel.</li>
       <li>A Készletben a <b>Rendez</b> gomb típus szerint sorba teszi a holmidat, a <b>Kidobás</b> gombbal egyszerre többet is eldobhatsz, és <b>húzással</b> is átrendezheted (telefonon röviden nyomd meg, aztán húzd).</li></ul>

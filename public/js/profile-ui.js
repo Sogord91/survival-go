@@ -28,7 +28,7 @@ function profAgo(t) {
     return `${Math.floor(h / 24)} napja`;
 }
 function profNum(v, unit) {
-    const s = unit === 'km' ? String(v).replace('.', ',') : Number(v || 0).toLocaleString('hu-HU');
+    const s = unit === 'km' || unit === 'kg' ? String(v || 0).replace('.', ',') : Number(v || 0).toLocaleString('hu-HU');
     return s;
 }
 function profAvatarHtml(d, size) {
