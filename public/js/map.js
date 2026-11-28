@@ -367,20 +367,30 @@ function dangerUntilFor(id) {
 //  'locked' (mindenkinek zárva, kifosztották): piros lakat
 //  'danger' (csak neked, elmenekültél onnan): narancs figyelmeztető jel
 //  'free': a típus ikonja és színe
+// a túl sötét típusszínt kivilágosítjuk, hogy a sötét térképen is látsszon a gyűrű
+const _poiRingCache = {};
+function poiRing(hex) {
+    if (_poiRingCache[hex]) return _poiRingCache[hex];
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return hex;
+    let [r, g, b] = [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16));
+    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    const mix = lum < 0.3 ? 0.5 : lum < 0.45 ? 0.3 : 0.12; // mennyi fehér kerüljön bele
+    [r, g, b] = [r, g, b].map(v => Math.round(v + (255 - v) * mix));
+    return (_poiRingCache[hex] = `rgb(${r},${g},${b})`);
+}
+// v0.1.38: nagyobb, kontrasztosabb jelölő – sötét alap, a típus színes gyűrűje, világosított festett ikon
 function buildingMarkerIcon(bData, state) {
+    const mk = (ring, emoji, extra) => {
+        ring = poiRing(ring);
+        const ic = typeof sgEmojiIcon === 'function' ? sgEmojiIcon(emoji, 'sg-poi-img') : emoji;
+        return `<div class="sg-poi${extra ? ' ' + extra : ''}" style="--ring:${ring}" data-noicon>${ic}</div>`;
+    };
     let iconHtml;
-    if (state === 'cache') {
-        // kifosztva, de van még bent otthagyott holmi: bárki elviheti 30 percig
-        iconHtml = '<div style="background:#92400e;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fbbf24;font-size:13px;box-shadow:0 0 12px rgba(251,191,36,0.8);">📦</div>';
-    } else if (state === 'danger') {
-        iconHtml = '<div style="background:#c2410c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px dashed #fdba74;font-size:13px;box-shadow:0 0 10px rgba(249,115,22,0.7);">⚠️</div>';
-    } else if (state === 'locked') {
-        iconHtml = '<div style="background:#b91c1c;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #f87171;font-size:12px;box-shadow:0 0 10px rgba(239,68,68,0.7);">🔒</div>';
-    } else {
-        const config = SurvivalBuildings.typeInfo(bData.type);
-        iconHtml = `<div style="position:relative;background:${config.color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #111;font-size:13px;box-shadow:0 0 10px rgba(0,0,0,0.8);">${config.icon}</div>`;
-    }
-    return L.divIcon({ className: 'custom-icon', html: iconHtml, iconSize: [26, 26] });
+    if (state === 'cache') iconHtml = mk('#fbbf24', '📦', 'sg-poi-glow');        // otthagyott holmi: bárki elviheti 30 percig
+    else if (state === 'danger') iconHtml = mk('#fb923c', '⚠️', 'sg-poi-dash');   // elmenekültél onnan
+    else if (state === 'locked') iconHtml = mk('#ef4444', '🔒', 'sg-poi-dim');    // kifosztva
+    else { const c = SurvivalBuildings.typeInfo(bData.type); iconHtml = mk(c.color, c.icon); }
+    return L.divIcon({ className: 'custom-icon', html: iconHtml, iconSize: [33, 33], iconAnchor: [16, 16] });
 }
 
 // A jelölők FOKOZATOS frissítése: új épületnél új jelölő, zárállapot-változásnál csak az ikon cserélődik,

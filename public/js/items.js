@@ -481,6 +481,35 @@ const itemDatabase = {
 
 
 
+// --- ZSÁKMÁNY-HANGOLÁS (v0.1.39): romos házak ---
+// Kevesebb szemét és halmozott apróság, több ital és étel, több közelharci fegyver, ritkán lőfegyver és töltény.
+(function tuneHousehold() {
+    const set = (key, group, w) => { const it = itemDatabase[key]; if (!it) return; it.loot = it.loot || {}; it.loot[group] = w; };
+    const scale = (key, f) => { const it = itemDatabase[key]; if (it && it.loot && it.loot.household) it.loot.household = Math.round(it.loot.household * f * 10) / 10; };
+    // szemét és alapanyag: kb. 38% -> 28%
+    ['rag', 'dirty_rag', 'empty_can', 'empty_jar', 'plastic_bottle', 'broken_bulb', 'old_newspaper', 'glass_shards', 'broken_toaster'].forEach(k => scale(k, 0.5));
+    ['cotton_cord', 'matchbox', 'aa_batteries', 'stone', 'stick'].forEach(k => scale(k, 0.75));
+    // ital és étel
+    ['water_bottle', 'dirty_water', 'mint_tea', 'honey_water', 'vodka', 'moonshine'].forEach(k => scale(k, 1.6));
+    ['canned_food', 'tuna_can', 'canned_bacon', 'canned_peaches', 'soup_packets', 'instant_oatmeal', 'potato'].forEach(k => scale(k, 1.25));
+    // közelharci fegyver
+    set('knife', 'household', 4); set('baseball_bat', 'household', 1.5); set('crowbar', 'household', 1.2);
+    set('axe', 'household', 1.2); set('machete', 'household', 0.6); set('shovel', 'household', 1); set('butcher_cleaver', 'household', 0.8);
+    // ritkán lőfegyver a padláson / szekrényben, és néhány töltény
+    set('pipe_pistol', 'household', 0.4); set('revolver_nagant', 'household', 0.25); set('double_barrel', 'household', 0.3); set('tisza_single', 'household', 0.3);
+    set('ammo_9mm', 'household', 0.6); set('ammo_buckshot', 'household', 0.6);
+    // menedéképítés: ritkán a házakban is akad hozzá olyasmi, ami egy háznál előfordulhat (padlás, fészer, garázs, kert) (v0.1.40)
+    [['wall_planks', 0.6], ['timber_beam', 0.4], ['plywood_panel', 0.4], ['corrugated_sheet', 0.3], ['hinge_latch', 1.5],
+     ['hemp_rope', 0.8], ['iron_chain', 0.3], ['pipe', 0.4], ['concrete_mix', 0.25], ['metal_scrap', 0.6], ['gasoline_can', 0.3], ['copper_wire', 0.5],
+     ['palisade_stake', 0.4], ['plank_door', 0.15], ['storm_shutter', 0.2], ['supply_crate', 0.1], ['rain_barrel', 0.15]].forEach(([k, w]) => set(k, 'household', w));
+    // kész menedékelemek a hozzájuk illő helyeken
+    set('plank_door', 'farm', 0.3); set('corrugated_wall_panel', 'scrap', 0.3); set('corrugated_wall_panel', 'industrial', 0.2);
+    set('reinforced_door', 'industrial', 0.1); set('reinforced_door', 'military', 0.15); set('storm_shutter', 'warehouse', 0.3);
+    // halmozott apróságok: egyszerre kevesebb
+    const cnt = (key, a, b) => { if (itemDatabase[key]) itemDatabase[key].lootCount = [a, b]; };
+    cnt('copper_coins', 1, 3); cnt('candle', 1, 2); cnt('aa_batteries', 1, 1); cnt('matchbox', 1, 1);
+})();
+
 // --- FELSZERELÉS KOPÁSA ---
 // Minden felvehető tárgy (fegyver, ruha, páncél, cipő, táska) tartósságot kap a ritkasága (tier) szerint,
 // ha nincs megadva külön "durability". Kopás: fegyver támadásonként 1, védőfelszerelés és táska minden kapott

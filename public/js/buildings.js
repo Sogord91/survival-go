@@ -42,7 +42,7 @@
         'Állatfarm / Lovarda':                           { icon: '🐎', color: '#854d0e', groups: ['farm', 'kitchen'], empty: 0.55, encounter: 0.05 },
         'Víztorony / Vízmű':                             { icon: '💧', color: '#0284c7', groups: ['utility', 'drinks'], empty: 0.55, encounter: 0.05 },
         'Elektromos Alállomás / Trafóház':               { icon: '⚡', color: '#eab308', groups: ['utility', 'industrial'], empty: 0.55, encounter: 0.05 },
-        'Romos ház':                                     { icon: '🏠', color: '#6b7280', groups: ['household'], empty: 0.60, encounter: 0.05 },
+        'Romos ház':                                     { icon: '🏠', color: '#c9a66b', groups: ['household'], empty: 0.60, encounter: 0.05 },
         'Szálloda / Hotel / Panzió':                     { icon: '🏨', color: '#9333ea', groups: ['household', 'kitchen', 'valuables'], empty: 0.50, encounter: 0.05 },
         'Motel / Kamionos pihenő':                       { icon: '🏨', color: '#793e75', groups: ['household', 'drinks', 'smallgoods'], empty: 0.50, encounter: 0.05 },
         'Sportcsarnok / Edzőterem':                      { icon: '🏋️', color: '#2563eb', groups: ['sport', 'drinks'], empty: 0.50, encounter: 0.05 },

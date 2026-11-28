@@ -6,9 +6,9 @@
     const STEPS = [
         { key: 'walk', title: 'Sétálj 100 métert a valóságban', hint: 'Nincs joystick: a karaktered csak akkor mozog, ha TE magad sétálsz a telefonnal a kezedben. Indulj el az utcán, és figyeld, ahogy a jelölőd veled halad a térképen.', xp: 20 },
         { key: 'loot', title: 'Kutass át egy épületet', hint: 'Menj 30 méteren belülre egy épülethez a térképen, és koppints rá. Ha végzett a keresés, tedd el, amit találtál.', xp: 20 },
-        { key: 'use', title: 'Egyél, igyál vagy kötözz', hint: 'Avatar → Készlet → koppints egy ételre, italra vagy kötszerre → Használ. Figyeld lent az étel és a víz csíkot!', xp: 20 },
-        { key: 'pin', title: 'Tűzz ki valamit a gyorssávra', hint: 'Avatar → Készlet → koppints egy ételre vagy kötszerre → Gyorssávra. Így a térképről egy koppintással használhatod.', xp: 20 },
-        { key: 'equip', title: 'Vegyél fel egy felszerelést', hint: 'Avatar → Készlet → koppints egy fegyverre, ruhára vagy táskára → Felvesz. A kés már nálad van!', xp: 20 },
+        { key: 'use', title: 'Egyél, igyál vagy kötözz', hint: 'Készlet → koppints egy ételre, italra vagy kötszerre → Használ. Figyeld lent az étel és a víz csíkot!', xp: 20 },
+        { key: 'pin', title: 'Tűzz ki valamit a gyorssávra', hint: 'Készlet → koppints egy ételre vagy kötszerre → Gyorssávra. Így a térképről egy koppintással használhatod.', xp: 20 },
+        { key: 'equip', title: 'Vegyél fel egy felszerelést', hint: 'Készlet → koppints egy fegyverre, ruhára vagy táskára → Felvesz. A kés már nálad van!', xp: 20 },
         { key: 'craft', title: 'Barkácsolj valamit', hint: 'Barkács → válassz egy receptet, amihez minden megvan (zöld). Jó kezdés a rongykötés.', xp: 30 },
         { key: 'combat', title: 'Élj túl egy harcot', hint: 'Az épületekben néha ellenség vár. Harcolj, vagy menekülj el: mindkettő számít.', xp: 40 }
     ];

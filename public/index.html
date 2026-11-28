@@ -178,8 +178,18 @@
         .sg-recenter:active { transform: scale(.93); }
         .sg-loading { position: absolute; z-index: 1000; left: 50%; transform: translateX(-50%); bottom: calc(var(--sg-safe-b) + 174px); padding: 5px 10px; border: 2px solid var(--sg-dark);
             font: 800 10px var(--sg-font); letter-spacing: .18em; color: var(--sg-thread); pointer-events: none; animation: sg-blink 1.6s steps(2) infinite; }
+        /* térképes épületjelölő (v0.1.38): jobban látható */
+        .sg-poi { width: 33px; height: 33px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+            background: radial-gradient(circle at 50% 38%, #3a3d33 0%, #15170f 75%); border: 3px solid var(--ring, #c9a66b);
+            box-shadow: 0 0 0 1.5px #050604, 0 2px 6px rgba(0,0,0,.85), 0 0 9px color-mix(in srgb, var(--ring, #c9a66b) 45%, transparent); }
+        .sg-poi .sg-poi-img { width: 25px; height: 25px; filter: brightness(1.25) contrast(1.15) saturate(1.25) drop-shadow(0 0 1.5px rgba(255,240,200,.55)); }
+        .sg-poi svg.sg-poi-img { color: #f1e6c4; }
+        .sg-poi-glow { box-shadow: 0 0 0 1.5px #050604, 0 0 14px rgba(251,191,36,.9); }
+        .sg-poi-dash { border-style: dashed; }
+        .sg-poi-dim { background: radial-gradient(circle, #3b1414 0%, #1a0808 80%); }
+        .sg-poi-dim .sg-poi-img { width: 20px; height: 20px; filter: none; }
         .sg-log { position: absolute; z-index: 950; left: 14px; right: 80px; bottom: calc(var(--sg-safe-b) + 222px); max-height: 56px; overflow: hidden; pointer-events: none;
-            display: flex; flex-direction: column; justify-content: flex-end; font: 400 11.5px/1.5 var(--sg-mono); color: #d8d2bd; text-shadow: 0 1px 2px #000, 0 0 2px #000; }
+            display: flex; flex-direction: column; justify-content: flex-end; font: 400 11.5px/1.5 var(--sg-mono); color: #e6e0cb; text-shadow: 0 1px 2px #000, 0 0 3px #000, 0 0 6px #000; }
         .sg-log > div { flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sg-log > div:nth-last-child(3) { opacity: .45; } .sg-log > div:nth-last-child(2) { opacity: .72; }
         .sg-log > div:nth-last-child(n+4) { display: none; }
@@ -1319,10 +1329,24 @@
             background: url(/images/hud/close.webp) center / contain no-repeat !important; filter: drop-shadow(0 2px 2px rgba(0,0,0,.6)); }
         .hud-panel button[id^="btn-close"] *, .sg-hub-x * { display: none !important; }
         /* semleges gombok: fémlap rézszegéllyel */
-        .hud-panel button[class*="bg-emerald-"], .hud-panel button[class*="bg-green-"], .hud-panel button[class*="bg-gray-7"], .hud-panel button[class*="bg-gray-8"], .hud-panel button.ok, .hud-panel .ok.wide {
+        .hud-panel button[class*="bg-emerald-"], .hud-panel a[class*="py-"][class*="bg-emerald-"], .hud-panel button[class*="bg-green-"], .hud-panel a[class*="py-"][class*="bg-green-"], .hud-panel button[class*="bg-gray-7"], .hud-panel button[class*="bg-gray-8"], .hud-panel button.ok, .hud-panel .ok.wide {
             background: none !important; border: 0 !important; border-image: url(/images/hud/button.webp) 52 60 fill / 10px 12px round !important;
             color: #f3ead0 !important; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,.8); box-shadow: none !important; }
         .hud-panel button[class*="bg-emerald-"]:disabled, .hud-panel button[class*="bg-gray-"]:disabled { filter: grayscale(.8) brightness(.7); }
+        /* színes gombok is festett fémlapot kapnak (v0.1.38): sárga = mellékművelet, piros = veszélyes, kék/lila = különleges */
+        .hud-panel button[class*="bg-amber-"], .hud-panel a[class*="py-"][class*="bg-amber-"], .hud-panel button[class*="bg-yellow-"], .hud-panel a[class*="py-"][class*="bg-yellow-"], .hud-panel button[class*="bg-orange-"], .hud-panel a[class*="py-"][class*="bg-orange-"],
+        .hud-panel button[class*="bg-red-"], .hud-panel a[class*="py-"][class*="bg-red-"], .hud-panel button[class*="bg-rose-"], .hud-panel a[class*="py-"][class*="bg-rose-"],
+        .hud-panel button[class*="bg-sky-"], .hud-panel a[class*="py-"][class*="bg-sky-"], .hud-panel button[class*="bg-blue-"], .hud-panel a[class*="py-"][class*="bg-blue-"], .hud-panel button[class*="bg-cyan-"], .hud-panel a[class*="py-"][class*="bg-cyan-"], .hud-panel button[class*="bg-teal-"], .hud-panel a[class*="py-"][class*="bg-teal-"], .hud-panel button[class*="bg-indigo-"], .hud-panel a[class*="py-"][class*="bg-indigo-"],
+        .hud-panel button[class*="bg-purple-"], .hud-panel a[class*="py-"][class*="bg-purple-"], .hud-panel button[class*="bg-violet-"], .hud-panel a[class*="py-"][class*="bg-violet-"], .hud-panel button[class*="bg-fuchsia-"], .hud-panel a[class*="py-"][class*="bg-fuchsia-"],
+        .hud-panel button[class*="bg-slate-"], .hud-panel a[class*="py-"][class*="bg-slate-"], .hud-panel button[class*="bg-stone-"], .hud-panel a[class*="py-"][class*="bg-stone-"], .hud-panel button[class*="bg-zinc-"], .hud-panel a[class*="py-"][class*="bg-zinc-"] {
+            background: none !important; border: 0 !important; border-image: url(/images/hud/button-dark.webp) 52 60 fill / 10px 12px round !important;
+            color: #f3ead0 !important; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,.8); box-shadow: none !important; }
+        .hud-panel button[class*="bg-amber-"], .hud-panel a[class*="py-"][class*="bg-amber-"], .hud-panel button[class*="bg-yellow-"], .hud-panel a[class*="py-"][class*="bg-yellow-"], .hud-panel button[class*="bg-orange-"], .hud-panel a[class*="py-"][class*="bg-orange-"] { border-image-source: url(/images/hud/button-amber.webp) !important; }
+        .hud-panel button[class*="bg-red-"], .hud-panel a[class*="py-"][class*="bg-red-"], .hud-panel button[class*="bg-rose-"], .hud-panel a[class*="py-"][class*="bg-rose-"] { border-image-source: url(/images/hud/button-red.webp) !important; }
+        .hud-panel button[class*="bg-sky-"], .hud-panel a[class*="py-"][class*="bg-sky-"], .hud-panel button[class*="bg-blue-"], .hud-panel a[class*="py-"][class*="bg-blue-"], .hud-panel button[class*="bg-cyan-"], .hud-panel a[class*="py-"][class*="bg-cyan-"], .hud-panel button[class*="bg-teal-"], .hud-panel a[class*="py-"][class*="bg-teal-"], .hud-panel button[class*="bg-indigo-"], .hud-panel a[class*="py-"][class*="bg-indigo-"] { border-image-source: url(/images/hud/button-blue.webp) !important; }
+        .hud-panel button[class*="bg-purple-"], .hud-panel a[class*="py-"][class*="bg-purple-"], .hud-panel button[class*="bg-violet-"], .hud-panel a[class*="py-"][class*="bg-violet-"], .hud-panel button[class*="bg-fuchsia-"], .hud-panel a[class*="py-"][class*="bg-fuchsia-"] { border-image-source: url(/images/hud/button-purple.webp) !important; }
+        .hud-panel button[class*="bg-"]:disabled, .hud-panel button[class*="opacity-50"] { filter: grayscale(.8) brightness(.7); }
+        .hud-panel a[class*="py-"][class*="bg-"] { text-decoration: none !important; }
         /* tárgyhelyek: szegecselt fémfoglalat, a kiválasztott rézfényű */
         .inv-tile, .eq-tile { border: 6px solid transparent !important; border-image: url(/images/hud/slot.webp) 22 / 9px / 1px stretch !important; background-clip: padding-box !important; border-radius: 0 !important; }
         .inv-tile.selected { border-image-source: url(/images/hud/slot-sel.webp) !important; box-shadow: none !important; }
