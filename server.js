@@ -555,22 +555,28 @@ function normalizeMods(m) {
 // --- KOPÁSI TÁBLÁZAT VERZIÓJA ---
 // A v0.1.8 első kiadása gyorsabb kopással ment ki; a v0.1.8.1 lassabb táblázata után a már megkopott tárgyak
 // tartósságát arányosan átszámoljuk (pl. 9/18 -> 13/25), így senki nem jár rosszul.
-const WEAR_VERSION = 2;
+// v0.1.37: minden felszerelés másfélszer tartósabb lett (3. verzió); a megkopott darabok aránya megmarad
+// (pl. egy félig kopott pulóver 30/60 helyett 45/90 lesz), így a meglévő cuccok is tovább bírják.
+const WEAR_VERSION = 3;
 const WEAR_TABLE_V1 = { melee: [30, 45, 65, 85, 100], ranged: [60, 90, 120, 150, 180], gear: [18, 28, 42, 60, 80] };
-function oldWearMax(item) {
+const WEAR_TABLE_V2 = { melee: [40, 60, 90, 120, 150], ranged: [80, 120, 160, 200, 250], gear: [25, 40, 60, 90, 120] };
+function oldWearMax(item, version) {
+    if (!item.wearAuto) return item.durability; // egyedi tartósság: nem változott
     const kind = item.type === 'weapon' ? (item.slot === 'melee' ? 'melee' : 'ranged') : 'gear';
     const tier = Math.min(5, Math.max(1, Math.round(Number(item.tier) || 2)));
-    return WEAR_TABLE_V1[kind][tier - 1];
+    return (version >= 2 ? WEAR_TABLE_V2 : WEAR_TABLE_V1)[kind][tier - 1];
 }
 function migrateWear(raw) {
     if (!raw || num(raw.wearVersion, 0) >= WEAR_VERSION) return;
+    const version = num(raw.wearVersion, 0);
     const scale = (key, d) => {
         const item = itemDatabase[key];
         if (!item || !item.wear || d === undefined || d === null || !Number.isFinite(Number(d))) return d;
-        const oldMax = oldWearMax(item);
+        const oldMax = oldWearMax(item, version);
         return Math.min(item.durability, Math.round(Number(d) / oldMax * item.durability));
     };
     if (Array.isArray(raw.inventory)) raw.inventory.forEach(s => { if (s && s.dur !== undefined) s.dur = scale(s.key, s.dur); });
+    if (raw.shelter && Array.isArray(raw.shelter.stash)) raw.shelter.stash.forEach(s => { if (s && s.dur !== undefined) s.dur = scale(s.key, s.dur); });
     if (raw.equipmentDur && raw.equipment) {
         Object.keys(raw.equipmentDur).forEach(slot => { raw.equipmentDur[slot] = scale(raw.equipment[slot], raw.equipmentDur[slot]); });
     }

@@ -486,10 +486,11 @@ const itemDatabase = {
 // ha nincs megadva külön "durability". Kopás: fegyver támadásonként 1, védőfelszerelés és táska minden kapott
 // találatnál 1, a cipő ezen felül 5 km gyaloglásonként 1. 0-nál "tönkrement": rajta marad, de nem ad bónuszt.
 // "wear: true" jelöli, hogy ez felszerelés-kopás (nem szerszám vagy lámpa).
+// v0.1.37: másfélszer tartósabb minden (a régi táblázat: melee 40–150, ranged 80–250, gear 25–120)
 const WEAR_TABLE = {
-    melee:  [40, 60, 90, 120, 150],  // közelharci fegyver (ütés)
-    ranged: [80, 120, 160, 200, 250], // lőfegyver, íj, parittya (lövés)
-    gear:   [25, 40, 60, 90, 120]     // ruha, páncél, sisak, cipő, táska (kapott találat)
+    melee:  [60, 90, 135, 180, 225],   // közelharci fegyver (ütés)
+    ranged: [120, 180, 240, 300, 375], // lőfegyver, íj, parittya (lövés)
+    gear:   [40, 60, 90, 135, 180]     // ruha, páncél, sisak, cipő, táska, kesztyű (kapott találat)
 };
 const GEAR_TYPES = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'gloves'];
 Object.keys(itemDatabase).forEach(key => {
@@ -498,6 +499,7 @@ Object.keys(itemDatabase).forEach(key => {
     if (!isWeapon && !GEAR_TYPES.includes(item.type)) return;
     item.wear = true;
     if (item.durability) return;
+    item.wearAuto = true; // a táblázatból kapta (a szerver a régi mentéseket ehhez igazítja)
     const kind = isWeapon ? (item.slot === 'melee' ? 'melee' : 'ranged') : 'gear';
     const tier = Math.min(5, Math.max(1, Math.round(Number(item.tier) || 2)));
     item.durability = WEAR_TABLE[kind][tier - 1];
