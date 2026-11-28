@@ -676,7 +676,7 @@ function home() {
 }
 
 // ---------- adatbázis oldalak ----------
-const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy']];
+const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['gloves', 'Kesztyű'], ['throwable', 'Dobható'], ['attachment', 'Kiegészítő'], ['blueprint', 'Tervrajz'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy'], ['curio', 'Érdekesség'], ['event', 'Szilveszter']];
 function itemsPage(type) {
   const list = Object.entries(ITEMS).filter(([, it]) => !type || it.type === type).sort((a, b) => a[1].name.localeCompare(b[1].name, 'hu'));
   const sub = (it) => it.dmg ? `+${it.dmg} sebzés` : it.def ? `+${it.def} védelem` : it.effects ? Object.entries(it.effects).filter(([, v]) => v).map(([k, v]) => `${EFFECT_HU[k]} ${v > 0 ? '+' : ''}${v}`).join(', ') : (it.bonusSlots ? `+${it.bonusSlots} hely` : TYPE_HU[it.type] || '');
@@ -691,7 +691,7 @@ function itemPage(key) {
   return `<div class="head">${icon(it, true)}<div><h1>${esc(it.name)}</h1><div class="muted">${esc(TYPE_HU[it.type] || it.type)}${it.tier ? ' · tier ' + it.tier : ''}</div></div></div>
     <div class="paper">${esc(it.desc || '')}</div>
     <div class="tbl"><table>${itemFacts(it).map(([a, b]) => `<tr><th style="width:190px">${a}</th><td>${b}</td></tr>`).join('')}</table></div>
-    <h2>Hol található?</h2>${found.length ? `<p>${found.map(f => { const [l, c] = rarity(f.w); return `<a class="pill ${c}" href="#/epulet/${slug(f.name)}">${f.info.icon} ${esc(f.name)} · ${l}</a>`; }).join('')}</p>` : '<p class="muted">Épületekben nem található.</p>'}
+    <h2>Hol található?</h2>${found.length ? `<p>${found.map(f => { const [l, c] = rarity(f.w); return `<a class="pill ${c}" href="#/epulet/${slug(f.name)}">${f.info.icon} ${esc(f.name)} · ${l}</a>`; }).join('')}</p>` : (it.eventLoot ? '<p>Szilveszterkor (dec. 31. – jan. 1.) bármilyen épületben akadhat, és a <a href="#/oldal/szilveszter">szilveszteri csomagban</a> is benne lehet.</p>' : '<p class="muted">Épületekben nem található.</p>')}
     ${drops.length ? `<p>Ellenfeleknél: ${drops.map(e => `<a class="pill" href="#/ellenfel/${e.key}">${e.avatar} ${esc(e.name)}</a>`).join('')}</p>` : ''}
     ${daily.length ? `<p>Napi bónusz: ${daily.map(d => `<a class="pill y" href="#/oldal/napi-bonusz">${d}</a>`).join('')}</p>` : ''}
     ${by.length ? `<h2>Hogyan készíthető?</h2>${by.map(recipeHtml).join('')}` : ''}
@@ -799,7 +799,7 @@ function route() {
 let qt = null;
 $('q').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { const v = $('q').value.trim(); if (v.length >= 2) location.hash = '#/kereses/' + encodeURIComponent(v); else if (!v && location.hash.startsWith('#/kereses')) location.hash = '#/'; }, 250); });
 window.addEventListener('hashchange', route);
-fetch('/api/wiki').then(r => r.json()).then(d => { W = d; route(); }).catch(() => { $('main').innerHTML = '<h1>Nem sikerült betölteni</h1><p>Ellenőrizd az internetkapcsolatot, és frissítsd az oldalt.</p>'; });
+fetch('/api/wiki').then(r => r.json()).then(d => { W = d; if (d.premiumMode !== 'on') { const i = GUIDES.findIndex(g => g.slug === 'premium'); if (i >= 0) GUIDES.splice(i, 1); } route(); }).catch(() => { $('main').innerHTML = '<h1>Nem sikerült betölteni</h1><p>Ellenőrizd az internetkapcsolatot, és frissítsd az oldalt.</p>'; });
 </script>
 <style>svg.gi,img.gi{display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.25em;fill:currentColor;object-fit:contain}</style>
 <script src="/js/icons.js"></script>
