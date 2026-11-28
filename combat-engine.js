@@ -43,7 +43,12 @@ const ENEMIES = {
     fox:            { name: 'Róka',                   avatar: '🦊', lvl: 1, hp: 45,  dmg: 5,  drops: [], animal: true, habitat: [] },
     deer:           { name: 'Őz',                     avatar: '🦌', lvl: 2, hp: 80,  dmg: 6,  drops: [], animal: true, habitat: [] },
     boar:           { name: 'Vaddisznó',              avatar: '🐗', lvl: 3, hp: 170, dmg: 16, drops: [], animal: true, habitat: [] },
-    mutant_hound:   { name: 'Mutáns Kopó',            avatar: '🐺', lvl: 3, hp: 130, dmg: 15, drops: [], animal: true, habitat: [] }
+    mutant_hound:   { name: 'Mutáns Kopó',            avatar: '🐺', lvl: 3, hp: 130, dmg: 15, drops: [], animal: true, habitat: [] },
+    chicken:        { name: 'Tyúk',       avatar: '🐤', lvl: 1, hp: 15,  dmg: 1,  drops: [], animal: true, habitat: [] },
+    goose:          { name: 'Liba',                   avatar: '🪶', lvl: 1, hp: 30,  dmg: 3,  drops: [], animal: true, habitat: [] },
+    goat:           { name: 'Kecske',                 avatar: '🐂', lvl: 1, hp: 55,  dmg: 4,  drops: [], animal: true, habitat: [] },
+    pig:            { name: 'Disznó',           avatar: '🐗', lvl: 2, hp: 95,  dmg: 6,  drops: [], animal: true, habitat: [] },
+    cow:            { name: 'Tehén',       avatar: '🐂', lvl: 2, hp: 170, dmg: 9,  drops: [], animal: true, habitat: [] }
 };
 
 // A választás súlya a játékos szintjéhez képest: a vele egyező szintű ellenség a leggyakoribb, utána az eggyel

@@ -152,6 +152,19 @@ function radialOpen(pData, x, y) {
     el.classList.remove('hidden');
     if (navigator.vibrate) try { navigator.vibrate(18); } catch (e) { /* */ }
 }
+// Általános körmenü (v0.1.44.1): center = { img, title, sub }, items = [{ ic, t, js, off, danger }]
+function radialMenu(center, items, x, y) {
+    const R = Math.min(96, Math.max(80, window.innerWidth * 0.22));
+    const cx = Math.min(Math.max(x, R + 40), window.innerWidth - R - 40), cy = Math.min(Math.max(y, R + 60), window.innerHeight - R - 60);
+    const el = document.getElementById('sg-radial');
+    el.innerHTML = `<div class="sg-rd-center" style="left:${cx}px;top:${cy}px"><img src="${pE(center.img)}" onerror="this.style.visibility='hidden'"><b>${pE(center.title)}</b>${center.sub ? `<small>${pE(center.sub)}</small>` : ''}</div>` +
+        items.map((it, i) => {
+            const a = -Math.PI / 2 + i * (2 * Math.PI / items.length);
+            return `<button class="sg-rd-btn${it.off ? ' off' : ''}${it.danger ? ' danger' : ''}" style="left:${cx + Math.cos(a) * R}px;top:${cy + Math.sin(a) * R}px;animation-delay:${i * 25}ms" ${it.off ? 'disabled' : `onclick="radialClose();${it.js}"`}><i>${it.ic}</i><span>${it.t}</span></button>`;
+        }).join('');
+    el.classList.remove('hidden');
+    if (navigator.vibrate) try { navigator.vibrate(18); } catch (e) { /* */ }
+}
 function radialClose() { const el = document.getElementById('sg-radial'); if (el) { el.classList.add('hidden'); el.innerHTML = ''; } radialFor = null; }
 // hosszú nyomás figyelése egy térképjelölőn (a map.js hívja minden más játékos jelölőjére)
 function attachLongPress(marker, getData) {

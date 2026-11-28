@@ -13,11 +13,12 @@ function huntTick() {
 }
 setTimeout(() => { huntTick(); setInterval(huntTick, 40000); }, 6000);
 
-function animalIcon(kind) {
+function animalIcon(kind, gathered) {
     const a = window.SurvivalHunting && SurvivalHunting.ANIMALS[kind];
     const emoji = a ? a.avatar : '🏹';
+    const cls = a && a.domestic ? ' domestic' : '';
     const img = `<img class="sg-hunt-img" src="/images/enemies/${kind}.webp" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sg-hunt-emo',textContent:'${emoji}'}))">`;
-    return L.divIcon({ className: 'custom-icon', html: `<div class="sg-hunt-mk">${img}</div>`, iconSize: [40, 40], iconAnchor: [20, 20] });
+    return L.divIcon({ className: 'custom-icon', html: `<div class="sg-hunt-mk${cls}${gathered ? ' used' : ''}">${img}</div>`, iconSize: [40, 40], iconAnchor: [20, 20] });
 }
 // ---------- EGYSZERI TIPPEK (első állat, első horgászhely) ----------
 function huntHint(key, title, lines) {
@@ -49,10 +50,10 @@ socket.on('animals_data', (d) => {
         alive.add(a.id);
         let m = huntMarkers.get(a.id);
         if (!m) {
-            m = L.marker([a.lat, a.lng], { icon: animalIcon(a.kind), zIndexOffset: 450 }).addTo(map);
+            m = L.marker([a.lat, a.lng], { icon: animalIcon(a.kind, a.gathered), zIndexOffset: 450 }).addTo(map);
             m.on('click', () => tapAnimal(a.id));
             huntMarkers.set(a.id, m);
-        }
+        } else m.setIcon(animalIcon(a.kind, a.gathered));
     });
     huntMarkers.forEach((m, id) => { if (!alive.has(id)) { map.removeLayer(m); huntMarkers.delete(id); } });
 });
@@ -69,8 +70,27 @@ function tapAnimal(id) {
         if (typeof showToast === 'function') showToast(`${cfg.name}: menj ${range} m-en belülre (most ${dist} m)`);
         return;
     }
+    if (cfg.domestic) return animalChoice(a, cfg);
     socket.emit('hunt_start', { id });
 }
+// háztáji állat: körmenü, mint a játékosoknál – fejés / tojás / toll, vagy levágás (v0.1.44.1)
+function animalChoice(a, cfg) {
+    const mk = huntMarkers.get(a.id), el = mk && mk.getElement && mk.getElement(), rc = el ? el.getBoundingClientRect() : null;
+    const x = rc ? rc.left + rc.width / 2 : innerWidth / 2, y = rc ? rc.top + rc.height / 2 : innerHeight / 2;
+    const gIcon = cfg.gather ? ({ fresh_milk: '🫙', eggs: '🐤', feather: '🪶' }[cfg.gather.item] || '🌿') : '🌿';
+    const items = [];
+    if (cfg.gather) items.push(a.gathered ? { ic: gIcon, t: 'Már megvolt', off: true } : { ic: gIcon, t: cfg.gather.verb, js: `socket.emit('animal_gather',{id:'${a.id}'})` });
+    items.push({ ic: '🔪', t: 'Levágom', js: `socket.emit('hunt_start',{id:'${a.id}'})`, danger: true });
+    items.push({ ic: '❌', t: 'Békén hagyom', js: '' });
+    if (typeof radialMenu === 'function') return radialMenu({ img: `/images/enemies/${a.kind}.webp`, title: cfg.name, sub: 'Háztáji állat' }, items, x, y);
+    socket.emit('hunt_start', { id: a.id });
+}
+socket.on('gather_result', (d) => {
+    if (!d || !d.message) return;
+    logMessage((d.success ? '🌿 ' : '⚠️ ') + d.message);
+    if (typeof showToast === 'function') showToast(d.message);
+    if (d.success && d.payload && d.payload.id) { const a = huntAnimals.find(x => x.id === d.payload.id); if (a) { a.gathered = true; const mk = huntMarkers.get(a.id); if (mk) mk.setIcon(animalIcon(a.kind, true)); } }
+});
 socket.on('hunt_result', (d) => {
     if (!d) return;
     if (d.gone || (d.payload && d.payload.id)) {

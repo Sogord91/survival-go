@@ -3330,17 +3330,23 @@ io.on('connection', (socket) => {
                 const greens = nat.green.filter(pt => { const d = distanceMeters(here, { lat: pt[0], lng: pt[1] }); return d >= SurvivalHunting.MIN_SPAWN_METERS && d <= SurvivalHunting.NEAR_METERS; });
                 const extra = activePlayers[username] && activePlayers[username].moreAnimals ? 1 : 0; // Vadőr
                 const want = (greens.length ? SurvivalHunting.PER_PLAYER : 1) + extra; // beépített helyen ritkábban
-                for (let i = list.length; i < want; i++) {
-                    let lat, lng;
-                    if (greens.length) { const g = greens[Math.floor(Math.random() * greens.length)]; [lat, lng] = offsetPoint(g[0], g[1], Math.random() * 120, Math.random() * Math.PI * 2); }
+                // háztáji állatok a házak között: az utcák mentén (v0.1.44)
+                let streets = [];
+                try { streets = (await streetPointsAround(e.lat, e.lng)).filter(pt => { const d = distanceMeters(here, { lat: pt[0], lng: pt[1] }); return d >= SurvivalHunting.MIN_SPAWN_METERS && d <= SurvivalHunting.NEAR_METERS - 40; }); } catch (err) { /* nem baj */ }
+                const wantFull = (greens.length || streets.length ? SurvivalHunting.PER_PLAYER : 1) + extra;
+                for (let i = list.length; i < wantFull; i++) {
+                    let lat, lng, domestic = false;
+                    if (streets.length && (!greens.length || Math.random() < SurvivalHunting.DOMESTIC_SHARE)) {
+                        const s = streets[Math.floor(Math.random() * streets.length)]; [lat, lng] = offsetPoint(s[0], s[1], 12 + Math.random() * 25, Math.random() * Math.PI * 2); domestic = true;
+                    } else if (greens.length) { const g = greens[Math.floor(Math.random() * greens.length)]; [lat, lng] = offsetPoint(g[0], g[1], Math.random() * 120, Math.random() * Math.PI * 2); }
                     else [lat, lng] = offsetPoint(e.lat, e.lng, SurvivalHunting.MIN_SPAWN_METERS + Math.random() * 250, Math.random() * Math.PI * 2);
-                    list.push({ id: 'a' + (++animalSeq) + '_' + Math.floor(Math.random() * 1e6).toString(36), kind: SurvivalHunting.pickAnimal(Math.random, night), lat, lng,
+                    list.push({ id: 'a' + (++animalSeq) + '_' + Math.floor(Math.random() * 1e6).toString(36), kind: SurvivalHunting.pickAnimal(Math.random, night, domestic), lat, lng,
                         expiresAt: now + SurvivalHunting.LIFETIME_MIN * 60000 * (0.6 + Math.random() * 0.8) });
                 }
             } catch (err) { logError('Hiba az állatok elhelyezésekor:')(err); }
         }
         animals.set(username, list);
-        socket.emit('animals_data', { animals: list.filter(a => distanceMeters(here, a) <= SurvivalHunting.NEAR_METERS).map(a => ({ id: a.id, kind: a.kind, lat: a.lat, lng: a.lng })) });
+        socket.emit('animals_data', { animals: list.filter(a => distanceMeters(here, a) <= SurvivalHunting.NEAR_METERS).map(a => ({ id: a.id, kind: a.kind, lat: a.lat, lng: a.lng, gathered: !!a.gathered })) });
     });
     socket.on('hunt_start', (data) => {
         const id = data && typeof data.id === 'string' ? data.id : '';
@@ -3374,6 +3380,29 @@ io.on('connection', (socket) => {
             if (r && r.result && r.result.error) return socket.emit('hunt_result', { success: false, message: r.result.error, gone: r.result.gone || null });
             reply('hunt_result')(r);
         }).catch(logError('Hiba a vadászatnál:'));
+    });
+
+    // ===== HÁZTÁJI ÁLLAT: fejés, tojás, toll (v0.1.44) – állatonként egyszer =====
+    socket.on('animal_gather', (data) => {
+        const id = data && typeof data.id === 'string' ? data.id : '';
+        const fail = (message) => socket.emit('gather_result', { success: false, message });
+        const a = (animals.get(username) || []).find(x => x.id === id && x.expiresAt > Date.now());
+        if (!a) return fail('Ez az állat már elkóborolt.');
+        const cfg = SurvivalHunting.ANIMALS[a.kind];
+        if (!cfg || !cfg.gather) return fail('Ettől az állattól nem lehet mit gyűjteni.');
+        if (a.gathered) return fail('Ezt az állatot már megfejted / átnézted. Nézz meg egy másikat!');
+        const e = freshPos();
+        if (!e) return fail('Várd meg a friss GPS pozíciót!');
+        const dist = distanceMeters(e, a);
+        if (dist > SurvivalHunting.RANGE_MELEE + 10) return fail(`Menj oda közelebb! (${Math.round(dist)} m – ${SurvivalHunting.RANGE_MELEE} m-en belül)`);
+        withPlayer(username, freeOnly((p) => {
+            const [lo, hi] = cfg.gather.count;
+            const n = lo + Math.floor(Math.random() * (hi - lo + 1));
+            if (!addItem(p, cfg.gather.item, n).ok) return { save: false, error: 'Nincs hely a hátizsákban.' };
+            a.gathered = true;
+            grantXp(p, 5);
+            return { message: `${cfg.gather.done}: ${n > 1 ? n + ' ' : ''}${itemName(cfg.gather.item)}.`, payload: { id } };
+        })).then(reply('gather_result')).catch(logError('Hiba a gyűjtésnél:'));
     });
 
     // ===== NYÚZÁS (v0.1.43): koppints a tetemre → Megnyúzom =====

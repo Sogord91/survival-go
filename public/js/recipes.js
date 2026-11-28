@@ -62,6 +62,8 @@ const craftingRecipes = [
 
     // --- v0.1.42: VADÁSZAT – nyúzás késsel (vadászkéssel +1 hús), sütés, csontmunka ---
     { key: 'roast_game', result: 'roast_pork', cat: 'Vadászat', name: 'Sült Vadhús', desc: 'Nyers vadhús tűzön', req: { raw_game_meat: 2 }, fire: true, tools: ['empty_can'] },
+    { key: 'roast_beef', cat: 'Vadászat', count: 2, name: 'Marhapörkölt', desc: 'Marhahús paprikával, hagymával (ha van), bográcsban (2 adag)', req: { raw_beef: 2, paprika_string: 1 }, fire: true, tools: ['empty_can'] },
+    { key: 'roast_beef_plain', result: 'roast_pork', cat: 'Vadászat', name: 'Sült Marhahús', desc: 'Egyszerűen, tűzön', req: { raw_beef: 2 }, fire: true, tools: ['empty_can'] },
     { key: 'grill_fish', result: 'grilled_fish', cat: 'Vadászat', name: 'Sült Hal', desc: 'Kárász, ponty vagy csuka tűzön', req: { fish_crucian: 2 }, fire: true },
     { key: 'grill_carp', result: 'grilled_fish', cat: 'Vadászat', count: 2, name: 'Sült Ponty', desc: 'Egy ponty két adag', req: { fish_carp: 1 }, fire: true },
     { key: 'grill_pike', result: 'grilled_fish', cat: 'Vadászat', count: 2, name: 'Sült Csuka', desc: 'Egy csuka két adag', req: { fish_pike: 1 }, fire: true },

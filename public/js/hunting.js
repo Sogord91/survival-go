@@ -12,8 +12,15 @@
         fox:           { name: 'Róka',              avatar: '🦊', weight: 14, carcass: 'fox_carcass',      skittish: 0.25 },
         deer:          { name: 'Őz',                avatar: '🦌', weight: 14, carcass: 'deer_carcass',     skittish: 0.45 },
         boar:          { name: 'Vaddisznó',         avatar: '🐗', weight: 10, carcass: 'boar_carcass',     skittish: 0.05 },
-        mutant_hound:  { name: 'Mutáns Kopó',       avatar: '🐺', weight: 6,  carcass: 'hound_carcass',    skittish: 0,   nightWeight: 3 }
+        mutant_hound:  { name: 'Mutáns Kopó',       avatar: '🐺', weight: 6,  carcass: 'hound_carcass',    skittish: 0,   nightWeight: 3 },
+        // HÁZTÁJI ÁLLATOK (v0.1.44): a házak között, az utcák mentén. Le is vághatod, de meg is fejheted / tojást szedhetsz.
+        chicken:       { name: 'Tyúk',  avatar: '🐤', weight: 30, carcass: 'chicken_carcass',  skittish: 0.2, domestic: true, gather: { item: 'eggs', count: [1, 3], verb: 'Tojást keresek', done: 'Tojást találtál' } },
+        goose:         { name: 'Liba',              avatar: '🪶', weight: 16, carcass: 'goose_carcass',    skittish: 0.1, domestic: true, gather: { item: 'feather', count: [2, 4], verb: 'Tollat gyűjtök', done: 'Tollat gyűjtöttél' } },
+        goat:          { name: 'Kecske',            avatar: '🐂', weight: 18, carcass: 'goat_carcass',     skittish: 0.1, domestic: true, gather: { item: 'fresh_milk', count: [1, 1], verb: 'Megfejem', done: 'Megfejted' } },
+        pig:           { name: 'Disznó',      avatar: '🐗', weight: 18, carcass: 'pig_carcass',      skittish: 0.05, domestic: true },
+        cow:           { name: 'Tehén',  avatar: '🐂', weight: 12, carcass: 'cow_carcass',      skittish: 0, domestic: true, gather: { item: 'fresh_milk', count: [1, 2], verb: 'Megfejem', done: 'Megfejted' } }
     };
+    const DOMESTIC_SHARE = 0.4;      // a házak között ennyi eséllyel háztáji állat jön (a többi vad)
     const PER_PLAYER = 3;            // egyszerre ennyi állat lehet a közeledben
     const NEAR_METERS = 450;         // ennyin belül látod őket
     const MIN_SPAWN_METERS = 90;     // ennél közelebb nem bukkannak fel
@@ -38,13 +45,18 @@
         fox_carcass:      { meat: ['raw_game_meat', 1], pelt: 'fox_fur', bones: 1, trophy: ['fox_trophy', 0.35] },
         deer_carcass:     { meat: ['raw_game_meat', 4], pelt: 'deer_hide', bones: 3, trophy: ['deer_trophy', 0.5] },
         boar_carcass:     { meat: ['raw_pork', 5], pelt: 'boar_hide', bones: 3, extra: { lard: 1 }, trophy: ['boar_trophy', 0.5] },
-        hound_carcass:    { meat: ['raw_mutant_meat', 2], pelt: 'hound_hide', bones: 2, trophy: ['hound_trophy', 0.25] }
+        hound_carcass:    { meat: ['raw_mutant_meat', 2], pelt: 'hound_hide', bones: 2, trophy: ['hound_trophy', 0.25] },
+        chicken_carcass:  { meat: ['raw_chicken', 1], extra: { feather: 3 }, bones: 0 },
+        goose_carcass:    { meat: ['raw_chicken', 2], extra: { feather: 5, lard: 1 }, bones: 0 },
+        goat_carcass:     { meat: ['raw_game_meat', 3], pelt: 'leather', bones: 2 },
+        pig_carcass:      { meat: ['raw_pork', 4], pelt: 'leather', bones: 2, extra: { lard: 2 } },
+        cow_carcass:      { meat: ['raw_beef', 6], pelt: 'leather', bones: 4, extra: { leather: 1 } }
     };
     const SKIN_TOOLS = ['hunting_knife', 'knife', 'butcher_cleaver', 'machete', 'multitool'];
 
     function isRanged(weapon) { return !!(weapon && (weapon.ranged || (weapon.reqAmmo && RANGED_AMMO.includes(weapon.reqAmmo)))); }
-    function pickAnimal(random, night) {
-        const list = Object.entries(ANIMALS).map(([k, a]) => [k, a.weight * (night && a.nightWeight ? a.nightWeight : 1)]);
+    function pickAnimal(random, night, domestic) {
+        const list = Object.entries(ANIMALS).filter(([, a]) => !!a.domestic === !!domestic).map(([k, a]) => [k, a.weight * (night && a.nightWeight ? a.nightWeight : 1)]);
         let r = random() * list.reduce((s, x) => s + x[1], 0);
         for (const [k, w] of list) { r -= w; if (r <= 0) return k; }
         return list[0][0];
@@ -55,7 +67,7 @@
         return CATCH[0][0];
     }
 
-    const api = { SKIN, SKIN_TOOLS, ANIMALS, PER_PLAYER, NEAR_METERS, MIN_SPAWN_METERS, LIFETIME_MIN, RANGE_MELEE, RANGE_RANGED, WATER_RANGE, WAIT_MIN_S, WAIT_MAX_S, LATE_S, BAITS, CATCH, isRanged, pickAnimal, pickCatch };
+    const api = { DOMESTIC_SHARE, SKIN, SKIN_TOOLS, ANIMALS, PER_PLAYER, NEAR_METERS, MIN_SPAWN_METERS, LIFETIME_MIN, RANGE_MELEE, RANGE_RANGED, WATER_RANGE, WAIT_MIN_S, WAIT_MAX_S, LATE_S, BAITS, CATCH, isRanged, pickAnimal, pickCatch };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (typeof window !== 'undefined') window.SurvivalHunting = api;
 })(this);
