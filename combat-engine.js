@@ -36,7 +36,14 @@ const ENEMIES = {
     mercenary:      { name: 'Nehézfegyveres Zsoldos', avatar: '🪖', lvl: 6, hp: 470, dmg: 50, drops: ['ammo_762', 'mre_ration', 'bandage', 'tourniquet'],
                       habitat: ['military', 'hazmat', 'police'] },
     tuner:          { name: 'A Hangoló',              avatar: '🧠', lvl: 8, hp: 900, dmg: 70, drops: ['antirad_pills', 'medkit'], redZoneOnly: true,
-                      habitat: [] }
+                      habitat: [] },
+    // VADÁSZAT (v0.1.42): az állatok csak a térképen, becserkészve jönnek (épületben soha: üres a habitat)
+    rabbit:         { name: 'Mezei Nyúl',             avatar: '🏹', lvl: 1, hp: 25,  dmg: 1,  drops: [], animal: true, habitat: [] },
+    pheasant:       { name: 'Fácán',                  avatar: '🦅', lvl: 1, hp: 18,  dmg: 1,  drops: [], animal: true, habitat: [] },
+    fox:            { name: 'Róka',                   avatar: '🦊', lvl: 1, hp: 45,  dmg: 5,  drops: [], animal: true, habitat: [] },
+    deer:           { name: 'Őz',                     avatar: '🦌', lvl: 2, hp: 80,  dmg: 6,  drops: [], animal: true, habitat: [] },
+    boar:           { name: 'Vaddisznó',              avatar: '🐗', lvl: 3, hp: 170, dmg: 16, drops: [], animal: true, habitat: [] },
+    mutant_hound:   { name: 'Mutáns Kopó',            avatar: '🐺', lvl: 3, hp: 130, dmg: 15, drops: [], animal: true, habitat: [] }
 };
 
 // A választás súlya a játékos szintjéhez képest: a vele egyező szintű ellenség a leggyakoribb, utána az eggyel
@@ -130,6 +137,16 @@ function pickWeighted(pool, random) {
 
 // Új harc: ellenség kiválasztása és a játékos szintjéhez igazítása
 // opts.night: éjszaka van-e az épületnél (Árnyék, aktívabb ghoulok és kutyák)
+// Vadászat: harc egy becserkészett állattal (v0.1.42)
+function createHunt(animal) {
+    const base = ENEMIES[animal.kind];
+    return {
+        hunt: animal.id, buildingId: 'hunt:' + animal.id, buildingName: 'a vadonban', buildingType: null,
+        enemy: { key: animal.kind, name: base.name, avatar: base.avatar, lvl: base.lvl, hp: base.hp, maxHp: base.hp, dmg: base.dmg },
+        round: 1, startedAt: Date.now()
+    };
+}
+
 function createCombat(p, building, buildingInfo, random, opts) {
     random = random || Math.random;
     const key = pickWeighted(enemyPoolFor(buildingInfo, { night: !!(opts && opts.night), playerLevel: p.level || 1 }), random);
@@ -262,6 +279,7 @@ function attack(p, combat, itemDatabase, random, slot) {
     let amount = weapon.dmg + Math.floor(random() * (RULES.DMG_RANDOM + 1)) + ((p.level || 1) - 1) * RULES.LEVEL_DMG_BONUS;
     // Képességek: közelharc / lőfegyver sebzés, rajtaütés, kritikus esély és sebzés
     amount *= 1 + ((weapon.ranged ? fx.dmgRanged : fx.dmgMelee) || 0);
+    if (ENEMIES[combat.enemy.key] && ENEMIES[combat.enemy.key].animal) amount *= 1 + (fx.animalDmg || 0); // Vadászösztön (v0.1.43)
     if (fx.firstStrike && !combat.struck) amount *= 1.5;
     combat.struck = true;
     const crit = random() < RULES.CRIT_CHANCE + (fx.critChance || 0) + (mod === 'scope' ? 0.1 : 0);
@@ -314,8 +332,9 @@ function rewards(combat, random) {
     random = random || Math.random;
     const base = ENEMIES[combat.enemy.key];
     const lvl = combat.enemy.lvl;
+    if (base.animal) return { xp: 8 + 8 * lvl, money: 0, drop: null }; // vadászat: a jutalom a tetem
     const drop = random() < RULES.DROP_CHANCE ? pick(base.drops, random) : null;
     return { xp: 15 + 10 * lvl, money: 5 * lvl + Math.floor(random() * 11), drop };
 }
 
-module.exports = { ENEMIES, RULES, WEAPON_SLOTS, enemyPoolFor, levelWeight, fatiguePenalty, createCombat, weaponInfo, attack, heal, flee, throwItem, modOf, magSaves, rewards };
+module.exports = { ENEMIES, RULES, WEAPON_SLOTS, enemyPoolFor, levelWeight, fatiguePenalty, createCombat, createHunt, weaponInfo, attack, heal, flee, throwItem, modOf, magSaves, rewards };

@@ -786,7 +786,8 @@ function renderItemSheet() {
         }
         else if (SurvivalStats.isEquippable(item)) actions += btn('Felvesz', 'bg-emerald-700 hover:bg-emerald-600', `itemSheetAction('equip')`);
         // v0.1.34: tervrajz elolvasása, kiegészítő felszerelése lőfegyverre
-        if (item.special) actions += btn({ firework: 'Fellövöm', sparkler: 'Meggyújtom', horn: 'Megfújom', bottle: 'Kinyitom', treasure: 'Követem', piggy: 'Feltöröm' }[item.special] || 'Használ', 'bg-amber-600 hover:bg-amber-500', `socket.emit('special_use',{key:'${ref.key}'});closeItemSheet()`);
+        if (item.type === 'carcass') actions += btn(ref.key === 'pheasant_carcass' ? 'Megkopasztom' : 'Megnyúzom', 'bg-emerald-700 hover:bg-emerald-600', `socket.emit('skin_carcass',{key:'${ref.key}'});closeItemSheet()`);
+        if (item.special) actions += btn({ firework: 'Fellövöm', sparkler: 'Meggyújtom', horn: 'Megfújom', bottle: 'Kinyitom', treasure: 'Követem', piggy: 'Feltöröm', coinbox: 'Feltöröm' }[item.special] || 'Használ', 'bg-amber-600 hover:bg-amber-500', `socket.emit('special_use',{key:'${ref.key}'});closeItemSheet()`);
         if (item.type === 'blueprint') actions += btn('Elolvasom', 'bg-emerald-700 hover:bg-emerald-600', `socket.emit('learn_blueprint',{key:'${ref.key}'});closeItemSheet()`);
         if (item.attach) { const guns = ['weapon', 'secondary'].filter(sl => { const w = player.equipment && itemDatabase[player.equipment[sl]]; return w && w.reqAmmo; });
             if (!guns.length) actions += btn('Nincs felvett lőfegyver', 'bg-slate-700 opacity-50', '');
@@ -1167,6 +1168,7 @@ function renderCraftList() {
                         ${recipe.water ? `<div class="text-[9px] text-sky-300/80">Víz: <span class="${hasWater(recipe) ? 'text-emerald-300' : 'text-red-400'}">${recipe.water} adag, bármilyen (a szennyezett is jó)</span></div>` : ''}
                         ${recipe.fire ? `<div class="text-[9px] text-orange-300/80">Tűz: <span class="${hasFire(recipe) ? 'text-emerald-300' : 'text-red-400'}">${name(fire[0])} (fogy) / ${name(fire[1])} (kopik)</span></div>` : ''}
                         ${toolText ? `<div class="text-[9px] text-sky-300/80">Szerszám (kopik): ${toolText}</div>` : ''}
+                        ${recipe.extra ? `<div class="text-[9px] text-emerald-300/80">Mellé: ${Object.entries(recipe.extra).map(([k, n]) => `${n} ${itemDatabase[k] ? itemDatabase[k].name : k}`).join(', ')}</div>` : ''}
                         ${recipe.station ? `<div class="text-[9px] text-orange-300/80">Hely: <span class="${atStation(recipe) ? 'text-emerald-300' : 'text-red-400'}">${stationName(recipe)} a menedékedben</span></div>` : ''}
                     </div>
                 </div>

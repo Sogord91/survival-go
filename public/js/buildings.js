@@ -22,12 +22,12 @@
         'Kormányzati Bunker / Óvóhely':                  { icon: '☢️', color: '#7f1d1d', groups: ['military', 'hazmat', 'grocery'], empty: 0.50, encounter: 0.20 },
         'Elhagyatott Katonai Ellenőrzőpont / Blokád':    { icon: '🚧', color: '#b45309', groups: ['military'], empty: 0.55, encounter: 0.15 },
         'Katasztrófavédelmi / Vegyvédelmi Központ':      { icon: '☣️', color: '#047857', groups: ['hazmat', 'medical'], empty: 0.50, encounter: 0.15 },
-        'Iskola / Óvoda':                                { icon: '🏫', color: '#0ea5e9', groups: ['office', 'household'], empty: 0.50, encounter: 0.05 },
+        'Iskola / Óvoda':                                { icon: '🏫', color: '#0ea5e9', groups: ['office', 'household', 'school'], noGuns: true, empty: 0.50, encounter: 0.05 },
         'Könyvtár':                                      { icon: '📚', color: '#8b5cf6', groups: ['office', 'culture'], empty: 0.55, encounter: 0.05 },
-        'Templom / Kápolna':                             { icon: '⛪', color: '#eab308', groups: ['culture', 'valuables'], empty: 0.55, encounter: 0.02 },
-        'Kolostor / Apátság':                            { icon: '⛪', color: '#ca8a04', groups: ['culture', 'kitchen', 'valuables'], empty: 0.55, encounter: 0.02 },
+        'Templom / Kápolna':                             { icon: '⛪', color: '#eab308', groups: ['culture', 'valuables', 'church'], empty: 0.55, encounter: 0.02 },
+        'Kolostor / Apátság':                            { icon: '⛪', color: '#ca8a04', groups: ['culture', 'kitchen', 'valuables', 'church'], empty: 0.55, encounter: 0.02 },
         'Városháza / Polgármesteri Hivatal':             { icon: '🏛️', color: '#6366f1', groups: ['office', 'valuables'], empty: 0.50, encounter: 0.05 },
-        'Múzeum / Kiállítóterem':                        { icon: '🏛️', color: '#a855f7', groups: ['culture', 'valuables'], empty: 0.55, encounter: 0.05 },
+        'Múzeum / Kiállítóterem':                        { icon: '🏛️', color: '#a855f7', groups: ['culture', 'valuables', 'museum'], empty: 0.55, encounter: 0.05 },
         'Bíróság / Ügyvédi Iroda':                       { icon: '⚖️', color: '#4f46e5', groups: ['office', 'valuables'], empty: 0.55, encounter: 0.05 },
         'Mozi / Színház / Művelődési Ház':               { icon: '🎭', color: '#db2777', groups: ['culture', 'smallgoods'], empty: 0.55, encounter: 0.05 },
         'Elhagyatott raktár':                            { icon: '🏭', color: '#f59e0b', groups: ['warehouse', 'hardware'], empty: 0.50, encounter: 0.05 },
@@ -47,7 +47,7 @@
         'Motel / Kamionos pihenő':                       { icon: '🏨', color: '#793e75', groups: ['household', 'drinks', 'smallgoods'], empty: 0.50, encounter: 0.05 },
         'Sportcsarnok / Edzőterem':                      { icon: '🏋️', color: '#2563eb', groups: ['sport', 'drinks'], empty: 0.50, encounter: 0.05 },
         'Stadion / Futballpálya':                        { icon: '⚽', color: '#16a34a', groups: ['sport'], empty: 0.55, encounter: 0.05 },
-        'Strand / Uszoda':                               { icon: '🏊', color: '#06b6d4', groups: ['sport', 'drinks'], empty: 0.55, encounter: 0.05 },
+        'Strand / Uszoda':                               { icon: '🏊', color: '#06b6d4', groups: ['sport', 'drinks', 'beach'], empty: 0.55, encounter: 0.05 },
         'Temető':                                        { icon: '⚰️', color: '#3f3f46', groups: ['cemetery', 'valuables'], empty: 0.60, encounter: 0.05 }
     };
 
@@ -200,11 +200,13 @@
 
     // Egy épülettípus loot-táblája az items.js "loot" mezőiből: [[tárgykulcs, súly], ...]
     function lootTable(type, itemDatabase) {
-        const groups = typeInfo(type).groups;
+        const info = typeInfo(type), groups = info.groups;
         const table = [];
         for (const key in itemDatabase) {
             const loot = itemDatabase[key].loot;
             if (!loot) continue;
+            // pl. iskolában nincs lőfegyver és lőszer (v0.1.41)
+            if (info.noGuns && (itemDatabase[key].reqAmmo || itemDatabase[key].type === 'ammo' || itemDatabase[key].type === 'throwable')) continue;
             const weight = groups.reduce((sum, g) => sum + (Number(loot[g]) || 0), 0);
             if (weight > 0) table.push([key, weight]);
         }

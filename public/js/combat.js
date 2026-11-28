@@ -39,7 +39,7 @@ function syncCombatUI() {
         shownCombatKey = key;
         document.getElementById('combat-log').innerHTML = '';
         arenaReset(combat.enemy);
-        combatLogAppend(`[Harc] ${combat.enemy.avatar} ${combat.enemy.name} támadt rád itt: ${combat.buildingName}. Harcolj vagy menekülj!`, 'text-amber-400');
+        combatLogAppend(combat.hunt ? `[Vadászat] Becserkészted: ${combat.enemy.avatar} ${combat.enemy.name}. Ejtsd el, vagy engedd el!` : `[Harc] ${combat.enemy.avatar} ${combat.enemy.name} támadt rád itt: ${combat.buildingName}. Harcolj vagy menekülj!`, 'text-amber-400');
         playSound('hit');
     }
     modal.classList.remove('hidden');

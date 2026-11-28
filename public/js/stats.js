@@ -4,7 +4,7 @@
 // mindig a felszerelésből és a szintből számoljuk újra, így nem csúszhatnak szét.
 (function (root) {
     // Alapértékek egy felszerelés nélküli, 1. szintű karakterre
-    const BASE = { maxHp: 100, defense: 0, slots: 10, maxWeight: 30, fatigueRate: 1 };
+    const BASE = { maxHp: 100, defense: 0, slots: 15, maxWeight: 30, fatigueRate: 1 }; // v0.1.43: 10 -> 15 alap hely
 
     // weapon = elsődleges fegyver, secondary = másodlagos (pisztoly), melee = közelharci
     const EQUIPMENT_SLOTS = ['helmet', 'torso', 'armor', 'legs', 'shoes', 'backpack', 'weapon', 'secondary', 'melee', 'gloves'];

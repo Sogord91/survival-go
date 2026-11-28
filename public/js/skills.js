@@ -12,7 +12,8 @@
         { key: 'harcos', name: 'Harcos', color: '#c0483a', icon: '⚔️', desc: 'Bal ösvény: közelharc és kritikus találat. Jobb ösvény: lőfegyver, védelem, kitérés.' },
         { key: 'tulelo', name: 'Túlélő', color: '#6f9a3c', icon: '❤️', desc: 'Bal ösvény: élet és gyógyulás. Jobb ösvény: éhség, szomj, fáradtság, teherbírás.' },
         { key: 'felderito', name: 'Felderítő', color: '#3f7fb5', icon: '🧭', desc: 'Bal ösvény: séta, felfedezés, küldetések. Jobb ösvény: kutatás és zsákmány.' },
-        { key: 'mester', name: 'Mesterember', color: '#c98b2b', icon: '🔧', desc: 'Bal ösvény: barkácsolás. Jobb ösvény: kopás, javítás, karbantartás.' }
+        { key: 'mester', name: 'Mesterember', color: '#c98b2b', icon: '🔧', desc: 'Bal ösvény: barkácsolás. Jobb ösvény: kopás, javítás, karbantartás.' },
+        { key: 'vadasz', name: 'Vadász', color: '#8a6a3a', icon: '🏹', desc: 'Bal ösvény: vadászat és nyúzás. Jobb ösvény: horgászat.' }
     ];
     const R3 = (key) => [{ key, rank: 3 }];
     // col: a (bal) / b (jobb) / c (közép, csúcs); req: előfeltétel (mind kell); reqAny: elég az egyik (legalább 1. rang)
@@ -68,6 +69,19 @@
         { key: 'm_casing', branch: 'mester', tier: 4, col: 'b', req: R3('m_repair'), max: 5, per: 0.06, fx: 'casing', icon: '🥫', name: 'Hüvelygyűjtő', desc: (v) => `+${pct(v)} esély, hogy visszakapod a hüvelyt / nyilat` },
         { key: 'm_thrift', branch: 'mester', tier: 5, col: 'a', req: R3('m_practice'), max: 5, per: 0.05, fx: 'matSave', icon: '♻️', name: 'Takarékos', desc: (v) => `${pct(v)} eséllyel 1 alapanyag visszajár barkácsoláskor` },
         { key: 'm_care', branch: 'mester', tier: 5, col: 'b', req: R3('m_casing'), max: 5, per: 0.04, fx: 'wearSave', icon: '🧴', name: 'Ápolt felszerelés', desc: (v) => `további ${pct(v)} eséllyel nem kopik a felszerelésed` },
+        // --- VADÁSZ (v0.1.43) ---
+        { key: 'v_stalk', branch: 'vadasz', tier: 0, col: 'a', max: 5, per: 0.08, fx: 'huntQuiet', icon: '🤫', name: 'Becserkészés', desc: (v) => `${pct(v)}-kal ritkábban neszel meg az állat` },
+        { key: 'v_patient', branch: 'vadasz', tier: 0, col: 'b', max: 5, per: 0.08, fx: 'fishFast', icon: '⏳', name: 'Türelmes horgász', desc: (v) => `${pct(v)}-kal hamarabb jön a kapás` },
+        { key: 'v_track', branch: 'vadasz', tier: 1, col: 'a', req: R3('v_stalk'), max: 5, per: 4, fx: 'huntRange', icon: '👁️', name: 'Nyomolvasó', desc: (v) => `+${v} m-ről is becserkészheted az állatot` },
+        { key: 'v_bait', branch: 'vadasz', tier: 1, col: 'b', req: R3('v_patient'), max: 5, per: 0.1, fx: 'baitSave', icon: '🐍', name: 'Csalimester', desc: (v) => `${pct(v)} eséllyel nem fogy el a csali` },
+        { key: 'v_skin', branch: 'vadasz', tier: 2, col: 'a', req: R3('v_track'), max: 5, per: 0.1, fx: 'skinBonus', icon: '🔪', name: 'Nyúzómester', desc: (v) => `${pct(v)} eséllyel +1 hús nyúzáskor` },
+        { key: 'v_bigfish', branch: 'vadasz', tier: 2, col: 'b', req: R3('v_bait'), max: 5, per: 0.06, fx: 'bigFish', icon: '🐟', name: 'Nagy fogás', desc: (v) => `${pct(v)}-kal gyakrabban akad csuka és harcsa` },
+        { key: 'v_ranger', branch: 'vadasz', tier: 3, col: 'c', reqAny: ['v_skin', 'v_bigfish'], max: 1, per: 1, fx: 'moreAnimals', cap: true, icon: '🌲', name: 'Vadőr', desc: () => 'Eggyel több állat bukkan fel a közeledben' },
+        { key: 'v_instinct', branch: 'vadasz', tier: 4, col: 'a', req: R3('v_skin'), max: 5, per: 0.06, fx: 'animalDmg', icon: '🎯', name: 'Vadászösztön', desc: (v) => `+${pct(v)} sebzés az állatok ellen` },
+        { key: 'v_line', branch: 'vadasz', tier: 4, col: 'b', req: R3('v_bigfish'), max: 5, per: 0.1, fx: 'rodSave', icon: '🧵', name: 'Erős damil', desc: (v) => `${pct(v)} eséllyel nem kopik a horgászbot` },
+        { key: 'v_trophy', branch: 'vadasz', tier: 5, col: 'a', req: R3('v_instinct'), max: 5, per: 0.06, fx: 'trophyChance', icon: '🦌', name: 'Trófeagyűjtő', desc: (v) => `+${pct(v)} esély trófeára` },
+        { key: 'v_double', branch: 'vadasz', tier: 5, col: 'b', req: R3('v_line'), max: 5, per: 0.04, fx: 'fishDouble', icon: '🪝', name: 'Halak ura', desc: (v) => `${pct(v)} eséllyel két halat fogsz egyszerre` },
+        { key: 'v_wild', branch: 'vadasz', tier: 6, col: 'c', reqAny: ['v_trophy', 'v_double'], max: 1, per: 0.5, fx: 'wildXp', cap: true, icon: '🏞️', name: 'A vadon ura', desc: () => '+50% XP a vadászatért és a horgászatért' },
         { key: 'm_inventor', branch: 'mester', tier: 6, col: 'c', reqAny: ['m_thrift', 'm_care'], max: 1, per: 0.15, fx: 'craftDouble', cap: true, icon: '💡', name: 'Feltaláló', desc: () => '+15% esély dupla adagra barkácsoláskor' }
     ];
     const BY_KEY = {};

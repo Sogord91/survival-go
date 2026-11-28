@@ -23,7 +23,7 @@ function toolOptions(entry) {
     if (options.some(k => TOOLBOX_REPLACES.includes(k)) && !options.includes('toolbox')) options.push('toolbox');
     return options;
 }
-const CRAFT_CATEGORIES = ['Elsősegély', 'Víz és étel', 'Fegyverek', 'Lőszer', 'Harci eszközök', 'Eszközök és fény', 'Ruha és táska', 'Menedék', 'Alapanyag', 'Szilveszter', 'Szétszerelés'];
+const CRAFT_CATEGORIES = ['Elsősegély', 'Víz és étel', 'Fegyverek', 'Lőszer', 'Harci eszközök', 'Eszközök és fény', 'Ruha és táska', 'Menedék', 'Vadászat', 'Alapanyag', 'Szilveszter', 'Szétszerelés'];
 
 const craftingRecipes = [
     // --- ELSŐSEGÉLY ---
@@ -60,6 +60,35 @@ const craftingRecipes = [
     { key: 'reload_buckshot', cat: 'Lőszer', result: 'ammo_buckshot', count: 3, name: 'Sörét Újratöltés', desc: '3 hüvely + lőpor + ólom = 3 töltény', req: { empty_casing: 3, gunpowder: 1, lead_pipes_scrap: 1 }, tools: [['pliers', 'multitool']] },
     { key: 'reload_sniper', cat: 'Lőszer', result: 'ammo_sniper', count: 3, name: 'Mesterlövész Újratöltés', desc: '3 hüvely + lőpor + ólom = 3 töltény', req: { empty_casing: 3, gunpowder: 2, lead_pipes_scrap: 1 }, tools: [['pliers', 'multitool']] },
 
+    // --- v0.1.42: VADÁSZAT – nyúzás késsel (vadászkéssel +1 hús), sütés, csontmunka ---
+    { key: 'roast_game', result: 'roast_pork', cat: 'Vadászat', name: 'Sült Vadhús', desc: 'Nyers vadhús tűzön', req: { raw_game_meat: 2 }, fire: true, tools: ['empty_can'] },
+    { key: 'grill_fish', result: 'grilled_fish', cat: 'Vadászat', name: 'Sült Hal', desc: 'Kárász, ponty vagy csuka tűzön', req: { fish_crucian: 2 }, fire: true },
+    { key: 'grill_carp', result: 'grilled_fish', cat: 'Vadászat', count: 2, name: 'Sült Ponty', desc: 'Egy ponty két adag', req: { fish_carp: 1 }, fire: true },
+    { key: 'grill_pike', result: 'grilled_fish', cat: 'Vadászat', count: 2, name: 'Sült Csuka', desc: 'Egy csuka két adag', req: { fish_pike: 1 }, fire: true },
+    { key: 'grill_catfish', result: 'grilled_fish', cat: 'Vadászat', count: 3, name: 'Sült Harcsa', desc: 'Egy harcsa három adag', req: { fish_catfish: 1 }, fire: true },
+    { key: 'bone_arrows', result: 'arrow', cat: 'Vadászat', count: 3, name: 'Csonthegyű Nyílvessző', desc: 'Csonthegy, toll, egyenes bot', req: { bones: 1, feather: 2, stick: 2 }, tools: [['hunting_knife', 'knife', 'multitool']] },
+    { key: 'fishing_rod', cat: 'Vadászat', name: 'Házi Horgászbot', desc: 'Egyenes bot, damil, horog', req: { stick: 1, fishing_line: 1, fish_hook: 1 }, tools: [['hunting_knife', 'knife', 'multitool']] },
+    { key: 'hook_wire', result: 'fish_hook', count: 3, cat: 'Vadászat', name: 'Drótból Hajlított Horog', desc: 'Rézdrótból, fogóval (3 db)', req: { copper_wire: 1 }, tools: [['pliers', 'multitool']] },
+    { key: 'hook_bone', result: 'fish_hook', count: 2, cat: 'Vadászat', name: 'Csonthorog', desc: 'Csontból faragva (2 db)', req: { bones: 1 }, tools: [['hunting_knife', 'knife', 'multitool']] },
+    { key: 'line_cord', result: 'fishing_line', cat: 'Vadászat', name: 'Házi Zsinór', desc: 'Pamutzsinórból sodorva (gyengébb, de megteszi)', req: { cotton_cord: 2 } },
+    { key: 'tan_rabbit', result: 'leather', cat: 'Vadászat', name: 'Prém Kicserzése', desc: 'Két nyúlprém sóval', req: { rabbit_fur: 2, salt: 1 } },
+    { key: 'tan_fox', result: 'tanned_leather', cat: 'Vadászat', name: 'Rókabunda Kicserzése', desc: 'Sóval', req: { fox_fur: 1, salt: 1 } },
+    { key: 'tan_deer', result: 'tanned_leather', count: 2, cat: 'Vadászat', station: 'workshop', name: 'Őzbőr Kicserzése', desc: 'Sóval és zsírral (2 db)', req: { deer_hide: 1, salt: 1, lard: 1 } },
+    { key: 'tan_boar', result: 'tanned_leather', count: 3, cat: 'Vadászat', station: 'workshop', name: 'Vaddisznóbőr Kicserzése', desc: 'Sóval és zsírral (3 db)', req: { boar_hide: 1, salt: 2, lard: 1 } },
+    { key: 'tan_hound', result: 'tanned_leather', cat: 'Vadászat', station: 'workshop', name: 'Kopóbőr Kicserzése', desc: 'Sóval', req: { hound_hide: 1, salt: 1 } },
+    { key: 'scrap_old_boot', cat: 'Szétszerelés', result: 'leather', count: 1, name: 'Ócska Csizma Szétvágása', desc: 'Bőr', req: { old_boot: 1 }, tools: [['hunting_knife', 'knife', 'multitool']] },
+    // --- v0.1.41: hússütés és tartósítás (tűz kell) ---
+    { key: 'roast_pork', cat: 'Víz és étel', name: 'Sült Hús', desc: 'Nyers disznóhús vagy csirke tűzön, egy kis zsíron', req: { raw_pork: 1, lard: 1 }, fire: true, tools: ['empty_can'] },
+    { key: 'roast_chicken', result: 'roast_pork', cat: 'Víz és étel', name: 'Sült Csirke', desc: 'Nyers csirke tűzön', req: { raw_chicken: 2 }, fire: true, tools: ['empty_can'] },
+    { key: 'roast_mutant', result: 'mutant_steak', cat: 'Víz és étel', name: 'Mutánshús Sütése', desc: 'Jól át kell sütni!', req: { raw_mutant_meat: 1 }, fire: true, tools: ['empty_can'] },
+    { key: 'fried_eggs', cat: 'Víz és étel', name: 'Rántotta', desc: 'Három tojás egy kis zsíron', req: { eggs: 3, lard: 1 }, fire: true, tools: ['empty_can'] },
+    { key: 'cured_meat', cat: 'Víz és étel', count: 2, name: 'Sózott Szárított Hús', desc: 'Besózva és megszárítva tovább eláll (2 adag)', req: { raw_pork: 2, salt: 1 }, fire: true },
+    // --- v0.1.41: szétszedés ---
+    { key: 'scrap_rusty_cross', cat: 'Szétszerelés', result: 'metal_scrap', count: 3, name: 'Vaskereszt Szétvágása', desc: 'Fémhulladék', req: { rusty_cross: 1 }, tools: [['bow_saw', 'tin_snips']] },
+    { key: 'scrap_wreath', cat: 'Szétszerelés', result: 'stick', count: 2, name: 'Koszorú Szétszedése', desc: 'Ágak (és drót)', req: { wreath: 1 } },
+    { key: 'scrap_towel', cat: 'Szétszerelés', result: 'rag', count: 3, name: 'Törölköző Szétvágása', desc: 'Rongy', req: { beach_towel: 1 }, tools: [['tin_snips', 'knife', 'multitool']] },
+    { key: 'scrap_lifeguard', cat: 'Szétszerelés', result: 'hemp_rope', count: 1, name: 'Mentőbója Kötele', desc: 'Kötél', req: { lifeguard_tube: 1 }, tools: [['knife', 'multitool']] },
+    { key: 'scrap_thermometer', cat: 'Szétszerelés', result: 'glass_shards', count: 1, name: 'Lázmérő Szétszedése', desc: 'Üvegszilánk', req: { thermometer: 1 } },
     // --- v0.1.35: kézben (bárhol) ---
     { key: 'work_gloves', cat: 'Ruha és táska', name: 'Munkakesztyű', desc: 'Bőrből varrt kesztyű', req: { leather: 2, cotton_cord: 1 }, tools: ['sewing_kit'] },
     { key: 'fingerless_gloves', cat: 'Ruha és táska', name: 'Ujjatlan Bőrkesztyű', desc: 'Cserzett bőrből, levágott ujjakkal', req: { tanned_leather: 1 }, tools: ['sewing_kit'] },

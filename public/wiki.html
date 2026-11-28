@@ -98,6 +98,7 @@ ol li, ul li { margin: 4px 0; }
 <script src="/js/wheel.js"></script>
 <script src="/js/winter.js"></script>
 <script src="/js/newyear.js"></script>
+<script src="/js/hunting.js"></script>
 <script src="/js/gifts.js"></script>
 <script src="/js/quests.js"></script>
 <script src="/js/skills.js"></script>
@@ -123,7 +124,7 @@ function hideNewYear() {
 const pct = (x) => Math.round(x * 100) + '%';
 const num = (x) => (Math.round(x * 100) / 100).toLocaleString('hu-HU');
 
-const TYPE_HU = { food: 'Étel', drink: 'Ital', medicine: 'Gyógyszer', weapon: 'Fegyver', helmet: 'Sisak', torso: 'Felső', armor: 'Mellény / páncél', legs: 'Nadrág', shoes: 'Cipő', backpack: 'Hátizsák', gloves: 'Kesztyű', throwable: 'Dobható fegyver', attachment: 'Fegyverkiegészítő', blueprint: 'Tervrajz', curio: 'Érdekesség', event: 'Szilveszter',
+const TYPE_HU = { food: 'Étel', drink: 'Ital', medicine: 'Gyógyszer', weapon: 'Fegyver', helmet: 'Sisak', torso: 'Felső', armor: 'Mellény / páncél', legs: 'Nadrág', shoes: 'Cipő', backpack: 'Hátizsák', gloves: 'Kesztyű', throwable: 'Dobható fegyver', attachment: 'Fegyverkiegészítő', blueprint: 'Tervrajz', curio: 'Érdekesség', event: 'Szilveszter', carcass: 'Tetem', trophy: 'Trófea',
   material: 'Alapanyag', tool: 'Eszköz', mod: 'Fegyvermódosító', ammo: 'Lőszer', valuable: 'Értéktárgy', collectible: 'Gyűjthető', artifact: 'Műtárgy' };
 const SLOT_HU = { weapon: 'elsődleges fegyver', secondary: 'másodlagos fegyver (pisztoly)', melee: 'közelharci fegyver', helmet: 'sisak', torso: 'felső', armor: 'mellény', legs: 'nadrág', shoes: 'cipő', backpack: 'hátizsák', gloves: 'kesztyű' };
 const GROUP_HU = { grocery: 'élelmiszer', drinks: 'italok', smallgoods: 'apróáru', hardware: 'barkácsáru', tools: 'szerszámok', kitchen: 'konyha', auto: 'autós holmi', medical: 'orvosi', hospital: 'kórházi', police: 'rendőrségi',
@@ -255,6 +256,30 @@ const GUIDES = [
     <p>XP (15 + 10 × az ellenfél szintje), pénz, ${pct(W.combat.DROP_CHANCE)} eséllyel egy tárgy az ellenféltől, és az épület átkutatása. A harc +${R().fatigueCombat}% fáradtság.</p>
     <p>Az ellenfelek listája: <a href="#/ellenfelek">Ellenfelek</a>.</p>
     <div class="box tip">💡 A felszerelés kopik a harcban. A tönkrement felszerelés rajtad marad, de nem ad bónuszt – <a href="#/oldal/felszereles">javítsd meg</a> időben!</div>` },
+  { slug: 'vadaszat', title: 'Vadászat és horgászat', group: 'Útmutatók', render: () => {
+    const H = window.SurvivalHunting, list = (f) => `<div class="grid">${Object.entries(ITEMS).filter(([k, it]) => f(it, k)).map(([k, it]) => card(k, it, '')).join('')}</div>`;
+    return `<h1>Vadászat és horgászat</h1>
+    <h2>Vadászat</h2>
+    <p>Főleg erdők, mezők és parkok közelében állatok bukkannak fel a térképen (${H.NEAR_METERS} m-en belül, csak neked látszanak). Koppints rá, ha elég közel vagy:</p>
+    <ul><li><b>közelharci fegyverrel</b> ${H.RANGE_MELEE} m-re kell becserkészni,</li>
+      <li><b>íjjal, számszeríjjal vagy puskával</b> ${H.RANGE_RANGED} m-ről is megy.</li></ul>
+    <p>Az óvatos állat (őz, fácán, nyúl) megneszelhet és elszalad. Íjjal, számszeríjjal vagy hangtompítóval kisebb az esély. Ha nem szalad el, körökre osztott harc jön, mint a mutánsoknál. A vaddisznó és a mutáns kopó visszatámad!</p>
+    <table class="tbl"><tr><th>Állat</th><th>Élet</th><th>Sebzés</th><th>Mit ad</th></tr>${Object.entries(H.ANIMALS).map(([k, a]) => { const e = (W.enemies || []).find(x => x.key === k); return `<tr><td>${a.avatar} ${a.name}</td><td>${e ? e.hp : '–'}</td><td>${e ? e.dmg : '–'}</td><td>${itemLink(a.carcass)}</td></tr>`; }).join('')}</table>
+    <p>Győzelem után a <b>tetem</b> a hátizsákodba kerül (a nagyobbak nehezek!). <b>Koppints rá → Megnyúzom</b>: kés kell hozzá (a felvett kés is jó). <b>Vadászkéssel</b> eggyel több húst kapsz.</p>
+    <table class="tbl"><tr><th>Tetem</th><th>Hús</th><th>Bunda / bőr</th><th>Csont</th><th>Trófea esélye</th></tr>${Object.entries(H.SKIN).map(([k, x]) => `<tr><td>${itemLink(k)}</td><td>${x.meat[1]} ${itemLink(x.meat[0])}</td><td>${x.pelt ? itemLink(x.pelt) : (x.extra && x.extra.feather ? x.extra.feather + ' ' + itemLink('feather') : '–')}</td><td>${x.bones || '–'}</td><td>${x.trophy ? Math.round(x.trophy[1] * 100) + '% ' + itemLink(x.trophy[0]) : '–'}</td></tr>`).join('')}</table>
+    <p>A <b>bundát és a bőrt</b> sóval kicserezheted (a nagyobbakat a barkácsasztalnál): bőr lesz belőle, abból kesztyű, mellény, táska. A szebb bundák és a <b>trófeák</b> a gyűjtők és a kereskedők kedvencei. A nyers hús tűzön megsüthető (Barkács → Vadászat).</p>
+    ${list(it => it.type === 'carcass' || it.type === 'trophy')}
+    <h2>Horgászat</h2>
+    <p>A térképen a legközelebbi vízparton (tó, folyó, patak, csatorna) horog jelzi a horgászhelyet. Ha ${H.WATER_RANGE} m-en belül vagy, és van nálad <b>horgászbot</b> és <b>csali</b> (${H.BAITS.map(itemLink).join(', ')}), megjelenik a <b>Horgászat</b> gomb.</p>
+    <ul><li>Kivetés után ${H.WAIT_MIN_S}–${H.WAIT_MAX_S} másodperc a kapás. Ha túl korán húzod ki, elúszik a hal.</li>
+      <li>Kapáskor rezeg a telefon: ${Math.round(H.LATE_S / 60)} perced van kihúzni. Ne menj el a víz mellől!</li>
+      <li>Kárász, ponty, csuka, ritkán harcsa, és néha egy ócska csizma vagy palackposta.</li></ul>
+    <p><b>Horgászbot</b> épületben is akad (sportbolt, ház), vagy barkácsolhatod: egyenes bot, damil és horog. Horgot rézdrótból vagy csontból is hajlíthatsz, damilt pamutzsinórból sodorhatsz.</p>
+    ${list((it, k) => k.startsWith('fish_') || ['fishing_rod', 'fishing_line', 'worms', 'grilled_fish', 'old_boot', 'hunting_knife'].includes(k))}
+    <h2>Vadász képességek</h2>
+    <p>A Képességek között új ág: a <b>Vadász</b>. Bal ösvény: becserkészés, nyomolvasás (messzebbről), nyúzómester (több hús), vadászösztön (sebzés az állatok ellen), trófeagyűjtő. Jobb ösvény: türelmes horgász (hamarabb jön a kapás), csalimester, nagy fogás (több csuka és harcsa), erős damil, halak ura (dupla fogás). A csúcson: <b>Vadőr</b> (eggyel több állat) és <b>A vadon ura</b> (+50% XP).</p>
+    <h2>Küldetések</h2>
+    <p>Napi: ejts el állatot, fogj halat, nyúzz meg egy tetemet. Heti: ejts el több állatot, fogj sok halat, szerezz trófeát.</p>`; } },
   { slug: 'harci-eszkozok', title: 'Harci eszközök és tervrajzok', group: 'Útmutatók', render: () => {
     const list = (f) => `<div class="grid">${Object.entries(ITEMS).filter(([k, it]) => f(it, k)).map(([k, it]) => card(k, it, '')).join('')}</div>`;
     return `<h1>Harci eszközök és tervrajzok</h1>
@@ -669,7 +694,7 @@ function home() {
     <div class="stats" style="margin-top:18px">
       <a class="stat" href="#/targyak"><small>Tárgyak</small><b>${Object.keys(ITEMS).length}</b></a>
       <a class="stat" href="#/receptek"><small>Receptek</small><b>${RECIPES.length}</b></a>
-      <a class="stat" href="#/ellenfelek"><small>Ellenfelek</small><b>${W.enemies.length}</b></a>
+      <a class="stat" href="#/ellenfelek"><small>Ellenfelek</small><b>${W.enemies.filter(e => !e.animal).length}</b></a>
       <a class="stat" href="#/epuletek"><small>Épülettípusok</small><b>${types}</b></a>
     </div>
     <h2>Kezdőknek</h2>
@@ -685,7 +710,7 @@ function home() {
 }
 
 // ---------- adatbázis oldalak ----------
-const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['gloves', 'Kesztyű'], ['throwable', 'Dobható'], ['attachment', 'Kiegészítő'], ['blueprint', 'Tervrajz'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy'], ['curio', 'Érdekesség']];
+const ITEM_FILTERS = [['', 'Mind'], ['food', 'Étel'], ['drink', 'Ital'], ['medicine', 'Gyógyszer'], ['weapon', 'Fegyver'], ['ammo', 'Lőszer'], ['helmet', 'Sisak'], ['torso', 'Felső'], ['armor', 'Mellény'], ['legs', 'Nadrág'], ['shoes', 'Cipő'], ['backpack', 'Hátizsák'], ['gloves', 'Kesztyű'], ['throwable', 'Dobható'], ['attachment', 'Kiegészítő'], ['blueprint', 'Tervrajz'], ['tool', 'Eszköz'], ['material', 'Alapanyag'], ['mod', 'Módosító'], ['valuable', 'Értéktárgy'], ['collectible', 'Gyűjthető'], ['artifact', 'Műtárgy'], ['curio', 'Érdekesség'], ['carcass', 'Tetem'], ['trophy', 'Trófea']];
 function itemsPage(type) {
   const list = Object.entries(ITEMS).filter(([, it]) => !type || it.type === type).sort((a, b) => a[1].name.localeCompare(b[1].name, 'hu'));
   const sub = (it) => it.dmg ? `+${it.dmg} sebzés` : it.def ? `+${it.def} védelem` : it.effects ? Object.entries(it.effects).filter(([, v]) => v).map(([k, v]) => `${EFFECT_HU[k]} ${v > 0 ? '+' : ''}${v}`).join(', ') : (it.bonusSlots ? `+${it.bonusSlots} hely` : TYPE_HU[it.type] || '');
@@ -715,7 +740,7 @@ function recipesPage(cat) {
     ${list.map(recipeHtml).join('')}`;
 }
 function enemiesPage() {
-  const list = W.enemies.slice().sort((a, b) => a.lvl - b.lvl || a.hp - b.hp);
+  const list = W.enemies.filter(e => !e.animal).slice().sort((a, b) => a.lvl - b.lvl || a.hp - b.hp);
   return `<h1>Ellenfelek</h1><p class="lead">Ők várnak rád az épületekben. A szintjük a veszélyességüket jelzi; erős ellenfél csak magasabb szintű játékosnál jön gyakrabban.</p>
     <div class="tbl"><table><tr><th></th><th>Ellenfél</th><th>Szint</th><th>Élet</th><th>Ütés</th><th>Jutalom</th><th>Hol?</th></tr>
     ${list.map(e => `<tr><td><a href="#/ellenfel/${e.key}"><img src="/images/enemies/${e.key}.webp" alt="" style="width:54px;height:54px;object-fit:cover;border:2px solid var(--paper)" onerror="this.outerHTML='${e.avatar}'"></a></td>

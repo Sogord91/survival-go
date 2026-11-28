@@ -23,6 +23,7 @@ const SurvivalAdvent = require('./public/js/advent'); // adventi naptár – Fag
 const SurvivalShop = require('./public/js/shop'); // a kinézetek nevei az adventi üzenethez
 const SurvivalWinter = require('./public/js/winter'); // karácsonyfák, díszek (v0.1.19)
 const SurvivalNewYear = require('./public/js/newyear'); // szilveszter (v0.1.35)
+const SurvivalHunting = require('./public/js/hunting'); // vadászat, horgászat (v0.1.42)
 // a futó verzió azonosítója (a git commit); újraindítás után a kliensek ebből tudják, hogy újra kell tölteni
 const BOOT_VERSION = (() => { try { return require('child_process').execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: __dirname, timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return 'b' + Date.now(); } })();
 const SurvivalWheel = require('./public/js/wheel');   // szerencsekerék (v0.1.19)
@@ -141,6 +142,7 @@ const userSchema = new mongoose.Schema({
         walkMeters: { type: Number, default: 0 },  // gyaloglás a cipő legutóbbi kopása óta (méter)
         wearVersion: { type: Number, default: 0 }, // a kopási táblázat verziója (régi mentések arányos átszámításához)
         combat: { type: mongoose.Schema.Types.Mixed, default: null },     // folyamatban lévő harc (újracsatlakozás után is folytatódik)
+        fishing: { type: mongoose.Schema.Types.Mixed, default: null },    // kivetett horog (v0.1.42)
         dangerUntil: { type: mongoose.Schema.Types.Mixed, default: {} },  // személyes zárak menekülés után: { épület-azonosító: lejárat }
         stats: { type: mongoose.Schema.Types.Mixed, default: {} },        // életre szóló statisztika (a halál után is megmarad; v0.1.10)
         lifeStartedAt: { type: Number, default: null },                   // a mostani túlélő mikor indult (a leghosszabb élethez)
@@ -221,7 +223,7 @@ app.get('/api/wiki', (req, res) => {
     res.json({
         enemies: Object.entries(Combat.ENEMIES).filter(([, e]) => !e.redZoneOnly).map(([key, e]) => ({
             key, name: e.name, avatar: e.avatar, lvl: e.lvl, hp: e.hp, dmg: e.dmg, drops: e.drops, habitat: e.habitat || [],
-            night: !!e.night, nightWeight: e.nightWeight || 1,
+            night: !!e.night, nightWeight: e.nightWeight || 1, animal: !!e.animal,
             xp: 15 + 10 * e.lvl, money: [5 * e.lvl, 5 * e.lvl + 10]
         })),
         combat: { ...Combat.RULES },
@@ -541,6 +543,7 @@ function normalizePlayerFields(p, equipment, inventory) {
         mods: normalizeMods(p.mods),
         blueprints: Array.isArray(p.blueprints) ? [...new Set(p.blueprints.filter(x => typeof x === 'string'))].slice(0, 200) : [],
         magShots: (p.magShots && typeof p.magShots === 'object') ? p.magShots : {},
+        fishing: (p.fishing && typeof p.fishing === 'object' && Number.isFinite(Number(p.fishing.until))) ? p.fishing : null,
         newyear: Math.floor(num(p.newyear, 0)),
         lifeStartedAt: (p.lifeStartedAt === null || p.lifeStartedAt === undefined) ? null : num(p.lifeStartedAt, null)
     };
@@ -1017,6 +1020,7 @@ function sendPlayerState(username, p, extra) {
     entry.camo = torso && torso.camo && !SurvivalStats.isBroken(p, 'torso') ? torso.camo : 0;
     entry.hasRadio = hasItem(p, 'field_radio');
     entry.hasWalkie = hasItem(p, 'walkie_talkie');
+    entry.moreAnimals = !!skillFx(p).moreAnimals; // Vadőr (v0.1.43)
     if (socialHooks && (!entry.teamAt || Date.now() - entry.teamAt > 60000)) {
         entry.teamAt = Date.now();
         socialHooks.teams.myTeamId(username).then(t => { entry.teamId = t ? String(t) : null; }).catch(() => { });
@@ -1481,6 +1485,59 @@ const gifts = new Map(); // id -> { id, lat, lng, kind, expiresAt, openedBy: [],
 let giftSeq = 0;
 function giftsCleanup(now) { for (const [id, g] of gifts) if (g.expiresAt <= now || g.taken) gifts.delete(id); }
 
+// ===== VADÁSZAT ÉS HORGÁSZAT (v0.1.42): zöld területek és vizek az OSM-ből, cellánként a memóriában =====
+const NATURE_CELL_DEG = 0.02;
+const natureCells = new Map(); // cella -> { at, green: [[lat,lng]...], water: [[lat,lng]...], pending }
+function naturePoints(lat, lng) {
+    const cell = `${Math.floor(lat / NATURE_CELL_DEG)}:${Math.floor(lng / NATURE_CELL_DEG)}`;
+    const c = natureCells.get(cell);
+    if (c && c.green && Date.now() - c.at < 7 * 24 * 3600000) return Promise.resolve(c);
+    if (c && c.pending) return c.pending;
+    const [a, b] = cell.split(':').map(Number);
+    const bbox = [a * NATURE_CELL_DEG, b * NATURE_CELL_DEG, (a + 1) * NATURE_CELL_DEG, (b + 1) * NATURE_CELL_DEG].map(v => v.toFixed(5)).join(',');
+    const pending = (async () => {
+        try {
+            const q = `[out:json][timeout:25][bbox:${bbox}];(way[landuse~"^(forest|meadow|grass|farmland|orchard|vineyard)$"];way[natural~"^(wood|scrub|grassland|heath|wetland)$"];way[leisure~"^(park|nature_reserve)$"];)->.g;.g out center;`
+                + `(way[natural=water];way[waterway~"^(river|stream|canal)$"];way[landuse=reservoir];relation[natural=water];);out geom;`;
+            const json = await overpassQuery(q, config.AREA_OVERPASS_TIMEOUT_MS);
+            const green = [], water = [];
+            const addLine = (geom) => {
+                if (!Array.isArray(geom)) return;
+                for (let i = 0; i < geom.length && water.length < 20000; i++) {
+                    const g = geom[i]; if (!g || !isFinite(g.lat) || !isFinite(g.lon)) continue;
+                    const prev = geom[i - 1];
+                    if (prev && isFinite(prev.lat)) { // hosszú szakaszoknál közbülső pontok, hogy a part végig horgászható legyen
+                        const d = distanceMeters({ lat: prev.lat, lng: prev.lon }, { lat: g.lat, lng: g.lon });
+                        for (let k = 1; k < Math.min(40, Math.floor(d / 30)); k++) { const t = k / Math.floor(d / 30); water.push([prev.lat + (g.lat - prev.lat) * t, prev.lon + (g.lon - prev.lon) * t]); }
+                    }
+                    water.push([g.lat, g.lon]);
+                }
+            };
+            json.elements.forEach(el => {
+                if (el.center && el.tags && !el.tags.waterway && el.tags.natural !== 'water' && el.tags.landuse !== 'reservoir') { if (green.length < 4000) green.push([el.center.lat, el.center.lon]); return; }
+                if (el.type === 'way') addLine(el.geometry);
+                else if (el.type === 'relation' && Array.isArray(el.members)) el.members.forEach(m => addLine(m.geometry));
+            });
+            const res = { at: Date.now(), green, water };
+            natureCells.set(cell, res);
+            return res;
+        } catch (e) { natureCells.delete(cell); return { green: [], water: [] }; }
+    })();
+    natureCells.set(cell, { at: Date.now(), pending });
+    return pending;
+}
+async function naturePointsAround(lat, lng) {
+    const dLat = 0.005, dLng = 0.0075, cells = new Map();
+    for (const y of [lat - dLat, lat + dLat]) for (const x of [lng - dLng, lng + dLng]) cells.set(`${Math.floor(y / NATURE_CELL_DEG)}:${Math.floor(x / NATURE_CELL_DEG)}`, [y, x]);
+    const lists = await Promise.all([...cells.values()].map(([y, x]) => naturePoints(y, x)));
+    return { green: [].concat(...lists.map(l => l.green || [])), water: [].concat(...lists.map(l => l.water || [])) };
+}
+const animals = new Map(); // játékos -> [{ id, kind, lat, lng, expiresAt }]
+let animalSeq = 0;
+function offsetPoint(lat, lng, meters, angle) {
+    return [lat + (meters * Math.cos(angle)) / 111320, lng + (meters * Math.sin(angle)) / (111320 * Math.cos(lat * Math.PI / 180))];
+}
+
 const buildingCache = new Map();    // memória-gyorsítótár: id -> { id, type, name, lat, lng, bounds }
 const missingBuildings = new Map(); // nem létező OSM azonosítók -> lejárat (ne kérdezzük le újra és újra)
 const buildingFetches = new Map();  // folyamatban lévő lekérdezések (két játékos ne kérdezze le kétszer)
@@ -1793,7 +1850,7 @@ async function releaseBuildingLock(id, username, lockedUntil) {
 // A talált holmi (még nem kerül a leltárba: a Zsákmány ablakban lehet elvenni)
 // Leltár sorrend: fegyver, lőszer, felszerelés, gyógyszer, étel, ital, eszköz, alapanyag, értéktárgy
 const INVENTORY_TYPE_ORDER = ['weapon', 'ammo', 'throwable', 'attachment', 'helmet', 'torso', 'armor', 'legs', 'shoes', 'gloves', 'backpack', 'blueprint',
-    'medicine', 'food', 'drink', 'tool', 'event', 'curio', 'material', 'mod', 'valuable', 'collectible', 'artifact'];
+    'medicine', 'food', 'drink', 'tool', 'event', 'curio', 'carcass', 'trophy', 'material', 'mod', 'valuable', 'collectible', 'artifact'];
 function sortInventory(inventory) {
     const rank = (s) => {
         const item = itemDatabase[s.key];
@@ -1829,10 +1886,15 @@ function rollBuildingLoot(building, emptyFactor, fx) {
     const roll = () => SurvivalBuildings.rollLoot(building.type, itemDatabase, Math.random, { emptyFactor: emptyFactor / mult })
         .map(({ key, count }) => ({ key, count: mult > 1 ? Math.max(1, Math.round(count * mult)) : count }));
     const found = roll();
-    if (chance(fx.extraLoot)) roll().forEach(it => { const same = found.find(f => f.key === it.key); if (same) same.count += it.count; else found.push(it); }); // Kincsvadász
-    if (chance(fx.scrapFind)) { // Hulladékgyűjtő: +1 alapanyag (a talált anyagokból, vagy egy rongy)
+    // v0.1.41: a képességek legfeljebb 2 féle tárgyig visznek fel; 3 féle csak a ritka alapdobásból jöhet (az események külön)
+    const MAX_KINDS = 2;
+    if (chance(fx.extraLoot) && found.length < MAX_KINDS) { // Kincsvadász: +1 tárgy, ha van még hely
+        const it = roll()[0];
+        if (it) { const same = found.find(f => f.key === it.key); if (same) same.count += it.count; else found.push(it); }
+    }
+    if (chance(fx.scrapFind)) { // Hulladékgyűjtő: +1 alapanyag (a talált anyagokból, vagy egy rongy, ha van még hely)
         const mat = found.find(f => itemDatabase[f.key] && itemDatabase[f.key].type === 'material');
-        if (mat) mat.count += 1; else found.push({ key: 'rag', count: 1 });
+        if (mat) mat.count += 1; else if (found.length < MAX_KINDS) found.push({ key: 'rag', count: 1 });
     }
     // Szilveszter: szilveszteri tárgyak (v0.1.35)
     if (SurvivalNewYear.active(Date.now(), fx.nyTest) && Math.random() < 0.3) {
@@ -2379,8 +2441,13 @@ io.on('connection', (socket) => {
             if (waterKey) removeItem(p, waterKey, recipe.water);
             const result = recipe.result || recipe.key;
             let count = recipe.count || 1;
+            // nyúzás vadászkéssel: +1 hús (v0.1.42)
+            if (recipe.cat === 'Vadászat' && usedTools.some(sl => sl.key === 'hunting_knife') && recipe.extra) count += 1;
             const added = addItem(p, result, count);
             if (!added.ok) return { save: false, error: CAPACITY_MESSAGES[added.reason] };
+            // több termék egy receptből (pl. nyúzás: hús + bőr + csont)
+            const extraGot = [], extraLost = [];
+            Object.entries(recipe.extra || {}).forEach(([k, n]) => { if (!itemDatabase[k]) return; if (addItem(p, k, n).ok) extraGot.push(`${n} ${itemName(k)}`); else extraLost.push(itemName(k)); });
             const cfx = skillFx(p);
             // Takarékos (Mesterember): eséllyel 1 alapanyag visszajár (nem a szétszedett tárgy)
             let thrift = '';
@@ -2409,6 +2476,8 @@ io.on('connection', (socket) => {
             questEvent(p, username, 'craft', { count, ornament: recipe.event === 'winter' }, qFlags());
             if (cfx.craftXp) grantXp(p, cfx.craftXp); // Mesterremek
             let message = `Sikeresen megbarkácsoltad: ${recipe.name}${count > 1 ? ` (${count} db)` : ''}!${count > (recipe.count || 1) ? ' ✨ Dupla adag!' : ''}${thrift}`;
+            if (extraGot.length) message += ` Mellé: ${extraGot.join(', ')}.`;
+            if (extraLost.length) message += ` Nem fért el: ${extraLost.join(', ')}.`;
             if (broken.length > 0) message += ` Eltört: ${broken.join(', ')}.`;
             return { message, payload: { broken } };
         })).then(reply('craft_result')).catch(logError("Hiba a szerver oldali craftolás során:"));
@@ -2547,7 +2616,7 @@ io.on('connection', (socket) => {
             }
 
             const pick = useLockpick(p);
-            const found = rollBuildingLoot(building, pick.factor, { ...skillFx(p), lucky: hasItem(p, 'chimney_sweep'), nyTest: winterTest() });
+            const found = rollBuildingLoot(building, pick.factor, { ...skillFx(p), lucky: hasItem(p, 'chimney_sweep') || hasItem(p, 'rabbit_foot'), nyTest: winterTest() });
             addFatigue(p, config.FATIGUE_LOOT);
             bumpStat(p, 'buildingsLooted');
             markTutorial(p, 'loot');
@@ -2779,6 +2848,28 @@ io.on('connection', (socket) => {
             const payload = { events: step.events, outcome: step.outcome || null, enemy: combat.enemy, buildingId: combat.buildingId };
             const building = { id: combat.buildingId, name: combat.buildingName, type: combat.buildingType };
 
+            if (step.outcome === 'won' && combat.hunt) { // vadászat: a tetem a hátizsákba (v0.1.42)
+                p.combat = null;
+                bumpStat(p, 'combatsWon');
+                bumpStat(p, 'animalsHunted');
+                markTutorial(p, 'combat');
+                questEvent(p, username, 'win', null, qFlags());
+                const enemyKey = combat.enemy.key;
+                p.stats.kills[enemyKey] = (p.stats.kills[enemyKey] || 0) + 1;
+                addFatigue(p, config.FATIGUE_COMBAT);
+                const reward = Combat.rewards(combat);
+                reward.xp = Math.round(reward.xp * (1 + (skillFx(p).wildXp || 0))); // A vadon ura
+                const levels = grantXp(p, reward.xp);
+                questEvent(p, username, 'hunt', null, qFlags());
+                const carcass = (SurvivalHunting.ANIMALS[enemyKey] || {}).carcass;
+                let msg = `Elejtetted: ${combat.enemy.name}! +${reward.xp} XP.`;
+                if (carcass && itemDatabase[carcass]) {
+                    if (addItem(p, carcass, 1).ok) msg += ` A hátizsákodba tetted: ${itemDatabase[carcass].name}. Késsel megnyúzhatod (Barkács → Vadászat).`;
+                    else msg += ` A ${itemDatabase[carcass].name} nem fért el, ott kellett hagynod.`;
+                }
+                Object.assign(payload, { items: [], xp: reward.xp, money: 0, buildingName: 'a vadonban', cache: null, hunt: true });
+                return { leveledUp: levels > 0, message: msg, payload };
+            }
             if (step.outcome === 'won') {
                 p.combat = null;
                 bumpStat(p, 'combatsWon');
@@ -2803,7 +2894,7 @@ io.on('connection', (socket) => {
                 // Győzelem után átkutatod az épületet (kisebb eséllyel üres); az ellenfélnél lévő tárgy is a zsákmányba kerül.
                 // Minden a Zsákmány ablakba megy, amit nem teszel el, az LOOT_CACHE_MINUTES percig az épületben marad.
                 const pick = useLockpick(p);
-                const found = rollBuildingLoot(building, config.COMBAT_WIN_EMPTY_FACTOR * pick.factor, { ...skillFx(p), lucky: hasItem(p, 'chimney_sweep'), nyTest: winterTest() });
+                const found = rollBuildingLoot(building, config.COMBAT_WIN_EMPTY_FACTOR * pick.factor, { ...skillFx(p), lucky: hasItem(p, 'chimney_sweep') || hasItem(p, 'rabbit_foot'), nyTest: winterTest() });
                 if (pick.broke) messages.push(`Eltört: ${itemDatabase.lockpick.name}.`);
                 if (reward.drop) {
                     found.unshift({ key: reward.drop, count: 1 });
@@ -2820,6 +2911,11 @@ io.on('connection', (socket) => {
                 return { leveledUp: levels > 0, message: messages.join(' '), payload };
             }
 
+            if (step.outcome === 'fled' && combat.hunt) {
+                p.combat = null;
+                addFatigue(p, config.FATIGUE_COMBAT);
+                return { message: `Elengedted: ${combat.enemy.name}. Az állat elszaladt.`, payload };
+            }
             if (step.outcome === 'fled') {
                 // Nincs loot; az épület csak NEKED zárul FLEE_LOCK_MINUTES percre, másoknak feloldjuk
                 p.combat = null;
@@ -3138,13 +3234,13 @@ io.on('connection', (socket) => {
                 }
                 return { message: `📜 Palackposta: „${note}”${extra}` };
             }
-            if (it.special === 'piggy') { // szerencsemalac persely (v0.1.35)
+            if (it.special === 'piggy' || it.special === 'coinbox') { // szerencsemalac persely (v0.1.35), templomi persely (v0.1.41)
                 removeItem(p, data.key, 1);
                 const money = 40 + Math.floor(Math.random() * 81);
                 p.money = (p.money || 0) + money;
                 const coin = Math.random() < 0.5 ? 'copper_coins' : 'silver_coin';
                 const extra = itemDatabase[coin] && addItem(p, coin, 1 + Math.floor(Math.random() * 2)).ok ? `, és ${itemDatabase[coin].name}` : '';
-                return { message: `🎉 Feltörted a szerencsemalacot: +${money} $${extra}. Boldog új évet!` };
+                return { message: it.special === 'piggy' ? `🎉 Feltörted a szerencsemalacot: +${money} $${extra}. Boldog új évet!` : `🪙 Feltörted a perselyt: +${money} $${extra}.` };
             }
             if (it.special === 'treasure') {
                 removeItem(p, data.key, 1);
@@ -3219,6 +3315,159 @@ io.on('connection', (socket) => {
             socket.emit('tree_info', st);
             if (st.stage > SurvivalWinter.stageOf(tree.points || 0, tree.place)) io.emit('server_notice', { text: `🎄 ${tree.name} fája ${st.stage === 2 ? 'teljesen fel van díszítve!' : 'már félig fel van díszítve!'} Köszönjük, túlélők!` });
         }
+    });
+
+    // ===== VADÁSZAT (v0.1.42) =====
+    socket.on('animals_near', async () => {
+        const e = freshPos();
+        if (!e) return;
+        const now = Date.now(), here = { lat: e.lat, lng: e.lng };
+        let list = (animals.get(username) || []).filter(a => a.expiresAt > now && distanceMeters(here, a) <= SurvivalHunting.NEAR_METERS + 150);
+        if (list.length < SurvivalHunting.PER_PLAYER) {
+            try {
+                const nat = await naturePointsAround(e.lat, e.lng);
+                const night = SurvivalSun.isNight(e.lat, e.lng, new Date(now));
+                const greens = nat.green.filter(pt => { const d = distanceMeters(here, { lat: pt[0], lng: pt[1] }); return d >= SurvivalHunting.MIN_SPAWN_METERS && d <= SurvivalHunting.NEAR_METERS; });
+                const extra = activePlayers[username] && activePlayers[username].moreAnimals ? 1 : 0; // Vadőr
+                const want = (greens.length ? SurvivalHunting.PER_PLAYER : 1) + extra; // beépített helyen ritkábban
+                for (let i = list.length; i < want; i++) {
+                    let lat, lng;
+                    if (greens.length) { const g = greens[Math.floor(Math.random() * greens.length)]; [lat, lng] = offsetPoint(g[0], g[1], Math.random() * 120, Math.random() * Math.PI * 2); }
+                    else [lat, lng] = offsetPoint(e.lat, e.lng, SurvivalHunting.MIN_SPAWN_METERS + Math.random() * 250, Math.random() * Math.PI * 2);
+                    list.push({ id: 'a' + (++animalSeq) + '_' + Math.floor(Math.random() * 1e6).toString(36), kind: SurvivalHunting.pickAnimal(Math.random, night), lat, lng,
+                        expiresAt: now + SurvivalHunting.LIFETIME_MIN * 60000 * (0.6 + Math.random() * 0.8) });
+                }
+            } catch (err) { logError('Hiba az állatok elhelyezésekor:')(err); }
+        }
+        animals.set(username, list);
+        socket.emit('animals_data', { animals: list.filter(a => distanceMeters(here, a) <= SurvivalHunting.NEAR_METERS).map(a => ({ id: a.id, kind: a.kind, lat: a.lat, lng: a.lng })) });
+    });
+    socket.on('hunt_start', (data) => {
+        const id = data && typeof data.id === 'string' ? data.id : '';
+        const fail = (message, extra) => socket.emit('hunt_result', { success: false, message, ...(extra || {}) });
+        const list = animals.get(username) || [];
+        const a = list.find(x => x.id === id && x.expiresAt > Date.now());
+        if (!a) return fail('Ez az állat már továbbállt.', { gone: id });
+        const e = freshPos();
+        if (!e) return fail('Várd meg a friss GPS pozíciót!');
+        withPlayer(username, freeOnly((p) => {
+            if (p.combat) return { save: false, error: 'Épp harcolsz.' };
+            const w = itemDatabase[p.equipment.weapon] || itemDatabase[p.equipment.secondary];
+            const ranged = (SurvivalHunting.isRanged(itemDatabase[p.equipment.weapon]) && !SurvivalStats.isBroken(p, 'weapon'))
+                || (SurvivalHunting.isRanged(itemDatabase[p.equipment.secondary]) && !SurvivalStats.isBroken(p, 'secondary'));
+            const hfx = skillFx(p);
+            const range = (ranged ? SurvivalHunting.RANGE_RANGED : SurvivalHunting.RANGE_MELEE) + (hfx.huntRange || 0); // Nyomolvasó
+            const dist = distanceMeters(e, a);
+            if (dist > range + 10) return { save: false, error: `Túl messze van (${Math.round(dist)} m). ${ranged ? 'Lőtávolság' : 'Közelharci fegyverrel'}: ${range} m. ${ranged ? '' : 'Íjjal, számszeríjjal vagy puskával messzebbről is mehet.'}` };
+            const cfg = SurvivalHunting.ANIMALS[a.kind];
+            const idx = list.indexOf(a);
+            // óvatos állat: megugorhat (a hangtompító és az íj/számszeríj csendesebb)
+            const quiet = (p.mods && (p.mods.weapon === 'silencer' || p.mods.secondary === 'silencer')) || (w && w.reqAmmo === 'arrow');
+            if (Math.random() < cfg.skittish * (quiet ? 0.5 : 1) * (ranged ? 0.8 : 1) * (1 - Math.min(0.8, hfx.huntQuiet || 0))) {
+                if (idx >= 0) list.splice(idx, 1);
+                return { save: false, error: `${cfg.name} megneszelt, és elszaladt!`, gone: id };
+            }
+            if (idx >= 0) list.splice(idx, 1);
+            p.combat = Combat.createHunt(a);
+            return { message: `Becserkészted: ${cfg.name}!`, payload: { started: true, id } };
+        })).then(r => {
+            if (r && r.result && r.result.error) return socket.emit('hunt_result', { success: false, message: r.result.error, gone: r.result.gone || null });
+            reply('hunt_result')(r);
+        }).catch(logError('Hiba a vadászatnál:'));
+    });
+
+    // ===== NYÚZÁS (v0.1.43): koppints a tetemre → Megnyúzom =====
+    socket.on('skin_carcass', (data) => {
+        if (!data || typeof data.key !== 'string') return;
+        withPlayer(username, freeOnly((p) => {
+            const sk = SurvivalHunting.SKIN[data.key];
+            if (!sk || countItem(p, data.key) < 1) return { save: false, error: 'Nincs ilyen tetemed.' };
+            // kés a hátizsákban, vagy a felvett közelharci fegyver (pl. a kezdő kés)
+            const eqMelee = p.equipment && SurvivalHunting.SKIN_TOOLS.includes(p.equipment.melee) && !SurvivalStats.isBroken(p, 'melee') ? { key: p.equipment.melee, equipped: true } : null;
+            const knife = SurvivalHunting.SKIN_TOOLS.map(k => mostWorn(p, k)).find(Boolean) || eqMelee;
+            if (!knife) return { save: false, error: 'Kés kell hozzá (vadászkés, kés, bárd, bozótvágó vagy zsebszerszám).' };
+            const fx = skillFx(p);
+            removeItem(p, data.key, 1);
+            let meat = sk.meat[1];
+            if (knife.key === 'hunting_knife') meat += 1;      // vadászkés
+            if (chance(fx.skinBonus)) meat += 1;               // Nyúzómester
+            const out = [[sk.meat[0], meat]];
+            if (sk.pelt) out.push([sk.pelt, 1]);
+            if (sk.bones) out.push(['bones', sk.bones]);
+            Object.entries(sk.extra || {}).forEach(([k, n]) => out.push([k, n]));
+            let trophy = null;
+            if (sk.trophy && Math.random() < sk.trophy[1] + (fx.trophyChance || 0)) { trophy = sk.trophy[0]; out.push([trophy, 1]); }
+            const got = [], lost = [];
+            out.forEach(([k, n]) => { if (!itemDatabase[k]) return; if (addItem(p, k, n).ok) got.push(`${n > 1 ? n + ' ' : ''}${itemName(k)}`); else lost.push(itemName(k)); });
+            // a kés kopik
+            let wearNote = '';
+            if (knife.equipped) { const n = !chance(fx.toolSave) && wearEquipment(p, 'melee', 1); if (n) wearNote = ' ' + n; }
+            else if (knife.dur !== undefined && !chance(fx.toolSave)) { knife.dur -= 1; if (knife.dur <= 0) { p.inventory = p.inventory.filter(sl => sl !== knife); wearNote = ` Eltört: ${itemName(knife.key)}.`; } }
+            questEvent(p, username, 'skin', { trophy: !!trophy }, qFlags());
+            bumpStat(p, 'carcassesSkinned');
+            return { message: `${data.key === 'pheasant_carcass' ? 'Megkopasztottad' : 'Megnyúztad'}: ${got.join(', ')}.${trophy ? ' Trófea is lett belőle!' : ''}${lost.length ? ' Nem fért el: ' + lost.join(', ') + '.' : ''}${wearNote}`, payload: { trophy } };
+        })).then(reply('skin_result')).catch(logError('Hiba a nyúzásnál:'));
+    });
+
+    // ===== HORGÁSZAT (v0.1.42) =====
+    const nearestWater = async (e) => {
+        const nat = await naturePointsAround(e.lat, e.lng);
+        let best = null, bd = Infinity;
+        for (const pt of nat.water) { const d = distanceMeters(e, { lat: pt[0], lng: pt[1] }); if (d < bd) { bd = d; best = pt; } }
+        return best ? { lat: best[0], lng: best[1], dist: bd } : null;
+    };
+    socket.on('fish_check', async () => {
+        const e = freshPos();
+        if (!e) return;
+        try {
+            const w = await nearestWater(e);
+            socket.emit('fish_spot', w && w.dist <= 600 ? { lat: w.lat, lng: w.lng, dist: Math.round(w.dist), near: w.dist <= SurvivalHunting.WATER_RANGE } : { none: true });
+        } catch (err) { logError('Hiba a víz keresésekor:')(err); }
+    });
+    socket.on('fish_start', async () => {
+        const fail = (message) => socket.emit('fish_result', { success: false, message });
+        const e = freshPos();
+        if (!e) return fail('Várd meg a friss GPS pozíciót!');
+        let w;
+        try { w = await nearestWater(e); } catch (err) { return fail('Most nem találom a vizet a térképen, próbáld újra!'); }
+        if (!w || w.dist > SurvivalHunting.WATER_RANGE + 10) return fail(`Menj közelebb a vízhez! ${w ? `(${Math.round(w.dist)} m)` : ''}`);
+        withPlayer(username, freeOnly((p) => {
+            if (p.combat) return { save: false, error: 'Épp harcolsz.' };
+            if (p.fishing && p.fishing.until > Date.now() - SurvivalHunting.LATE_S * 1000) return { save: false, error: 'Már kivetettél!' };
+            if (!hasItem(p, 'fishing_rod')) return { save: false, error: 'Horgászbot kell hozzá.' };
+            const bait = SurvivalHunting.BAITS.find(k => countItem(p, k) > 0);
+            if (!bait) return { save: false, error: 'Csali kell: giliszta, kenyér, tortilla vagy nyers vadhús.' };
+            const ffx = skillFx(p);
+            const kept = chance(ffx.baitSave); // Csalimester
+            if (!kept) removeItem(p, bait, 1);
+            const wait = (SurvivalHunting.WAIT_MIN_S + Math.random() * (SurvivalHunting.WAIT_MAX_S - SurvivalHunting.WAIT_MIN_S)) * (1 - Math.min(0.6, ffx.fishFast || 0)); // Türelmes horgász
+            p.fishing = { until: Date.now() + wait * 1000, lat: e.lat, lng: e.lng, bait };
+            return { message: `Kivetettél (csali: ${itemName(bait)}${kept ? ', és meg is maradt' : ''}). Várd a kapást!`, payload: { until: p.fishing.until, lateS: SurvivalHunting.LATE_S } };
+        })).then(reply('fish_result')).catch(logError('Hiba a horgászatnál:'));
+    });
+    socket.on('fish_pull', () => {
+        withPlayer(username, freeOnly((p) => {
+            const f = p.fishing;
+            if (!f) return { save: false, error: 'Nem vetettél ki.' };
+            const now = Date.now();
+            if (now < f.until) { p.fishing = null; return { message: 'Túl korán húztad ki: a hal elúszott, a csali odaveszett.', payload: { done: true } }; }
+            p.fishing = null;
+            const e = activePlayers[username];
+            if (e && e.lat !== null && distanceMeters(e, f) > 80) return { message: 'Elmentél a víz mellől: a zsinór elszakadt.', payload: { done: true } };
+            if (now > f.until + SurvivalHunting.LATE_S * 1000) return { message: 'Túl későn húztad ki: a hal leakadt.', payload: { done: true } };
+            const ffx = skillFx(p);
+            const rod = mostWorn(p, 'fishing_rod');
+            let broke = '';
+            if (rod && !chance(ffx.rodSave)) { rod.dur = (rod.dur === undefined ? itemDatabase.fishing_rod.durability : rod.dur) - 1; if (rod.dur <= 0) { p.inventory = p.inventory.filter(s => s !== rod); broke = ' Eltört a horgászbot!'; } }
+            let key = SurvivalHunting.pickCatch(Math.random);
+            if (key.startsWith('fish_') && !['fish_pike', 'fish_catfish'].includes(key) && chance(ffx.bigFish)) key = Math.random() < 0.3 ? 'fish_catfish' : 'fish_pike'; // Nagy fogás
+            const isFish = key.startsWith('fish_');
+            const n = isFish && chance(ffx.fishDouble) ? 2 : 1; // Halak ura
+            grantXp(p, Math.round((isFish ? 10 : 4) * n * (1 + (ffx.wildXp || 0))));
+            if (isFish) { bumpStat(p, 'fishCaught', n); questEvent(p, username, 'fish', { count: n }, qFlags()); }
+            if (!addItem(p, key, n).ok) return { message: `Kifogtad: ${itemName(key)}, de nem fért el, visszadobtad.${broke}`, payload: { done: true } };
+            return { message: `${isFish ? 'Megvan!' : 'Hát...'} Kifogtad: ${n > 1 ? '2 ' : ''}${itemName(key)}!${broke}`, payload: { done: true, key } };
+        })).then(reply('fish_result')).catch(logError('Hiba a horgászatnál:'));
     });
 
     // ----- Hétvégi ajándékvadászat -----

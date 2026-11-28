@@ -52,6 +52,13 @@
                      title: () => 'Nyisd ki a mai adventi ablakot', hint: 'A Küldetés gomb alatt, az adventi naptárban.' },
         d_orn:     { scope: 'daily', move: false, icon: '🪩', targets: [1, 1, 2], need: 'trees', xp: 40, money: 25,
                      title: (q) => `Barkácsolj ${q.target > 1 ? q.target + ' karácsonyi díszt' : 'egy karácsonyi díszt'}`, hint: 'Barkács → Karácsony.' },
+        // --- vadászat, horgászat (v0.1.43) ---
+        d_hunt:    { scope: 'daily', move: true, icon: '🏹', targets: [1, 2, 3], xp: 70, money: 45,
+                     title: (q) => `Ejts el ${q.target > 1 ? q.target + ' állatot' : 'egy állatot'}`, hint: 'Erdők, mezők, parkok közelében bukkannak fel a térképen. Koppints rá, ha elég közel vagy.' },
+        d_fish:    { scope: 'daily', move: true, icon: '🪝', targets: [1, 2, 3], xp: 70, money: 45,
+                     title: (q) => `Fogj ${q.target > 1 ? q.target + ' halat' : 'egy halat'}`, hint: 'A térképen horog jelzi a legközelebbi vízpartot. Horgászbot és csali kell.' },
+        d_skin:    { scope: 'daily', move: false, icon: '🔪', targets: [1, 1, 2], xp: 40, money: 25,
+                     title: (q) => `Nyúzz meg ${q.target > 1 ? q.target + ' tetemet' : 'egy tetemet'}`, hint: 'Koppints a tetemre a Készletben → Megnyúzom (kés kell).' },
         // --- napi, otthon is megy ---
         craft:     { scope: 'daily', move: false, icon: '🔨', targets: [2, 3, 4], xp: 40, money: 25,
                      title: (q) => `Barkácsolj ${q.target} tárgyat`, hint: 'Bármelyik recept számít.' },
@@ -86,6 +93,12 @@
                      title: (q) => `Akassz fel ${q.target} díszt a héten`, hint: 'Bármelyik település fájára; a messzebbi fák is számítanak.' },
         w_gift:    { scope: 'weekly', move: true, icon: '🎁', targets: [4, 6, 8], need: 'giftWeek', xp: 250, money: 150,
                      title: (q) => `Nyiss ki ${q.target} ajándékcsomagot a héten`, hint: 'Szombaton és vasárnap 9 és 19 óra között az utcákon.' },
+        w_hunt:    { scope: 'weekly', move: true, icon: '🏹', targets: [4, 6, 8], xp: 250, money: 150,
+                     title: (q) => `Ejts el ${q.target} állatot a héten`, hint: 'Nyúl, fácán, róka, őz, vaddisznó, mutáns kopó – mind számít.' },
+        w_fish:    { scope: 'weekly', move: true, icon: '🐟', targets: [5, 8, 12], xp: 250, money: 150,
+                     title: (q) => `Fogj ${q.target} halat a héten`, hint: 'Kárász, ponty, csuka, harcsa – a csizma nem számít.' },
+        w_trophy:  { scope: 'weekly', move: true, icon: '🦌', targets: [1, 1, 2], xp: 250, money: 150,
+                     title: (q) => `Szerezz ${q.target > 1 ? q.target + ' trófeát' : 'egy trófeát'} a héten`, hint: 'Róka, őz, vaddisznó vagy mutáns kopó nyúzásakor eshet.' },
         // --- heti, otthon is megy ---
         w_dsets:   { scope: 'weekly', move: false, icon: '📅', targets: [4, 5, 6], xp: 200, money: 120,
                      title: (q) => `Teljesítsd mind a 3 napi küldetést ${q.target} napon a héten`, hint: 'Minden nap, amikor mindhárom napi küldetés kész, egynek számít.' },
@@ -288,6 +301,13 @@
             of('use').forEach(x => bump(x, 1));
         } else if (kind === 'win') {
             of('win', 'w_win').forEach(x => bump(x, 1));
+        } else if (kind === 'hunt') {
+            of('d_hunt', 'w_hunt').forEach(x => bump(x, 1));
+        } else if (kind === 'fish') {
+            of('d_fish', 'w_fish').forEach(x => bump(x, Math.max(1, Number(data.count) || 1)));
+        } else if (kind === 'skin') {
+            of('d_skin').forEach(x => bump(x, 1));
+            if (data.trophy) of('w_trophy').forEach(x => bump(x, 1));
         } else if (kind === 'tree') {
             of('d_hang', 'w_hang').forEach(x => bump(x, Math.max(1, Number(data.count) || 1)));
             if (data.home && dist(data.home, { lat: data.lat, lng: data.lng }) >= TREE_FAR_METERS) of('tree_far').forEach(x => bump(x, 1));
